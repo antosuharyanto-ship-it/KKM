@@ -15,10 +15,11 @@ interface EventData {
     status: string;
     description: string;
     type?: string;
+    registration_link?: string;
 }
 
 export const HomePage: React.FC = () => {
-    const { t } = useTranslation(); // Use Hook
+    const { t } = useTranslation();
     const [events, setEvents] = useState<EventData[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -28,7 +29,6 @@ export const HomePage: React.FC = () => {
             .then(res => setEvents(res.data))
             .catch(err => {
                 console.error(err);
-                // Show more detailed error for debugging
                 const msg = err.response?.data?.error || err.message || 'Failed to connect';
                 setError(`Failed to load events: ${msg}`);
             })
@@ -55,131 +55,145 @@ export const HomePage: React.FC = () => {
         </div>
     );
 
+    // --- FILTER LOGIC ---
+    const featuredEvents = events.filter(e => e.status?.trim() === 'Open');
+    const otherEvents = events.filter(e => e.status?.trim() !== 'Open');
+
     return (
         <div className="pb-20">
-            {/* HERO SECTION WITH VIDEO BACKGROUND */}
+            {/* HERO SECTION */}
             <div className="relative h-[90vh] md:h-[600px] w-full overflow-hidden mb-10 flex items-center justify-center">
-                {/* Video Layer */}
-                <video
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    className="absolute top-0 left-0 w-full h-full object-cover z-0"
-                >
+                <video autoPlay loop muted playsInline className="absolute top-0 left-0 w-full h-full object-cover z-0">
                     <source src="/Anak2.mp4" type="video/mp4" />
-                    {/* Fallback image if video fails or blocked */}
                     <img src="https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?auto=format&fit=crop&q=80&w=2000" alt="Camping" className="w-full h-full object-cover" />
                 </video>
-
-                {/* Overlay Layer */}
                 <div className="absolute inset-0 bg-black/40 z-10 bg-gradient-to-t from-stone-900 via-transparent to-black/30"></div>
 
-                {/* Content Layer */}
                 <div className="relative z-20 text-center text-white px-4 max-w-4xl mx-auto animate-in fade-in zoom-in duration-1000">
                     <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/20 mb-6 shadow-xl">
                         <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
                         <span className="text-sm font-bold tracking-wide text-green-100 uppercase">Live: Family Camping Season 2026</span>
                     </div>
-                    <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight drop-shadow-lg leading-tight">
-                        {t('home.welcome')}
-                    </h1>
-                    <p className="text-lg md:text-xl text-gray-200 mb-10 max-w-2xl mx-auto leading-relaxed text-shadow">
-                        {t('home.subtitle')}
-                    </p>
+                    <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight drop-shadow-lg leading-tight">{t('home.welcome')}</h1>
+                    <p className="text-lg md:text-xl text-gray-200 mb-10 max-w-2xl mx-auto leading-relaxed text-shadow">{t('home.subtitle')}</p>
                     <div className="flex flex-col md:flex-row gap-4 justify-center">
-                        <button
-                            onClick={() => document.getElementById('events-section')?.scrollIntoView({ behavior: 'smooth' })}
-                            className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-full font-bold text-lg transition-all shadow-lg hover:shadow-orange-500/30 hover:-translate-y-1 flex items-center justify-center gap-2"
-                        >
+                        <button onClick={() => document.getElementById('featured-section')?.scrollIntoView({ behavior: 'smooth' })} className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-full font-bold text-lg transition-all shadow-lg hover:shadow-orange-500/30 hover:-translate-y-1 flex items-center justify-center gap-2">
                             {t('home.explore_events')} <ArrowRight size={20} />
                         </button>
                     </div>
                 </div>
             </div>
 
-            {/* EVENTS SECTION */}
-            <div id="events-section" className="px-6 md:px-8 max-w-7xl mx-auto mt-4 relative z-30">
-                <div className="bg-white/95 backdrop-blur-xl rounded-[2.5rem] shadow-2xl border border-white/50 p-6 md:p-10">
-                    <div className="flex items-center justify-between mb-8">
+            {/* FEATURED SECTION (OPEN EVENTS) */}
+            {featuredEvents.length > 0 && (
+                <div id="featured-section" className="px-6 md:px-8 max-w-7xl mx-auto mt-4 mb-16 relative z-30">
+                    <div className="flex items-center gap-3 mb-8">
+                        <div className="p-3 bg-teal-100 rounded-2xl text-teal-700">
+                            <Tent size={32} />
+                        </div>
                         <div>
-                            <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                                <Tent className="text-teal-600" size={32} />
-                                Upcoming Events
-                            </h2>
-                            <p className="text-gray-500 mt-2">Find your perfect getaway</p>
+                            <h2 className="text-3xl font-bold text-gray-900">Open for Registration</h2>
+                            <p className="text-gray-500">Don't miss out on our upcoming adventures</p>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {events.length === 0 ? (
-                            <div className="col-span-full text-center text-gray-500 py-20 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-                                <Tent size={48} className="mx-auto mb-4 text-gray-300" />
-                                No events found. Check back later!
-                            </div>
-                        ) : events.map((event, idx) => {
-                            const isAvailable = event.status?.toLowerCase() === 'available' && event.type !== 'Closed';
-                            const CardContent = (
-                                <>
-                                    {/* Image */}
-                                    <div className="h-64 relative overflow-hidden bg-gray-100">
-                                        <img
-                                            src={getDisplayImageUrl(event.event_images)}
-                                            alt={event.activity}
-                                            onError={handleImageError}
-                                            className={`w-full h-full object-cover transition-transform duration-700 ${isAvailable ? 'group-hover:scale-110' : 'grayscale'}`}
-                                        />
-                                        <div className={`absolute top-4 right-4 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold shadow-sm uppercase tracking-wide flex items-center gap-1 ${isAvailable ? 'bg-white/95 text-teal-800' : 'bg-gray-200 text-gray-600'}`}>
-                                            <span className={`w-2 h-2 rounded-full ${event.type === 'Closed' ? 'bg-red-500' : isAvailable ? 'bg-green-500' : 'bg-gray-500'}`}></span>
-                                            {event.type || 'Unavailable'}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {featuredEvents.map((event, idx) => (
+                            <Link to={`/event/${event.event_id}`} key={idx} className="group block bg-white rounded-[2.5rem] overflow-hidden shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 ring-4 ring-white/50">
+                                <div className="h-80 relative overflow-hidden">
+                                    <img src={getDisplayImageUrl(event.event_images)} alt={event.activity} onError={handleImageError} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                    <div className="absolute top-6 right-6 bg-white/95 backdrop-blur-md px-4 py-2 rounded-full text-sm font-bold shadow-lg text-teal-800 flex items-center gap-2">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
+                                        OPEN NOW
+                                    </div>
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
+                                    <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
+                                        <h3 className="text-3xl font-bold mb-3 leading-tight">{event.activity}</h3>
+                                        <div className="flex flex-wrap gap-4 text-sm font-medium text-white/90">
+                                            <div className="flex items-center bg-white/10 px-3 py-1 rounded-full"><Calendar size={16} className="mr-2" /> {event.start_time || 'TBA'}</div>
+                                            <div className="flex items-center bg-white/10 px-3 py-1 rounded-full"><MapPin size={16} className="mr-2" /> {event.location || 'Location TBA'}</div>
                                         </div>
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 group-hover:opacity-60 transition-opacity"></div>
+                                    </div>
+                                </div>
+                                <div className="p-6 bg-gradient-to-br from-teal-50/50 to-white">
+                                    <div className="w-full py-4 bg-teal-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 group-hover:bg-teal-700 transition-colors shadow-lg shadow-teal-200">
+                                        Book Now <ArrowRight size={20} />
+                                    </div>
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
+                </div>
+            )}
 
-                                        {/* Content overlaid on image bottom */}
-                                        <div className={`absolute bottom-0 left-0 right-0 p-6 text-white transform transition-transform duration-300 ${isAvailable ? 'translate-y-2 group-hover:translate-y-0' : ''}`}>
-                                            <h3 className="text-2xl font-bold mb-2 leading-tight shadow-black drop-shadow-md">
-                                                {event.activity || 'Untitled Event'}
-                                            </h3>
-                                            <div className="flex items-center text-white/90 text-sm mb-1">
-                                                <Calendar size={16} className="mr-2 text-orange-400" />
-                                                <span className="font-medium">{event.start_time || 'TBA'}</span>
+            {/* ARCHIVE / OTHER SECTION */}
+            {otherEvents.length > 0 && (
+                <div className="px-6 md:px-8 max-w-7xl mx-auto mb-20">
+                    <div className="flex items-center justify-between mb-8 border-t border-gray-100 pt-10">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-800">Event Archive & Upcoming</h2>
+                            <p className="text-gray-400 text-sm mt-1">Past memories and future plans</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        {otherEvents.map((event, idx) => {
+                            const status = event.status?.trim() || 'Unavailable';
+                            const isFinished = status === 'Finished';
+                            const isFull = status === 'Full Booked';
+
+                            // Determine Badge Color
+                            let badgeColor = 'bg-gray-100 text-gray-600';
+                            let badgeText = status;
+
+                            if (isFinished) { badgeColor = 'bg-gray-800 text-white'; badgeText = 'PAST EVENT'; }
+                            else if (isFull) { badgeColor = 'bg-red-100 text-red-700'; badgeText = 'SOLD OUT'; }
+                            else if (status === 'Coming Soon') { badgeColor = 'bg-yellow-100 text-yellow-800'; badgeText = 'COMING SOON'; }
+
+                            // Action Button Logic
+                            const hasGallery = isFinished && event.registration_link && event.registration_link.startsWith('http');
+
+                            return (
+                                <div key={idx} className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 flex flex-col h-full">
+                                    <div className="h-48 relative overflow-hidden bg-gray-200">
+                                        <img src={getDisplayImageUrl(event.event_images)} alt={event.activity} onError={handleImageError} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${isFinished ? 'grayscale' : ''}`} />
+                                        <div className={`absolute top-3 right-3 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm ${badgeColor}`}>
+                                            {badgeText}
+                                        </div>
+                                    </div>
+
+                                    <div className="p-5 flex flex-col flex-grow">
+                                        <h3 className="text-lg font-bold text-gray-800 mb-2 line-clamp-2">{event.activity}</h3>
+                                        <div className="text-xs text-gray-500 space-y-1 mb-4 flex-grow">
+                                            <div className="flex items-center"><Calendar size={12} className="mr-2" /> {event.start_time || 'TBA'}</div>
+                                            <div className="flex items-center"><MapPin size={12} className="mr-2" /> {event.location || 'TBA'}</div>
+                                        </div>
+
+                                        {/* Action Button */}
+                                        {hasGallery ? (
+                                            <a href={event.registration_link} target="_blank" rel="noopener noreferrer" className="w-full py-2 bg-gray-900 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-black transition-colors">
+                                                View Gallery <ArrowRight size={14} />
+                                            </a>
+                                        ) : (
+                                            <div className="w-full py-2 bg-gray-100 text-gray-400 rounded-xl text-xs font-bold flex items-center justify-center cursor-default">
+                                                {isFull ? 'Fully Booked' : isFinished ? 'Closed' : 'Coming Soon'}
                                             </div>
-                                        </div>
+                                        )}
                                     </div>
-
-                                    {/* Content Body */}
-                                    <div className="p-6 pt-4">
-                                        <div className="flex items-center text-gray-500 text-sm mb-6">
-                                            <MapPin size={16} className="mr-2 text-teal-600" />
-                                            <span className="truncate font-medium">{event.location || 'Location TBA'}</span>
-                                        </div>
-
-                                        <div className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all duration-300 border ${isAvailable ? 'bg-teal-50 text-teal-900 group-hover:bg-teal-900 group-hover:text-white border-teal-100 group-hover:border-teal-900' : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'}`}>
-                                            {isAvailable ? <>View Details <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" /></> : 'Event Closed'}
-                                        </div>
-                                    </div>
-                                </>
-                            );
-
-                            return isAvailable ? (
-                                <Link
-                                    to={`/event/${event.event_id}`}
-                                    key={idx}
-                                    className="group block bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 border border-gray-100"
-                                >
-                                    {CardContent}
-                                </Link>
-                            ) : (
-                                <div key={idx} className="block bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 opacity-80">
-                                    {CardContent}
                                 </div>
                             );
                         })}
                     </div>
                 </div>
-            </div>
+            )}
 
-            {/* CTA Section Removed */}
+            {/* Fallback if absolutely no events */}
+            {events.length === 0 && (
+                <div className="text-center text-gray-500 py-20 bg-gray-50 mx-6 rounded-3xl border border-dashed border-gray-200">
+                    <Tent size={48} className="mx-auto mb-4 text-gray-300" />
+                    No events found. Check back later!
+                </div>
+            )}
         </div>
     );
 };
