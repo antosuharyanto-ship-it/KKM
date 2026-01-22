@@ -3,9 +3,30 @@ import { Outlet, NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next'; // Import Hook
 import { Tent, ShoppingBag, User, Search, LayoutDashboard, Megaphone, MessageSquare, Moon, Instagram, Facebook, Youtube, Twitter, Mail, Phone, MapPin } from 'lucide-react';
 import { LanguageSwitcher } from '../components/LanguageSwitcher'; // Import Switcher
+import axios from 'axios';
+import { API_BASE_URL } from '../config';
 
 export const AppLayout: React.FC = () => {
     const { t } = useTranslation(); // Use Hook
+    const [isOfficer, setIsOfficer] = React.useState(false);
+
+    React.useEffect(() => {
+        const checkRole = async () => {
+            try {
+                // We could use /auth/me or /api/officer/check. 
+                // Using auth/me is safer to just get the role without 403 errors cluttering logs
+                const res = await axios.get(`${API_BASE_URL}/auth/me`, { withCredentials: true });
+                const role = res.data.role;
+                if (role === 'officer' || role === 'organizer') {
+                    setIsOfficer(true);
+                }
+            } catch (e) {
+                // Not logged in or not officer
+                setIsOfficer(false);
+            }
+        };
+        checkRole();
+    }, []);
 
     return (
         <div className="flex flex-col h-[100dvh] bg-stone-50 text-gray-900 shadow-2xl relative overflow-hidden md:h-screen md:overflow-visible md:shadow-none">
@@ -23,8 +44,8 @@ export const AppLayout: React.FC = () => {
                     <DesktopNavItem to="/community" label={t('nav.community')} />
                     <DesktopNavItem to="/islamic-tools" label={t('nav.prayer')} />
                     <DesktopNavItem to="/marketplace" label={t('nav.marketplace')} />
-                    <DesktopNavItem to="/scanner" label={t('nav.scan')} />
-                    <DesktopNavItem to="/dashboard" label={t('nav.dashboard')} />
+                    {isOfficer && <DesktopNavItem to="/scanner" label={t('nav.scan')} />}
+                    {isOfficer && <DesktopNavItem to="/dashboard" label={t('nav.dashboard')} />}
                 </nav>
 
                 <div className="flex items-center gap-4">
@@ -54,7 +75,8 @@ export const AppLayout: React.FC = () => {
                 <MobileNavItem to="/community" icon={<MessageSquare size={20} />} label={t('nav.community')} />
                 <MobileNavItem to="/islamic-tools" icon={<Moon size={20} />} label={t('nav.prayer')} />
                 <MobileNavItem to="/marketplace" icon={<ShoppingBag size={20} />} label={t('nav.marketplace')} />
-                <MobileNavItem to="/dashboard" icon={<LayoutDashboard size={20} />} label={t('nav.dashboard')} />
+                {isOfficer && <MobileNavItem to="/dashboard" icon={<LayoutDashboard size={20} />} label={t('nav.dashboard')} />}
+                {/* On mobile scanner is in dashboard often but we can keep it if needed. Leaving generic user items priority */}
                 <MobileNavItem to="/profile" icon={<User size={20} />} label={t('nav.profile')} />
             </nav>
 
