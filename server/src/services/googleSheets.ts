@@ -9,13 +9,22 @@ export class GoogleSheetService {
         // Auth can be initialized early, or we can use a getter if needed. 
         // But usually GOOGLE_APPLICATION_CREDENTIALS is native to the library or we pass 'keyFile'.
         // If 'keyFile' path is relative, it should be fine.
-        const auth = new google.auth.GoogleAuth({
-            keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || path.join(__dirname, '../../service-account-key.json'),
-            scopes: [
-                'https://www.googleapis.com/auth/spreadsheets',
-                'https://www.googleapis.com/auth/drive.file'
-            ],
-        });
+        if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+            const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+            // Sanitize private key newlines just in case
+            if (credentials.private_key) {
+                credentials.private_key = credentials.private_key.split(String.fromCharCode(92) + 'n').join('\n');
+            }
+            auth = new google.auth.GoogleAuth({
+                credentials,
+                scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive.file'],
+            });
+        } else {
+            auth = new google.auth.GoogleAuth({
+                keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || path.join(__dirname, '../../service-account-key.json'),
+                scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive.file'],
+            });
+        }
 
         this.sheets = google.sheets({ version: 'v4', auth });
         this.drive = google.drive({ version: 'v3', auth });
@@ -37,23 +46,20 @@ export class GoogleSheetService {
 
     async readSheet(sheetName: string) {
         try {
-            console.time(`readSheet-${sheetName}`);
+            // console.time(`readSheet-${sheetName}`);
             const response = await this.sheets.spreadsheets.values.get({
                 spreadsheetId: this.spreadsheetId,
-                range: sheetName, // e.g., 'Events' or 'A1:Z100'
+                range: sheetName,
             });
-            console.timeEnd(`readSheet-${sheetName}`);
+            // console.timeEnd(`readSheet-${sheetName}`);
 
             const rows = response.data.values;
             if (!rows || rows.length === 0) return [];
 
-            // Assume first row is header
             const headers = rows[0];
             const data = rows.slice(1).map(row => {
                 const obj: any = {};
                 headers.forEach((header, index) => {
-                    // Clean header key (e.g. "Event Name" -> "event_name")
-                    // Handle duplicate keys or empty headers if necessary
                     if (header) {
                         const key = header.toLowerCase().replace(/\s+/g, '_');
                         obj[key] = row[index];
@@ -64,7 +70,7 @@ export class GoogleSheetService {
 
             return data;
         } catch (error) {
-            console.error(`Error reading sheet ${sheetName}:`, error);
+            console.error(`[readSheet] Error reading ${sheetName}:`, error);
             throw error;
         }
     }
@@ -80,7 +86,7 @@ export class GoogleSheetService {
                 },
             });
         } catch (error) {
-            console.error(`Error appending to ${sheetName}:`, error);
+            console.error(`[appendRow] Error appending to ${sheetName}:`, error);
             throw error;
         }
     }
@@ -89,7 +95,7 @@ export class GoogleSheetService {
         try {
             const response = await this.sheets.spreadsheets.values.get({
                 spreadsheetId: this.spreadsheetId,
-                range: `${sheetName}!A1:Z1`, // Check first row
+                range: `${sheetName}!A1:Z1`,
             });
 
             const rows = response.data.values;
@@ -98,9 +104,11 @@ export class GoogleSheetService {
                 await this.appendRow(sheetName, headers);
             }
         } catch (error: any) {
-            // Check if error is due to missing sheet (normally 400 or 404 with specific message)
-            // But safest is to assume if we can't read it, we should try to create it.
-            console.log(`Sheet "${sheetName}" likely missing. Attempting to create...`);
+            console.error(`[ensureHeaders] Failed to read sheet "${sheetName}". Original Error:`, error.message);
+            // Only try to create if it looks like a "Not Found" error
+            // Assuming 400 with "Unable to parse range" often means sheet doesn't exist
+            console.log(`Attempting to create sheet "${sheetName}"...`);
+
             try {
                 await this.sheets.spreadsheets.batchUpdate({
                     spreadsheetId: this.spreadsheetId,
@@ -113,10 +121,9 @@ export class GoogleSheetService {
                     }
                 });
                 console.log(`✅ Sheet "${sheetName}" created.`);
-                // Now append headers
                 await this.appendRow(sheetName, headers);
-            } catch (createError) {
-                console.error(`Failed to create sheet ${sheetName}:`, createError);
+            } catch (createError: any) {
+                console.error(`Failed to create sheet ${sheetName}:`, createError.message);
             }
         }
     }
