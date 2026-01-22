@@ -356,7 +356,7 @@ app.post('/api/book', async (req, res) => {
 });
 
 // Health Check
-app.get('/health', (req, res) => {
+app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
