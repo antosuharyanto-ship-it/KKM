@@ -159,6 +159,30 @@ export class GoogleSheetService {
         }
     }
 
+    async getDriveFolderFiles(folderUrlOrId: string) {
+        try {
+            // Extract ID from URL if necessary
+            // e.g. https://drive.google.com/drive/u/0/folders/123456...
+            // or https://drive.google.com/open?id=123456...
+            let folderId = folderUrlOrId;
+            const urlMatch = folderUrlOrId.match(/[-\w]{25,}/);
+            if (urlMatch) {
+                folderId = urlMatch[0];
+            }
+
+            const res = await this.drive.files.list({
+                q: `'${folderId}' in parents and mimeType contains 'image/' and trashed = false`,
+                fields: 'files(id, name, webViewLink, webContentLink, thumbnailLink)',
+                pageSize: 100
+            });
+
+            return res.data.files || [];
+        } catch (error) {
+            console.error('Failed to list drive files:', error);
+            return [];
+        }
+    }
+
     // --- Domain Logic ---
 
     async getEvents() {

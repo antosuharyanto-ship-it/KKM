@@ -86,7 +86,7 @@ export const HomePage: React.FC = () => {
 
             {/* FEATURED SECTION (OPEN EVENTS) */}
             {featuredEvents.length > 0 && (
-                <div id="featured-section" className="px-6 md:px-8 max-w-7xl mx-auto mt-4 mb-16 relative z-30">
+                <div id="featured-section" className="px-6 md:px-8 max-w-7xl mx-auto mt-10 mb-20 relative z-30">
                     <div className="flex items-center gap-3 mb-8">
                         <div className="p-3 bg-teal-100 rounded-2xl text-teal-700">
                             <Tent size={32} />

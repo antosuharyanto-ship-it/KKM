@@ -20,6 +20,22 @@ The system is designed to work seamlessly with **Google Drive**.
 **How it works:**
 The app automatically detects Google Drive links and converts them into a direct-embed format so they display instantly in the app without the user needing to log in to Drive.
 
+### Event Gallery (`gallery_images`)
+**Procedure to Add Gallery Images:**
+1.  **Prepare Images**:
+    *   Upload your event photos to a **Google Drive Folder**.
+    *   Select the photos you want to show (Right-click -> Share -> "Anyone with the link").
+    *   **Tip**: For multiple images, it is efficient to Copy Link for each image one by one.
+2.  **Update Sheet**:
+    *   Open the **Events** sheet.
+    *   Locate the row for the past event.
+    *   Find (or create) the `gallery_images` column.
+    *   **Paste the links**, separated by commas.
+    *   *Example*: `https://drive.google.com/file/d/xxxxx/view, https://drive.google.com/file/d/yyyyy/view`
+3.  **Verify**:
+    *   Open the App -> Go to **Gallery** (or find the event in the list).
+    *   Click the event and scroll down to the "Event Gallery" section.
+
 ### Location & Maps (`location`)
 The text entered in the `location` column (e.g., "Sejati Camp and Resort") is used for:
 1.  **Display**: Shown on the Event Card and Details page.

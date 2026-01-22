@@ -19,6 +19,7 @@ interface Event {
     status: string;
     price_new_member?: string;
     price_alumni?: string;
+    gallery_images?: string;
 }
 
 import { getDisplayImageUrl } from '../utils/imageHelper';
@@ -31,6 +32,44 @@ export const EventDetailsPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [bookingStatus, setBookingStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
     const [ticketCode, setTicketCode] = useState<string | null>(null);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [galleryImages, setGalleryImages] = useState<string[]>([]);
+    const [error, setError] = useState<string | null>(null); // Added setError state as it's used in the new useEffect
+
+    useEffect(() => {
+        const fetchEvent = async () => {
+            try {
+                const res = await axios.get(`${API_BASE_URL}/api/events`);
+                const found = res.data.find((e: any) => e.event_id === id);
+                if (found) {
+                    setEvent(found);
+                    if (found.gallery_images) {
+                        // Check if it's a Drive Folder URL
+                        if (found.gallery_images.includes('drive.google.com') && !found.gallery_images.includes(',')) {
+                            try {
+                                const folderRes = await axios.get(`${API_BASE_URL}/api/drive/files?folderId=${encodeURIComponent(found.gallery_images)}`);
+                                const links = folderRes.data.map((f: any) => f.thumbnailLink ? f.thumbnailLink.replace('=s220', '=s1000') : f.webContentLink);
+                                setGalleryImages(links);
+                            } catch (err) {
+                                console.error('Failed to load drive images', err);
+                                setGalleryImages([]);
+                            }
+                        } else {
+                            // Split numeric or comma separated
+                            setGalleryImages(found.gallery_images.split(',').map((s: string) => s.trim()));
+                        }
+                    }
+                } else {
+                    setError('Event not found');
+                }
+            } catch (err) {
+                setError('Failed to load event details');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchEvent();
+    }, [id]);
 
     // Form State
     const [user, setUser] = useState<any>(null);
@@ -301,6 +340,59 @@ export const EventDetailsPage: React.FC = () => {
                             </div>
                         </a>
                     </div>
+
+                    {/* GALLERY SECTION */}
+                    {galleryImages.length > 0 && (
+                        <div className="mt-8 mb-8 md:col-span-2">
+                            <h3 className="font-bold text-gray-900 text-xl mb-4 flex items-center gap-2">
+                                <span className="w-1 h-6 bg-teal-500 rounded-full"></span>
+                                Event Gallery
+                            </h3>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+                                {galleryImages.map((imgUrl, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="relative aspect-square rounded-xl overflow-hidden cursor-pointer group shadow-sm hover:shadow-md transition"
+                                        onClick={() => setSelectedImage(imgUrl)}
+                                    >
+                                        <img
+                                            src={getDisplayImageUrl(imgUrl)}
+                                            alt={`Gallery ${idx + 1}`}
+                                            className="w-full h-full object-cover transition duration-500 group-hover:scale-110"
+                                            onError={(e) => e.currentTarget.style.display = 'none'}
+                                        />
+                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                            <div className="bg-white/90 p-2 rounded-full opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-900"><path d="M15 3h6v6" /><path d="M9 21H3v-6" /><path d="M21 3l-7 7" /><path d="M3 21l7-7" /></svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Image Lightbox */}
+                    {selectedImage && (
+                        <div
+                            className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+                            onClick={() => setSelectedImage(null)}
+                        >
+                            <button
+                                className="absolute top-4 right-4 text-white/70 hover:text-white bg-white/10 p-2 rounded-full transition"
+                                onClick={() => setSelectedImage(null)}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                            <img
+                                src={getDisplayImageUrl(selectedImage)}
+                                alt="Full view"
+                                className="max-w-full max-h-[90vh] rounded-lg shadow-2xl object-contain"
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                        </div>
+                    )}
+
                 </div>
 
                 {/* Right Column: Details & Booking Form */}

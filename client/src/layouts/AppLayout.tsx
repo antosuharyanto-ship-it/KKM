@@ -69,7 +69,7 @@ export const AppLayout: React.FC = () => {
             </div>
 
             {/* Mobile Bottom Navigation */}
-            <nav className="md:hidden absolute bottom-0 left-0 right-0 bg-white border-t border-stone-200 px-4 py-3 flex justify-between items-center z-50 rounded-t-2xl shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
+            <nav className="md:hidden absolute bottom-0 left-0 right-0 bg-white border-t border-stone-200 px-4 py-3 flex justify-around items-center z-50 rounded-t-2xl shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
                 <MobileNavItem to="/" icon={<Tent size={20} />} label={t('nav.events')} />
                 <MobileNavItem to="/news" icon={<Megaphone size={20} />} label={t('nav.news')} />
                 <MobileNavItem to="/community" icon={<MessageSquare size={20} />} label={t('nav.community')} />

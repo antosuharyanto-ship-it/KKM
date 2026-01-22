@@ -564,8 +564,63 @@ export const OrganizerDashboard: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Table */}
-                    <div className="overflow-x-auto">
+                    {/* Mobile Card View (Visible on small screens) */}
+                    <div className="md:hidden space-y-4 p-4 bg-gray-50">
+                        {filteredBookings.map(booking => (
+                            <div key={booking.reservation_id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-3">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <div className="font-bold text-gray-900">{booking.proposed_by}</div>
+                                        <div className="text-xs text-gray-500 font-mono">{booking.reservation_id}</div>
+                                    </div>
+                                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${booking.reservation_status.toLowerCase().includes('confirm') ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                                        {booking.reservation_status.replace('Payment', '')}
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
+                                    <div className="flex flex-col">
+                                        <span className="text-gray-400 uppercase text-[10px] font-bold">Pax</span>
+                                        <span className="font-semibold">{booking.participant_count} People</span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-gray-400 uppercase text-[10px] font-bold">Kavling</span>
+                                        <span className={`font-semibold ${booking.kavling ? 'text-teal-700' : 'text-gray-400 italic'}`}>{booking.kavling || 'TBA'}</span>
+                                    </div>
+                                    <div className="col-span-2 flex flex-col border-t border-gray-100 pt-2 mt-1">
+                                        <span className="text-gray-400 uppercase text-[10px] font-bold">Total</span>
+                                        <span className="font-bold text-gray-800">{booking.jumlah_pembayaran}</span>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-2 pt-2">
+                                    {booking.reservation_status.toLowerCase().includes('confirm') ? (
+                                        <>
+                                            <button onClick={() => handleAssignKavling(booking.reservation_id)} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold hover:bg-gray-200">
+                                                Edit Kavling
+                                            </button>
+                                            {booking.link_tiket && (
+                                                <a href={booking.link_tiket} target="_blank" rel="noreferrer" className="px-3 py-1.5 bg-teal-100 text-teal-700 rounded-lg text-xs font-bold flex items-center gap-1">
+                                                    <Download size={12} /> Ticket
+                                                </a>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <button
+                                            onClick={() => handleConfirmPayment(booking.reservation_id)}
+                                            disabled={processingId === booking.reservation_id}
+                                            className="w-full py-2 bg-teal-800 text-white rounded-lg text-xs font-bold hover:bg-teal-900 shadow-sm"
+                                        >
+                                            {processingId === booking.reservation_id ? 'Wait...' : 'Confirm Payment'}
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Desktop Table */}
+                    <div className="hidden md:block overflow-x-auto">
                         <table className="w-full text-left text-sm text-gray-600">
                             <thead className="bg-gray-50 text-gray-500 font-bold uppercase text-xs">
                                 <tr>

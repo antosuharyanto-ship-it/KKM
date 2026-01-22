@@ -161,6 +161,20 @@ app.get('/api/events', async (req, res) => {
     }
 });
 
+app.get('/api/drive/files', async (req, res) => {
+    try {
+        const { folderId } = req.query;
+        if (!folderId || typeof folderId !== 'string') {
+            return res.status(400).json({ message: 'Folder ID required' });
+        }
+        const files = await googleSheetService.getDriveFolderFiles(folderId);
+        res.json(files);
+    } catch (error) {
+        console.error('Drive API Error:', error);
+        res.status(500).json({ message: 'Failed to fetch files' });
+    }
+});
+
 // Update Event (Officer Only)
 app.put('/api/events/:id', checkOfficer, async (req, res) => {
     try {
