@@ -9,11 +9,16 @@ export class GoogleSheetService {
         // Auth can be initialized early, or we can use a getter if needed. 
         // But usually GOOGLE_APPLICATION_CREDENTIALS is native to the library or we pass 'keyFile'.
         // If 'keyFile' path is relative, it should be fine.
+        // Initialize Auth
+        let auth;
         if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
             const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
             // Sanitize private key newlines just in case
             if (credentials.private_key) {
-                credentials.private_key = credentials.private_key.split(String.fromCharCode(92) + 'n').join('\n');
+                // Sanitize private key: handle both double escaped (\\n) and single escaped (\n) newlines
+                credentials.private_key = credentials.private_key
+                    .replace(/\\\\n/g, '\n')
+                    .replace(/\\n/g, '\n');
             }
             auth = new google.auth.GoogleAuth({
                 credentials,
