@@ -1,0 +1,19 @@
+
+import { pgTable, uuid, varchar, timestamp, json } from 'drizzle-orm/pg-core';
+
+export const users = pgTable('users', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    googleId: varchar('google_id').unique(),
+    email: varchar('email').notNull().unique(), // Key for auth matching
+    fullName: varchar('full_name'),
+    role: varchar('role', { enum: ['user', 'officer', 'organizer'] }).default('user'),
+    membershipType: varchar('membership_type', { enum: ['general', 'new_member', 'alumni'] }).default('general'),
+    picture: varchar('picture'),
+    createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const session = pgTable('session', {
+    sid: varchar('sid').primaryKey(),
+    sess: json('sess').notNull(), // connect-pg-simple uses json/jsonb usually but Drizzle introspection often sees it as generic or we match it. Let's use json if possible, or varchar for safety if type is unknown. check pg-simple docs. usually json.
+    expire: timestamp('expire', { precision: 6 }).notNull(),
+});

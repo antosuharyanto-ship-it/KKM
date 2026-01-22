@@ -1,0 +1,54 @@
+import { Pool } from 'pg';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+});
+
+const createTables = async () => {
+    try {
+        console.log('🏗️ Creating Tables...');
+
+        // 1. Users Table
+        await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        google_id TEXT UNIQUE,
+        email TEXT UNIQUE NOT NULL,
+        full_name TEXT,
+        picture TEXT,
+        role TEXT DEFAULT 'member',
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+        console.log('✅ Users Table created/verified');
+
+        // 2. Session Table (for connect-pg-simple)
+        await pool.query(`
+      CREATE TABLE IF NOT EXISTS "session" (
+        "sid" varchar NOT NULL COLLATE "default",
+        "sess" json NOT NULL,
+        "expire" timestamp(6) NOT NULL
+      )
+      WITH (OIDS=FALSE);
+
+      ALTER TABLE "session" ADD CONSTRAINT "session_pkey" PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE;
+      CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
+    `);
+        console.log('✅ Session Table created/verified');
+
+    } catch (error: any) {
+        if (error.code === '42P16') {
+            // multiple primary keys defined, ignore
+            console.log('✅ Session Table verified (constraint exist)');
+        } else {
+            console.error('❌ Error creating tables:', error.message);
+        }
+    } finally {
+        await pool.end();
+    }
+};
+
+createTables();

@@ -1,0 +1,40 @@
+{
+    "nav": {
+        "events": "Acara",
+        "news": "Berita",
+        "community": "Komunitas",
+        "prayer": "Sholat",
+        "marketplace": "Pasar",
+        "scan": "Scan",
+        "dashboard": "Dashboard",
+        "profile": "Profil Saya"
+    },
+    "home": {
+        "welcome": "Selamat Datang di Kemah Keluarga Muslim",
+        "subtitle": "Membangun keluarga yang lebih kuat melalui iman, alam, dan kebersamaan.",
+        "explore_events": "Lihat Acara"
+    },
+    "common": {
+        "loading": "Memuat...",
+        "error": "Masalah",
+        "status": "Status",
+        "action": "Tindakan",
+        "search_placeholder": "Cari Nama atau ID..."
+    },
+    "dashboard": {
+        "title": "Dashboard Panitia",
+        "subtitle": "Ringkasan & Manajemen Acara",
+        "total_bookings": "Total Pesanan",
+        "confirmed_paid": "Lunas",
+        "pending_payment": "Menunggu Bayar",
+        "checked_in": "Sudah Check-in",
+        "post_news": "Posting Berita",
+        "open_scanner": "Buka Scanner"
+    },
+    "marketplace": {
+        "title": "Pasar Kemah",
+        "subtitle": "Perlengkapan penting untuk petualanganmu",
+        "search_placeholder": "Cari tenda, lampu, kompor...",
+        "price_free": "Gratis"
+    }
+}

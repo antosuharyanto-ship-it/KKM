@@ -1,0 +1,40 @@
+{
+  "nav": {
+    "events": "Events",
+    "news": "News",
+    "community": "Community",
+    "prayer": "Prayer",
+    "marketplace": "Marketplace",
+    "scan": "Scan",
+    "dashboard": "Dashboard",
+    "profile": "My Profile"
+  },
+  "home": {
+    "welcome": "Welcome to Kemah Keluarga Muslim",
+    "subtitle": "Building stronger families through faith, nature, and togetherness.",
+    "explore_events": "Explore Events"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "status": "Status",
+    "action": "Action",
+    "search_placeholder": "Search Name or ID..."
+  },
+  "dashboard": {
+    "title": "Organizer Dashboard",
+    "subtitle": "Event Overview & Management",
+    "total_bookings": "Total Bookings",
+    "confirmed_paid": "Confirmed Paid",
+    "pending_payment": "Pending Payment",
+    "checked_in": "Checked In",
+    "post_news": "Post News",
+    "open_scanner": "Open Scanner"
+  },
+  "marketplace": {
+    "title": "Camp Marketplace",
+    "subtitle": "Essential gear for your adventure",
+    "search_placeholder": "Search tent, lamp, stove...",
+    "price_free": "Free"
+  }
+}

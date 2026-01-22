@@ -1,0 +1,12 @@
+.DS_Store
+node_modules
+.env
+*.log
+.vscode
+.idea
+dist
+coverage
+*.local
+credentials.json
+google-credentials.json
+service-account-key.json

@@ -1,0 +1,40 @@
+{
+    "nav": {
+        "events": "الفعاليات",
+        "news": "أخبار",
+        "community": "المجتمع",
+        "prayer": "صلاة",
+        "marketplace": "السوق",
+        "scan": "مسح",
+        "dashboard": "لوحة القيادة",
+        "profile": "ملفي الشخصي"
+    },
+    "home": {
+        "welcome": "مرحبًا بكم في مخيم الأسرة المسلمة",
+        "subtitle": ".بناء أسر أقوى من خلال الإيمان والطبيعة والعمل الجماعي",
+        "explore_events": "استكشف الفعاليات"
+    },
+    "common": {
+        "loading": "جار التحميل...",
+        "error": "خطأ",
+        "status": "الحالة",
+        "action": "عمل",
+        "search_placeholder": "البحث عن الاسم أو المعرف..."
+    },
+    "dashboard": {
+        "title": "لوحة تحكم المنظم",
+        "subtitle": "نظرة عامة على الحدث والإدارة",
+        "total_bookings": "إجمالي الحجوزات",
+        "confirmed_paid": "تم الدفع",
+        "pending_payment": "في انتظار الدفع",
+        "checked_in": "تم تسجيل الدخول",
+        "post_news": "نشر الأخبار",
+        "open_scanner": "افتح الماسح الضوئي"
+    },
+    "marketplace": {
+        "title": "سوق المخيم",
+        "subtitle": "معدات أساسية لمغامرتك",
+        "search_placeholder": "ابحث عن خيمة ، مصباح ، موقد ...",
+        "price_free": "مجانا"
+    }
+}
