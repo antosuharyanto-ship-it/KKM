@@ -34,7 +34,13 @@ export const EventDetailsPage: React.FC = () => {
     const [ticketCode, setTicketCode] = useState<string | null>(null);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [galleryImages, setGalleryImages] = useState<string[]>([]);
-    const [error, setError] = useState<string | null>(null); // Added setError state as it's used in the new useEffect
+    const [error, setError] = useState<string | null>(null);
+
+    // Helper to extract Drive ID
+    const extractDriveId = (url: string) => {
+        const match = url.match(/[-\w]{25,}/);
+        return match ? match[0] : url;
+    };
 
     useEffect(() => {
         const fetchEvent = async () => {
@@ -44,15 +50,22 @@ export const EventDetailsPage: React.FC = () => {
                 if (found) {
                     setEvent(found);
                     if (found.gallery_images) {
-                        // Check if it's a Drive Folder URL
-                        if (found.gallery_images.includes('drive.google.com') && !found.gallery_images.includes(',')) {
+                        // Check if it's a Drive Folder URL (contains 'drive.google.com')
+                        // OR if it looks like a lone ID (not comma separated, long string)
+                        const isDriveUrl = found.gallery_images.includes('drive.google.com');
+                        const isSingleId = !found.gallery_images.includes(',') && found.gallery_images.length > 20;
+
+                        if (isDriveUrl || isSingleId) {
                             try {
-                                const folderRes = await axios.get(`${API_BASE_URL}/api/drive/files?folderId=${encodeURIComponent(found.gallery_images)}`);
+                                const folderId = extractDriveId(found.gallery_images);
+                                const folderRes = await axios.get(`${API_BASE_URL}/api/drive/files?folderId=${folderId}`);
                                 const links = folderRes.data.map((f: any) => f.thumbnailLink ? f.thumbnailLink.replace('=s220', '=s1000') : f.webContentLink);
                                 setGalleryImages(links);
                             } catch (err) {
                                 console.error('Failed to load drive images', err);
-                                setGalleryImages([]);
+                                // Fallback: if API fails, maybe it was a direct link after all?
+                                if (!isDriveUrl) setGalleryImages([found.gallery_images]);
+                                else setGalleryImages([]);
                             }
                         } else {
                             // Split numeric or comma separated
