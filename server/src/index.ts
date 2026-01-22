@@ -16,6 +16,19 @@ console.log('---------------------------------------------------');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust Proxy for Railway/Vercel (Required for secure cookies)
+app.set('trust proxy', 1);
+
+// Debug Middleware: Log all requests
+app.use((req, res, next) => {
+    console.log(`[Request] ${req.method} ${req.path}`);
+    next();
+});
+
+app.get('/', (req, res) => {
+    res.send('Server is up and running!');
+});
+
 // Middleware
 app.use(cors({
     origin: true, // Allow any origin for local testing simplicity, or use specific IPs
