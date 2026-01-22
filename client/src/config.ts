@@ -4,10 +4,6 @@
 
 const LOCAL_IP = 'localhost'; // Safe default for local development
 
-export const API_BASE_URL = import.meta.env.PROD
-    ? 'https://your-production-url.com'
-    : `http://${LOCAL_IP}:3000`; // Points to Backend on PC
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `http://${LOCAL_IP}:3000`; // Use Env Var or Fallback to Local
 
-export const CLIENT_URL = import.meta.env.PROD
-    ? 'https://your-production-url.com'
-    : `http://${LOCAL_IP}:5173`; // Points to Frontend on PC
+export const CLIENT_URL = import.meta.env.VITE_CLIENT_URL || `http://${LOCAL_IP}:5173`; // Points to Frontend on PC
