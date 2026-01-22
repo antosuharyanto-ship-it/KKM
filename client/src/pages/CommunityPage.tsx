@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { MessageSquare, Send, User, Image as ImageIcon, Grid, List } from 'lucide-react';
+import { MessageSquare, Send, User, Image as ImageIcon } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 import { useNavigate } from 'react-router-dom';
 import { getDisplayImageUrl } from '../utils/imageHelper';
@@ -104,8 +104,8 @@ export const CommunityPage: React.FC = () => {
                         <button
                             onClick={() => setActiveTab('discussion')}
                             className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'discussion'
-                                    ? 'bg-teal-700 text-white shadow-md'
-                                    : 'text-gray-500 hover:bg-gray-50'
+                                ? 'bg-teal-700 text-white shadow-md'
+                                : 'text-gray-500 hover:bg-gray-50'
                                 }`}
                         >
                             <MessageSquare size={16} /> Discussions
@@ -113,8 +113,8 @@ export const CommunityPage: React.FC = () => {
                         <button
                             onClick={() => setActiveTab('gallery')}
                             className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'gallery'
-                                    ? 'bg-teal-700 text-white shadow-md'
-                                    : 'text-gray-500 hover:bg-gray-50'
+                                ? 'bg-teal-700 text-white shadow-md'
+                                : 'text-gray-500 hover:bg-gray-50'
                                 }`}
                         >
                             <ImageIcon size={16} /> Memories

@@ -34,7 +34,8 @@ export const EventDetailsPage: React.FC = () => {
     const [ticketCode, setTicketCode] = useState<string | null>(null);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [galleryImages, setGalleryImages] = useState<string[]>([]);
-    const [error, setError] = useState<string | null>(null);
+
+
 
     // Helper to extract Drive ID
     const extractDriveId = (url: string) => {
@@ -73,10 +74,10 @@ export const EventDetailsPage: React.FC = () => {
                         }
                     }
                 } else {
-                    setError('Event not found');
+                    console.warn('Event not found');
                 }
             } catch (err) {
-                setError('Failed to load event details');
+                console.error('Failed to load event details');
             } finally {
                 setLoading(false);
             }
