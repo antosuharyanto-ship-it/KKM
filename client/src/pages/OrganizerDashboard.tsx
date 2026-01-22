@@ -328,7 +328,7 @@ export const OrganizerDashboard: React.FC = () => {
         <div className="min-h-screen bg-gray-50 pb-20 pt-safe font-sans text-gray-900">
             {/* Header */}
             <header className="bg-teal-900 text-white p-6 sticky top-0 z-20 shadow-md">
-                <div className="flex justify-between items-center max-w-7xl mx-auto">
+                <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 max-w-7xl mx-auto">
                     <div>
                         <h1 className="text-2xl font-bold flex items-center gap-2">
                             <LayoutDashboard className="text-orange-400" /> {t('dashboard.title')}

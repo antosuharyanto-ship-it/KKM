@@ -22,12 +22,12 @@ export class GoogleSheetService {
             }
             auth = new google.auth.GoogleAuth({
                 credentials,
-                scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive.file'],
+                scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive.readonly'],
             });
         } else {
             auth = new google.auth.GoogleAuth({
                 keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || path.join(__dirname, '../../service-account-key.json'),
-                scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive.file'],
+                scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive.readonly'],
             });
         }
 
@@ -170,11 +170,19 @@ export class GoogleSheetService {
                 folderId = urlMatch[0];
             }
 
+            console.log(`[Drive] Fetching files for folder: ${folderId}`);
+
+            // list files
             const res = await this.drive.files.list({
                 q: `'${folderId}' in parents and mimeType contains 'image/' and trashed = false`,
                 fields: 'files(id, name, webViewLink, webContentLink, thumbnailLink)',
-                pageSize: 100
+                pageSize: 100,
+                supportsAllDrives: true,
+                includeItemsFromAllDrives: true
             });
+
+            const fileCount = res.data.files?.length || 0;
+            console.log(`[Drive] Found ${fileCount} files in folder ${folderId}`);
 
             return res.data.files || [];
         } catch (error) {

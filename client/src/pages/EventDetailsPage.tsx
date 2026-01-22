@@ -60,7 +60,15 @@ export const EventDetailsPage: React.FC = () => {
                             try {
                                 const folderId = extractDriveId(found.gallery_images);
                                 const folderRes = await axios.get(`${API_BASE_URL}/api/drive/files?folderId=${folderId}`);
-                                const links = folderRes.data.map((f: any) => f.thumbnailLink ? f.thumbnailLink.replace('=s220', '=s1000') : f.webContentLink);
+                                // Prefer thumbnailLink (upscaled) as it handles auth better for shared files
+                                // Add fallback to webContentLink
+                                const links = folderRes.data.map((f: any) => {
+                                    if (f.thumbnailLink) {
+                                        // Try to get a large thumbnail
+                                        return f.thumbnailLink.replace('=s220', '=s1200');
+                                    }
+                                    return f.webContentLink;
+                                });
                                 setGalleryImages(links);
                             } catch (err) {
                                 console.error('Failed to load drive images', err);
@@ -372,8 +380,12 @@ export const EventDetailsPage: React.FC = () => {
                                         <img
                                             src={getDisplayImageUrl(imgUrl)}
                                             alt={`Gallery ${idx + 1}`}
-                                            className="w-full h-full object-cover transition duration-500 group-hover:scale-110"
-                                            onError={(e) => e.currentTarget.style.display = 'none'}
+                                            className="w-full h-full object-cover transition duration-500 group-hover:scale-110 bg-gray-200"
+                                            referrerPolicy="no-referrer"
+                                            onError={(e) => {
+                                                // Don't hide completely, maybe show fallback
+                                                e.currentTarget.style.display = 'none';
+                                            }}
                                         />
                                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                                             <div className="bg-white/90 p-2 rounded-full opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition">
