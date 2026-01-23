@@ -85,9 +85,10 @@ export const OrganizerDashboard: React.FC = () => {
                 try {
                     const marketRes = await axios.get(`${API_BASE_URL}/api/marketplace/orders`, { withCredentials: true });
                     setMarketOrders(marketRes.data);
-                } catch (e: any) {
+                } catch (e) {
+                    const errMsg = e instanceof Error ? e.message : 'Unknown error';
                     console.warn('Failed to fetch market orders', e);
-                    setMarketError('Failed to load market orders: ' + (e.message || 'Unknown error'));
+                    setMarketError('Failed to load market orders: ' + errMsg);
                 }
 
             } catch (error) {

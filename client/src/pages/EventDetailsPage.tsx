@@ -158,15 +158,7 @@ const getPrice = () => {
 const finalPrice = getPrice();
 const formattedPrice = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(finalPrice);
 
-useEffect(() => {
-    axios.get(`${API_BASE_URL}/api/events`)
-        .then(res => {
-            const found = res.data.find((e: any) => String(e.id).trim() === String(id).trim());
-            setEvent(found || null);
-        })
-        .catch(err => console.error(err))
-        .finally(() => setLoading(false));
-}, [id]);
+
 
 const handlePaxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseInt(e.target.value);
