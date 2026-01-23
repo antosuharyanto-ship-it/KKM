@@ -185,7 +185,7 @@ export const CommunityPage: React.FC = () => {
                                                 <div className="flex justify-between items-start mb-1">
                                                     <h3 className="font-bold text-gray-900 text-sm">{post.user_name}</h3>
                                                     <span className="text-[10px] text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
-                                                        {new Date(post.date).toLocaleDateString()}
+                                                        {!isNaN(new Date(post.date).getTime()) ? new Date(post.date).toLocaleDateString() : 'Just now'}
                                                     </span>
                                                 </div>
                                                 <p className="text-gray-600 text-sm whitespace-pre-wrap leading-relaxed">

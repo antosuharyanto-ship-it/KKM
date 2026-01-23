@@ -7,7 +7,7 @@ import { MapPin, Calendar, CheckCircle, ArrowLeft, Tent } from 'lucide-react';
 // Checking usages...
 
 interface Event {
-    event_id: string;
+    id: string;
     activity: string;
     start_time: string;
     end_time: string;
@@ -20,6 +20,7 @@ interface Event {
     price_new_member?: string;
     price_alumni?: string;
     gallery_images?: string;
+    sponsor?: string; // Column M
 }
 
 import { getDisplayImageUrl } from '../utils/imageHelper';
@@ -34,8 +35,7 @@ export const EventDetailsPage: React.FC = () => {
     const [ticketCode, setTicketCode] = useState<string | null>(null);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [galleryImages, setGalleryImages] = useState<string[]>([]);
-
-
+    const [sponsorImages, setSponsorImages] = useState<string[]>([]); // New State
 
     // Helper to extract Drive ID
     const extractDriveId = (url: string) => {
@@ -43,44 +43,57 @@ export const EventDetailsPage: React.FC = () => {
         return match ? match[0] : url;
     };
 
+    // Helper to fetch images from a "Drive Link or Comma List" field
+    const fetchImagesFromSource = async (source: string): Promise<string[]> => {
+        if (!source) return [];
+        const isDriveUrl = source.includes('drive.google.com');
+        const isSingleId = !source.includes(',') && source.length > 20;
+
+        if (isDriveUrl || isSingleId) {
+            try {
+                const folderId = extractDriveId(source);
+                const folderRes = await axios.get(`${API_BASE_URL}/api/drive/files?folderId=${folderId}`);
+                console.log(`[Drive] Fetched ${folderRes.data.length} images for folder ${folderId}`);
+                return folderRes.data.map((f: any) => {
+                    // Prefer larger thumbnail, else webContent
+                    return f.thumbnailLink ? f.thumbnailLink.replace('=s220', '=s1200') : f.webContentLink;
+                });
+            } catch (err) {
+                console.error('Failed to load drive images for source', source, err);
+                return isDriveUrl ? [] : [source];
+            }
+        } else {
+            return source.split(',').map(s => s.trim());
+        }
+    };
+
     useEffect(() => {
         const fetchEvent = async () => {
             try {
                 const res = await axios.get(`${API_BASE_URL}/api/events`);
-                const found = res.data.find((e: any) => e.event_id === id);
+                const found = res.data.find((e: any) => e.id === id);
                 if (found) {
                     setEvent(found);
-                    if (found.gallery_images) {
-                        // Check if it's a Drive Folder URL (contains 'drive.google.com')
-                        // OR if it looks like a lone ID (not comma separated, long string)
-                        const isDriveUrl = found.gallery_images.includes('drive.google.com');
-                        const isSingleId = !found.gallery_images.includes(',') && found.gallery_images.length > 20;
 
-                        if (isDriveUrl || isSingleId) {
-                            try {
-                                const folderId = extractDriveId(found.gallery_images);
-                                const folderRes = await axios.get(`${API_BASE_URL}/api/drive/files?folderId=${folderId}`);
-                                // Prefer thumbnailLink (upscaled) as it handles auth better for shared files
-                                // Add fallback to webContentLink
-                                const links = folderRes.data.map((f: any) => {
-                                    if (f.thumbnailLink) {
-                                        // Try to get a large thumbnail
-                                        return f.thumbnailLink.replace('=s220', '=s1200');
-                                    }
-                                    return f.webContentLink;
-                                });
-                                setGalleryImages(links);
-                            } catch (err) {
-                                console.error('Failed to load drive images', err);
-                                // Fallback: if API fails, maybe it was a direct link after all?
-                                if (!isDriveUrl) setGalleryImages([found.gallery_images]);
-                                else setGalleryImages([]);
-                            }
-                        } else {
-                            // Split numeric or comma separated
-                            setGalleryImages(found.gallery_images.split(',').map((s: string) => s.trim()));
-                        }
+                    console.log('[DEBUG] Event Found:', found.title || found.activity || found.event_name);
+                    console.log('[DEBUG] Gallery Source (Raw):', found.gallery_images);
+
+                    // 1. Fetch Gallery
+                    if (found.gallery_images) {
+                        console.log('[DEBUG] Fetching Gallery from source...');
+                        fetchImagesFromSource(found.gallery_images).then(imgs => {
+                            console.log('[DEBUG] Gallery Images Fetched:', imgs.length);
+                            setGalleryImages(imgs);
+                        });
+                    } else {
+                        console.log('[DEBUG] No gallery_images found in event object');
                     }
+
+                    // 2. Fetch Sponsors (Identical logic)
+                    if (found.sponsor) {
+                        fetchImagesFromSource(found.sponsor).then(setSponsorImages);
+                    }
+
                 } else {
                     console.warn('Event not found');
                 }
@@ -141,7 +154,7 @@ export const EventDetailsPage: React.FC = () => {
     useEffect(() => {
         axios.get(`${API_BASE_URL}/api/events`)
             .then(res => {
-                const found = res.data.find((e: any) => e.event_id === id);
+                const found = res.data.find((e: any) => e.id === id);
                 setEvent(found || null);
             })
             .catch(err => console.error(err))
@@ -163,7 +176,7 @@ export const EventDetailsPage: React.FC = () => {
         setBookingStatus('submitting');
         try {
             const payload = {
-                eventId: event.event_id,
+                eventId: event.id,
                 eventName: event.activity,
                 date: event.start_time,
                 location: event.location,
@@ -329,9 +342,14 @@ export const EventDetailsPage: React.FC = () => {
                                     {event.status || 'Open Registration'}
                                 </span>
                                 <h1 className="text-3xl md:text-4xl font-bold mb-2 leading-tight">{event.activity}</h1>
-                                <p className="text-white/90 text-sm md:text-base flex items-center gap-2 font-medium">
+                                <a
+                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-white/90 text-sm md:text-base flex items-center gap-2 font-medium hover:text-orange-300 transition w-fit"
+                                >
                                     <MapPin size={16} className="text-orange-400" /> {event.location}
-                                </p>
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -435,6 +453,28 @@ export const EventDetailsPage: React.FC = () => {
                         </div>
                     </div>
 
+                    {/* EVENT SPONSORS */}
+                    {sponsorImages.length > 0 && (
+                        <div className="md:bg-white md:p-8 md:rounded-3xl md:shadow-md md:border md:border-gray-100">
+                            <h3 className="font-bold text-gray-900 text-xl mb-6 flex items-center gap-2">
+                                <span className="w-1 h-6 bg-teal-500 rounded-full"></span>
+                                Supported By
+                            </h3>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 items-center">
+                                {sponsorImages.map((imgUrl, idx) => (
+                                    <div key={idx} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-center h-24 group hover:shadow-md transition">
+                                        <img
+                                            src={getDisplayImageUrl(imgUrl)}
+                                            alt={`Sponsor ${idx + 1}`}
+                                            className="max-w-full max-h-full object-contain filter grayscale group-hover:grayscale-0 transition duration-300"
+                                            referrerPolicy="no-referrer"
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Booking Form */}
                     <div className="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 shadow-xl shadow-gray-200/50 sticky top-24">
                         <div className="mb-6 pb-6 border-b border-gray-100">
@@ -442,22 +482,27 @@ export const EventDetailsPage: React.FC = () => {
                             <p className="text-sm text-gray-500">Secure your ticket for this adventure.</p>
                         </div>
 
-                        {(event.status === 'Closed' || event.status === 'Full' || event.status === 'Completed') ? (
-                            <div className="bg-red-50 border border-red-100 rounded-2xl p-6 text-center">
-                                <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <CheckCircle size={32} className="rotate-45" />
-                                    {/* Using CheckCircle rotated as a 'stop' or 'closed' metaphor if XCircle isn't available, or just generic styled box */}
+                        {(event.status === 'Closed' || event.status === 'Finished' || event.status === 'Full Booked' || event.status === 'Coming Soon') ? (
+                            <div className={`border rounded-2xl p-6 text-center ${event.status === 'Coming Soon' ? 'bg-amber-50 border-amber-100 text-amber-800' :
+                                event.status === 'Full Booked' ? 'bg-red-50 border-red-100 text-red-700' :
+                                    'bg-gray-50 border-gray-200 text-gray-600'
+                                }`}>
+                                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${event.status === 'Coming Soon' ? 'bg-amber-100 text-amber-600' :
+                                    event.status === 'Full Booked' ? 'bg-red-100 text-red-600' :
+                                        'bg-gray-200 text-gray-500'
+                                    }`}>
+                                    {event.status === 'Coming Soon' ? <Calendar size={32} /> : <CheckCircle size={32} className="rotate-45" />}
                                 </div>
-                                <h3 className="text-xl font-bold text-gray-900 mb-2">Registration Closed</h3>
-                                <p className="text-gray-600 mb-6">
-                                    This event is no longer accepting new bookings.
+                                <h4 className="font-bold text-lg mb-2">
+                                    {event.status === 'Coming Soon' ? 'Coming Soon' :
+                                        event.status === 'Full Booked' ? 'Registration Full' :
+                                            'Event Closed'}
+                                </h4>
+                                <p className="text-sm opacity-80">
+                                    {event.status === 'Coming Soon' ? 'Registration will open soon. Stay tuned!' :
+                                        event.status === 'Full Booked' ? 'Sorry, all spots for this event have been filled.' :
+                                            'Registration for this event is no longer available.'}
                                 </p>
-                                <button
-                                    onClick={() => navigate('/')}
-                                    className="w-full bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-50 transition"
-                                >
-                                    Explore Other Events
-                                </button>
                             </div>
                         ) : (
                             <form onSubmit={handleBook} className="space-y-5">

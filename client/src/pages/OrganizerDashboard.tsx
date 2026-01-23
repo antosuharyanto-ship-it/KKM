@@ -47,6 +47,8 @@ export const OrganizerDashboard: React.FC = () => {
         tentTypes: {} as Record<string, number>,
         memberTypes: {} as Record<string, number>
     });
+    const [marketOrders, setMarketOrders] = useState<any[]>([]);
+    const [activeTab, setActiveTab] = useState<'events' | 'market'>('events');
 
     // News State
     const [newsTitle, setNewsTitle] = useState('');
@@ -73,11 +75,19 @@ export const OrganizerDashboard: React.FC = () => {
                 await axios.get(`${API_BASE_URL}/api/officer/check`, { withCredentials: true });
                 setIsOfficer(true);
 
-                // Fetch Bookings
+                // Fetch Bookings (Event)
                 const res = await axios.get(`${API_BASE_URL}/api/officer/bookings`, { withCredentials: true });
-                const data: Booking[] = res.data;
-                setBookings(data);
-                calculateStats(data);
+                setBookings(res.data);
+                calculateStats(res.data);
+
+                // Fetch Market Orders
+                try {
+                    const marketRes = await axios.get(`${API_BASE_URL}/api/marketplace/orders`, { withCredentials: true });
+                    setMarketOrders(marketRes.data);
+                } catch (e) {
+                    console.warn('Failed to fetch market orders', e);
+                }
+
             } catch (error) {
                 console.error('Access denied or error', error);
                 setIsOfficer(false);
@@ -482,242 +492,312 @@ export const OrganizerDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                {/* 1. Statistics Cards - SAME AS BEFORE */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <StatCard
-                        icon={<Users className="text-blue-500" />}
-                        label="Total Pax"
-                        value={stats.totalPax.toString()}
-                        sub={`${stats.totalBookings} Bookings`}
-                    />
-                    <StatCard
-                        icon={<Wallet className="text-green-500" />}
-                        label="Revenue (Est)"
-                        value={`Rp ${stats.revenue.toLocaleString('id-ID')}`}
-                        sub={`${stats.confirmedPaid} Paid`}
-                    />
-                    <StatCard
-                        icon={<CheckCircle className="text-purple-500" />}
-                        label="Check-ins"
-                        value={stats.checkedIn.toString()}
-                        sub={`${((stats.checkedIn / stats.totalPax) * 100 || 0).toFixed(1)}% Arrived`}
-                    />
-                    <StatCard
-                        icon={<Tent className="text-orange-500" />}
-                        label="Pending"
-                        value={stats.pendingPayment.toString()}
-                        sub="Need Verification"
-                    />
+                {/* TAB NAVIGATION */}
+                <div className="flex gap-4 border-b border-gray-200 mb-8">
+                    <button
+                        onClick={() => setActiveTab('events')}
+                        className={`pb-3 px-1 text-sm font-bold tracking-wide transition-colors relative ${activeTab === 'events' ? 'text-teal-700' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                        Event Bookings
+                        {activeTab === 'events' && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-teal-600 rounded-t-full"></span>}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('market')}
+                        className={`pb-3 px-1 text-sm font-bold tracking-wide transition-colors relative ${activeTab === 'market' ? 'text-teal-700' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                        Marketplace Orders
+                        {activeTab === 'market' && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-teal-600 rounded-t-full"></span>}
+                    </button>
                 </div>
 
-                {/* 2. Demographics - SAME AS BEFORE */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <h3 className="font-bold text-gray-800 mb-4 text-sm uppercase tracking-wider">Tent Distribution</h3>
-                        <div className="space-y-3">
-                            {Object.entries(stats.tentTypes).map(([type, count]) => (
-                                <div key={type} className="flex justify-between items-center border-b border-gray-50 pb-2 last:border-0">
-                                    <span className="text-gray-600 text-sm font-medium">{type || 'Unspecified'}</span>
-                                    <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-md text-xs font-bold">{count}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <h3 className="font-bold text-gray-800 mb-4 text-sm uppercase tracking-wider">Membership</h3>
-                        <div className="space-y-3">
-                            {Object.entries(stats.memberTypes).map(([type, count]) => (
-                                <div key={type} className="flex justify-between items-center border-b border-gray-50 pb-2 last:border-0">
-                                    <span className="text-gray-600 text-sm font-medium">{type || 'General'}</span>
-                                    <span className="bg-blue-50 text-blue-800 px-2 py-1 rounded-md text-xs font-bold">{count}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* 3. Bookings Table */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                    {/* Toolbar - SAME AS BEFORE */}
-                    <div className="p-4 border-b border-gray-100 flex flex-col md:flex-row gap-4 justify-between bg-gray-50/50">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                            <input
-                                type="text"
-                                placeholder="Search Name or ID..."
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none"
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
+                {activeTab === 'events' && (
+                    <div className="space-y-8">
+                        {/* 1. Statistics Cards - SAME AS BEFORE */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <StatCard
+                                icon={<Users className="text-blue-500" />}
+                                label="Total Pax"
+                                value={stats.totalPax.toString()}
+                                sub={`${stats.totalBookings} Bookings`}
+                            />
+                            <StatCard
+                                icon={<Wallet className="text-green-500" />}
+                                label="Revenue (Est)"
+                                value={`Rp ${stats.revenue.toLocaleString('id-ID')}`}
+                                sub={`${stats.confirmedPaid} Paid`}
+                            />
+                            <StatCard
+                                icon={<CheckCircle className="text-purple-500" />}
+                                label="Check-ins"
+                                value={stats.checkedIn.toString()}
+                                sub={`${((stats.checkedIn / stats.totalPax) * 100 || 0).toFixed(1)}% Arrived`}
+                            />
+                            <StatCard
+                                icon={<Tent className="text-orange-500" />}
+                                label="Pending"
+                                value={stats.pendingPayment.toString()}
+                                sub="Need Verification"
                             />
                         </div>
-                        <div className="flex gap-2 items-center">
-                            <Filter size={18} className="text-gray-400" />
-                            <select
-                                className="px-4 py-2 border border-gray-300 rounded-xl bg-white text-sm font-medium outline-none"
-                                value={filterStatus}
-                                onChange={e => setFilterStatus(e.target.value)}
-                            >
-                                <option value="All">All Status</option>
-                                <option value="Confirmed">Confirmed Only</option>
-                                <option value="Pending">Pending Only</option>
-                            </select>
-                        </div>
-                    </div>
 
-                    {/* Mobile Card View (Visible on small screens) */}
-                    <div className="md:hidden space-y-4 p-4 bg-gray-50">
-                        {filteredBookings.map(booking => (
-                            <div key={booking.reservation_id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-3">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <div className="font-bold text-gray-900">{booking.proposed_by}</div>
-                                        <div className="text-xs text-gray-500 font-mono">{booking.reservation_id}</div>
-                                    </div>
-                                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${booking.reservation_status.toLowerCase().includes('confirm') ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                                        {booking.reservation_status.replace('Payment', '')}
-                                    </span>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
-                                    <div className="flex flex-col">
-                                        <span className="text-gray-400 uppercase text-[10px] font-bold">Pax</span>
-                                        <span className="font-semibold">{booking.participant_count} People</span>
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-gray-400 uppercase text-[10px] font-bold">Kavling</span>
-                                        <span className={`font-semibold ${booking.kavling ? 'text-teal-700' : 'text-gray-400 italic'}`}>{booking.kavling || 'TBA'}</span>
-                                    </div>
-                                    <div className="col-span-2 flex flex-col border-t border-gray-100 pt-2 mt-1">
-                                        <span className="text-gray-400 uppercase text-[10px] font-bold">Total</span>
-                                        <span className="font-bold text-gray-800">{booking.jumlah_pembayaran}</span>
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-end gap-2 pt-2">
-                                    {booking.reservation_status.toLowerCase().includes('confirm') ? (
-                                        <>
-                                            <button onClick={() => handleAssignKavling(booking.reservation_id)} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold hover:bg-gray-200">
-                                                Edit Kavling
-                                            </button>
-                                            {booking.link_tiket && (
-                                                <a href={booking.link_tiket} target="_blank" rel="noreferrer" className="px-3 py-1.5 bg-teal-100 text-teal-700 rounded-lg text-xs font-bold flex items-center gap-1">
-                                                    <Download size={12} /> Ticket
-                                                </a>
-                                            )}
-                                        </>
-                                    ) : (
-                                        <button
-                                            onClick={() => handleConfirmPayment(booking.reservation_id)}
-                                            disabled={processingId === booking.reservation_id}
-                                            className="w-full py-2 bg-teal-800 text-white rounded-lg text-xs font-bold hover:bg-teal-900 shadow-sm"
-                                        >
-                                            {processingId === booking.reservation_id ? 'Wait...' : 'Confirm Payment'}
-                                        </button>
-                                    )}
+                        {/* 2. Demographics - SAME AS BEFORE */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                                <h3 className="font-bold text-gray-800 mb-4 text-sm uppercase tracking-wider">Tent Distribution</h3>
+                                <div className="space-y-3">
+                                    {Object.entries(stats.tentTypes).map(([type, count]) => (
+                                        <div key={type} className="flex justify-between items-center border-b border-gray-50 pb-2 last:border-0">
+                                            <span className="text-gray-600 text-sm font-medium">{type || 'Unspecified'}</span>
+                                            <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-md text-xs font-bold">{count}</span>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-                        ))}
-                    </div>
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                                <h3 className="font-bold text-gray-800 mb-4 text-sm uppercase tracking-wider">Membership</h3>
+                                <div className="space-y-3">
+                                    {Object.entries(stats.memberTypes).map(([type, count]) => (
+                                        <div key={type} className="flex justify-between items-center border-b border-gray-50 pb-2 last:border-0">
+                                            <span className="text-gray-600 text-sm font-medium">{type || 'General'}</span>
+                                            <span className="bg-blue-50 text-blue-800 px-2 py-1 rounded-md text-xs font-bold">{count}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
 
-                    {/* Desktop Table */}
-                    <div className="hidden md:block overflow-x-auto">
-                        <table className="w-full text-left text-sm text-gray-600">
-                            <thead className="bg-gray-50 text-gray-500 font-bold uppercase text-xs">
-                                <tr>
-                                    <th className="p-4">ID / Date</th>
-                                    <th className="p-4">Name</th>
-                                    <th className="p-4">Pax</th>
-                                    <th className="p-4">Amount</th>
-                                    <th className="p-4">Status</th>
-                                    <th className="p-4">Kavling</th>
-                                    <th className="p-4 text-center">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
+                        {/* 3. Bookings Table */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                            {/* Toolbar - SAME AS BEFORE */}
+                            <div className="p-4 border-b border-gray-100 flex flex-col md:flex-row gap-4 justify-between bg-gray-50/50">
+                                <div className="relative flex-1">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                                    <input
+                                        type="text"
+                                        placeholder="Search Name or ID..."
+                                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none"
+                                        value={searchTerm}
+                                        onChange={e => setSearchTerm(e.target.value)}
+                                    />
+                                </div>
+                                <div className="flex gap-2 items-center">
+                                    <Filter size={18} className="text-gray-400" />
+                                    <select
+                                        className="px-4 py-2 border border-gray-300 rounded-xl bg-white text-sm font-medium outline-none"
+                                        value={filterStatus}
+                                        onChange={e => setFilterStatus(e.target.value)}
+                                    >
+                                        <option value="All">All Status</option>
+                                        <option value="Confirmed">Confirmed Only</option>
+                                        <option value="Pending">Pending Only</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Mobile Card View (Visible on small screens) */}
+                            <div className="md:hidden space-y-4 p-4 bg-gray-50">
                                 {filteredBookings.map(booking => (
-                                    <tr key={booking.reservation_id} className="hover:bg-gray-50 transition">
-                                        <td className="p-4">
-                                            <div className="font-bold text-gray-900">{booking.reservation_id}</div>
-                                            <div className="text-xs text-gray-400">{booking.date_submitted?.split(',')[0]}</div>
-                                        </td>
-                                        <td className="p-4">
-                                            <div className="font-medium text-gray-900">{booking.proposed_by}</div>
-                                            <div className="text-xs text-gray-400">{booking.phone_number?.replace(/'/g, '')}</div>
-                                        </td>
-                                        <td className="p-4 center font-medium text-gray-900">{booking.participant_count}</td>
-                                        <td className="p-4 font-medium text-gray-900">{booking.jumlah_pembayaran}</td>
-                                        <td className="p-4">
-                                            <span className={`px-2 py-1 rounded-full text-xs font-bold ${booking.reservation_status.toLowerCase().includes('confirm')
-                                                ? 'bg-green-100 text-green-700'
-                                                : 'bg-orange-100 text-orange-700'
-                                                }`}>
-                                                {booking.reservation_status}
+                                    <div key={booking.reservation_id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-3">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <div className="font-bold text-gray-900">{booking.proposed_by}</div>
+                                                <div className="text-xs text-gray-500 font-mono">{booking.reservation_id}</div>
+                                            </div>
+                                            <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${booking.reservation_status.toLowerCase().includes('confirm') ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                                                {booking.reservation_status.replace('Payment', '')}
                                             </span>
-                                        </td>
-                                        <td className="p-4">
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
+                                            <div className="flex flex-col">
+                                                <span className="text-gray-400 uppercase text-[10px] font-bold">Pax</span>
+                                                <span className="font-semibold">{booking.participant_count} People</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-gray-400 uppercase text-[10px] font-bold">Kavling</span>
+                                                <span className={`font-semibold ${booking.kavling ? 'text-teal-700' : 'text-gray-400 italic'}`}>{booking.kavling || 'TBA'}</span>
+                                            </div>
+                                            <div className="col-span-2 flex flex-col border-t border-gray-100 pt-2 mt-1">
+                                                <span className="text-gray-400 uppercase text-[10px] font-bold">Total</span>
+                                                <span className="font-bold text-gray-800">{booking.jumlah_pembayaran}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex justify-end gap-2 pt-2">
                                             {booking.reservation_status.toLowerCase().includes('confirm') ? (
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-gray-900 font-mono font-medium">
-                                                        {booking.kavling || 'TBA'}
-                                                    </span>
-                                                    <button
-                                                        onClick={() => handleAssignKavling(booking.reservation_id)}
-                                                        className="text-xs text-teal-600 hover:underline"
-                                                    >
-                                                        Edit
+                                                <>
+                                                    <button onClick={() => handleAssignKavling(booking.reservation_id)} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold hover:bg-gray-200">
+                                                        Edit Kavling
                                                     </button>
-                                                </div>
-                                            ) : (
-                                                <span className="text-gray-400 text-xs italic">Pending</span>
-                                            )}
-                                        </td>
-                                        <td className="p-4 text-center">
-                                            {booking.reservation_status.toLowerCase().includes('confirm') ? (
-                                                <div className="inline-flex gap-2">
                                                     {booking.link_tiket && (
-                                                        <>
-                                                            <a
-                                                                href={booking.link_tiket}
-                                                                target="_blank"
-                                                                rel="noreferrer"
-                                                                className="text-teal-600 hover:text-teal-800 p-2 bg-teal-50 rounded-lg"
-                                                                title="Download Ticket"
-                                                            >
-                                                                <Download size={18} />
-                                                            </a>
-                                                            <button
-                                                                onClick={() => handleRegenerateTicket(booking.reservation_id, booking.proposed_by)}
-                                                                disabled={processingId === booking.reservation_id}
-                                                                className="text-orange-600 hover:text-orange-800 p-2 bg-orange-50 rounded-lg"
-                                                                title="Regenerate Ticket"
-                                                            >
-                                                                <RefreshCw size={18} className={processingId === booking.reservation_id ? 'animate-spin' : ''} />
-                                                            </button>
-                                                        </>
+                                                        <a href={booking.link_tiket} target="_blank" rel="noreferrer" className="px-3 py-1.5 bg-teal-100 text-teal-700 rounded-lg text-xs font-bold flex items-center gap-1">
+                                                            <Download size={12} /> Ticket
+                                                        </a>
                                                     )}
-                                                </div>
+                                                </>
                                             ) : (
                                                 <button
                                                     onClick={() => handleConfirmPayment(booking.reservation_id)}
                                                     disabled={processingId === booking.reservation_id}
-                                                    className="bg-teal-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-teal-900 transition shadow disabled:opacity-50"
+                                                    className="w-full py-2 bg-teal-800 text-white rounded-lg text-xs font-bold hover:bg-teal-900 shadow-sm"
                                                 >
-                                                    {processingId === booking.reservation_id ? 'Wait...' : 'Confirm'}
+                                                    {processingId === booking.reservation_id ? 'Wait...' : 'Confirm Payment'}
                                                 </button>
                                             )}
-                                        </td>
-                                    </tr>
+                                        </div>
+                                    </div>
                                 ))}
-                                {filteredBookings.length === 0 && (
-                                    <tr>
-                                        <td colSpan={7} className="p-8 text-center text-gray-400">No bookings found.</td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                            </div>
+
+                            {/* Desktop Table */}
+                            <div className="hidden md:block overflow-x-auto">
+                                <table className="w-full text-left text-sm text-gray-600">
+                                    <thead className="bg-gray-50 text-gray-500 font-bold uppercase text-xs">
+                                        <tr>
+                                            <th className="p-4">ID / Date</th>
+                                            <th className="p-4">Name</th>
+                                            <th className="p-4">Pax</th>
+                                            <th className="p-4">Amount</th>
+                                            <th className="p-4">Status</th>
+                                            <th className="p-4">Kavling</th>
+                                            <th className="p-4 text-center">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {filteredBookings.map(booking => (
+                                            <tr key={booking.reservation_id} className="hover:bg-gray-50 transition">
+                                                <td className="p-4">
+                                                    <div className="font-bold text-gray-900">{booking.reservation_id}</div>
+                                                    <div className="text-xs text-gray-400">{booking.date_submitted?.split(',')[0]}</div>
+                                                </td>
+                                                <td className="p-4">
+                                                    <div className="font-medium text-gray-900">{booking.proposed_by}</div>
+                                                    <div className="text-xs text-gray-400">{booking.phone_number?.replace(/'/g, '')}</div>
+                                                </td>
+                                                <td className="p-4 center font-medium text-gray-900">{booking.participant_count}</td>
+                                                <td className="p-4 font-medium text-gray-900">{booking.jumlah_pembayaran}</td>
+                                                <td className="p-4">
+                                                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${booking.reservation_status.toLowerCase().includes('confirm')
+                                                        ? 'bg-green-100 text-green-700'
+                                                        : 'bg-orange-100 text-orange-700'
+                                                        }`}>
+                                                        {booking.reservation_status}
+                                                    </span>
+                                                </td>
+                                                <td className="p-4">
+                                                    {booking.reservation_status.toLowerCase().includes('confirm') ? (
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-gray-900 font-mono font-medium">
+                                                                {booking.kavling || 'TBA'}
+                                                            </span>
+                                                            <button
+                                                                onClick={() => handleAssignKavling(booking.reservation_id)}
+                                                                className="text-xs text-teal-600 hover:underline"
+                                                            >
+                                                                Edit
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-gray-400 text-xs italic">Pending</span>
+                                                    )}
+                                                </td>
+                                                <td className="p-4 text-center">
+                                                    {booking.reservation_status.toLowerCase().includes('confirm') ? (
+                                                        <div className="inline-flex gap-2">
+                                                            {booking.link_tiket && (
+                                                                <>
+                                                                    <a
+                                                                        href={booking.link_tiket}
+                                                                        target="_blank"
+                                                                        rel="noreferrer"
+                                                                        className="text-teal-600 hover:text-teal-800 p-2 bg-teal-50 rounded-lg"
+                                                                        title="Download Ticket"
+                                                                    >
+                                                                        <Download size={18} />
+                                                                    </a>
+                                                                    <button
+                                                                        onClick={() => handleRegenerateTicket(booking.reservation_id, booking.proposed_by)}
+                                                                        disabled={processingId === booking.reservation_id}
+                                                                        className="text-orange-600 hover:text-orange-800 p-2 bg-orange-50 rounded-lg"
+                                                                        title="Regenerate Ticket"
+                                                                    >
+                                                                        <RefreshCw size={18} className={processingId === booking.reservation_id ? 'animate-spin' : ''} />
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => handleConfirmPayment(booking.reservation_id)}
+                                                            disabled={processingId === booking.reservation_id}
+                                                            className="bg-teal-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-teal-900 transition shadow disabled:opacity-50"
+                                                        >
+                                                            {processingId === booking.reservation_id ? 'Wait...' : 'Confirm'}
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {filteredBookings.length === 0 && (
+                                            <tr>
+                                                <td colSpan={7} className="p-8 text-center text-gray-400">No bookings found.</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </main >
+                )}
+
+                {activeTab === 'market' && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div className="p-6 border-b border-gray-100">
+                            <h3 className="font-bold text-lg text-gray-800">Incoming Orders</h3>
+                            <p className="text-sm text-gray-500">Orders from Marketplace (Sheet: Market OB)</p>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+                                        <th className="p-4 font-bold border-b border-gray-100">Order ID</th>
+                                        <th className="p-4 font-bold border-b border-gray-100">Item</th>
+                                        <th className="p-4 font-bold border-b border-gray-100">Qty</th>
+                                        <th className="p-4 font-bold border-b border-gray-100">Total</th>
+                                        <th className="p-4 font-bold border-b border-gray-100">Customer</th>
+                                        <th className="p-4 font-bold border-b border-gray-100">Status</th>
+                                        <th className="p-4 font-bold border-b border-gray-100">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="text-sm text-gray-700">
+                                    {marketOrders.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={7} className="p-8 text-center text-gray-400">No orders found.</td>
+                                        </tr>
+                                    ) : (
+                                        marketOrders.map((order, idx) => (
+                                            <tr key={idx} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
+                                                <td className="p-4 font-mono text-xs">{order['Order ID'] || order.order_id}</td>
+                                                <td className="p-4 font-medium">{order['Item Name'] || order.item_name}</td>
+                                                <td className="p-4">{order['Quantity'] || order.quantity}</td>
+                                                <td className="p-4 font-bold">{order['Total Price'] || order.total_price}</td>
+                                                <td className="p-4">
+                                                    <div className="font-medium">{order['User Name'] || order.user_name}</div>
+                                                    <div className="text-xs text-gray-400">{order['Phone'] || order.phone}</div>
+                                                </td>
+                                                <td className="p-4">
+                                                    <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-md text-xs font-bold">{order['Status'] || order.status || 'Pending'}</span>
+                                                </td>
+                                                <td className="p-4 text-gray-400">{new Date(order['Date'] || order.date).toLocaleDateString()}</td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+            </main>
         </div >
     );
 };

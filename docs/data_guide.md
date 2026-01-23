@@ -52,8 +52,14 @@ The text entered in the `location` column (e.g., "Sejati Camp and Resort") is us
 ## 2. Marketplace Sheet (`Market Place`)
 The app pulls data from the **"Market Place"** tab.
 
-### Required Header Columns:
-*   **Product Name**: Title of the item.
-*   **Unit Price**: Price string (e.g., "Rp 50.000").
-*   **Category**: e.g., "Tents", "Lighting", "Cooking".
-*   **Image**: (Optional) Google Drive link to the product image. Follows the **same 5-step process** as Event Images above.
+### Required Header Columns (Exact Order & Spelling):
+*   **product_name**: Title of the item.
+*   **unit_price**: Price string (e.g., "Rp 50.000").
+*   **category**: e.g., "Tents", "Lighting".
+*   **product_image**: Google Drive link.
+*   **Supplier_email**: Email of the supplier.
+*   **Stok**: Quantity available.
+*   **Contact Person**: Name of contact person.
+*   **Phone Number**: WhatsApp/Phone number.
+*   **Discontinued**: "Yes" or "No".
+*   **Notes**: Any internal notes.

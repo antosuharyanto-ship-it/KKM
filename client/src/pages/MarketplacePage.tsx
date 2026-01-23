@@ -9,7 +9,13 @@ interface Product {
     product_name: string;
     unit_price: string;
     category: string;
-    product_image?: string; // Matches "product image" from sheets
+    product_image?: string;
+    supplier_email?: string;
+    stok?: string;
+    contact_person?: string;
+    phone_number?: string;
+    discontinued?: string;
+    notes?: string;
 }
 
 export const MarketplacePage: React.FC = () => {

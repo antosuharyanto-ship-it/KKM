@@ -7,7 +7,7 @@ import { getDisplayImageUrl } from '../utils/imageHelper';
 import { API_BASE_URL } from '../config';
 
 interface EventData {
-    event_id: string;
+    id: string;
     activity: string; // Title
     start_time: string;
     location: string;
@@ -16,6 +16,7 @@ interface EventData {
     description: string;
     type?: string;
     registration_link?: string;
+    gallery_images?: string;
 }
 
 export const HomePage: React.FC = () => {
@@ -56,8 +57,8 @@ export const HomePage: React.FC = () => {
     );
 
     // --- FILTER LOGIC ---
-    const featuredEvents = events.filter(e => e.status?.trim() === 'Open');
-    const otherEvents = events.filter(e => e.status?.trim() !== 'Open');
+    const featuredEvents = events.filter(e => e.status?.toLowerCase().includes('open'));
+    const otherEvents = events.filter(e => !e.status?.toLowerCase().includes('open'));
 
     return (
         <div className="pb-20">
@@ -99,7 +100,7 @@ export const HomePage: React.FC = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         {featuredEvents.map((event, idx) => (
-                            <Link to={`/event/${event.event_id}`} key={idx} className="group block bg-white rounded-[2.5rem] overflow-hidden shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 ring-4 ring-white/50">
+                            <Link to={`/event/${event.id}`} key={idx} className="group block bg-white rounded-[2.5rem] overflow-hidden shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 ring-4 ring-white/50">
                                 <div className="h-80 relative overflow-hidden">
                                     <img src={getDisplayImageUrl(event.event_images)} alt={event.activity} onError={handleImageError} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                                     <div className="absolute top-6 right-6 bg-white/95 backdrop-blur-md px-4 py-2 rounded-full text-sm font-bold shadow-lg text-teal-800 flex items-center gap-2">
@@ -139,24 +140,27 @@ export const HomePage: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
                         {otherEvents.map((event, idx) => {
                             const status = event.status?.trim() || 'Unavailable';
-                            const isFinished = status === 'Finished';
+                            // Normalize status to handle legacy 'Finished' or new 'Closed'
+                            const isClosed = status === 'Closed' || status === 'Finished';
                             const isFull = status === 'Full Booked';
+                            const isComingSoon = status === 'Coming Soon';
 
                             // Determine Badge Color
                             let badgeColor = 'bg-gray-100 text-gray-600';
                             let badgeText = status;
 
-                            if (isFinished) { badgeColor = 'bg-gray-800 text-white'; badgeText = 'PAST EVENT'; }
-                            else if (isFull) { badgeColor = 'bg-red-100 text-red-700'; badgeText = 'SOLD OUT'; }
-                            else if (status === 'Coming Soon') { badgeColor = 'bg-yellow-100 text-yellow-800'; badgeText = 'COMING SOON'; }
+                            if (isClosed) { badgeColor = 'bg-gray-800 text-white'; badgeText = 'CLOSED'; }
+                            else if (isFull) { badgeColor = 'bg-red-100 text-red-700'; badgeText = 'FULL BOOKED'; }
+                            else if (isComingSoon) { badgeColor = 'bg-amber-100 text-amber-800'; badgeText = 'COMING SOON'; }
 
                             // Action Button Logic
-                            const hasGallery = isFinished && event.registration_link && event.registration_link.startsWith('http');
+                            // If Closed/Finished AND has external link (e.g. Gallery), show "View Gallery"
+                            const hasGallery = isClosed && event.gallery_images;
 
                             return (
                                 <div key={idx} className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 flex flex-col h-full">
                                     <div className="h-48 relative overflow-hidden bg-gray-200">
-                                        <img src={getDisplayImageUrl(event.event_images)} alt={event.activity} onError={handleImageError} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${isFinished ? 'grayscale' : ''}`} />
+                                        <img src={getDisplayImageUrl(event.event_images)} alt={event.activity} onError={handleImageError} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${isClosed ? 'grayscale' : ''}`} />
                                         <div className={`absolute top-3 right-3 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm ${badgeColor}`}>
                                             {badgeText}
                                         </div>
@@ -171,13 +175,13 @@ export const HomePage: React.FC = () => {
 
                                         {/* Action Button */}
                                         {hasGallery ? (
-                                            <a href={event.registration_link} target="_blank" rel="noopener noreferrer" className="w-full py-2 bg-gray-900 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-black transition-colors">
+                                            <Link to={`/event/${event.id}`} className="w-full py-2 bg-gray-900 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-black transition-colors">
                                                 View Gallery <ArrowRight size={14} />
-                                            </a>
+                                            </Link>
                                         ) : (
-                                            <div className="w-full py-2 bg-gray-100 text-gray-400 rounded-xl text-xs font-bold flex items-center justify-center cursor-default">
-                                                {isFull ? 'Fully Booked' : isFinished ? 'Closed' : 'Coming Soon'}
-                                            </div>
+                                            <Link to={`/event/${event.id}`} className="w-full py-2 bg-gray-100 text-gray-400 rounded-xl text-xs font-bold flex items-center justify-center hover:bg-gray-200 hover:text-gray-600 transition-colors">
+                                                {isFull ? 'Waitlist' : isComingSoon ? 'Details' : 'View Details'}
+                                            </Link>
                                         )}
                                     </div>
                                 </div>

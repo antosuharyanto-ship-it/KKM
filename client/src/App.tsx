@@ -24,7 +24,7 @@ function App() {
           <Route path="islamic-tools" element={<IslamicToolsPage />} />
           <Route path="scanner" element={<ScannerPage />} />
           <Route path="dashboard" element={<OrganizerDashboard />} />
-          <Route path="dashboard" element={<OrganizerDashboard />} />
+
           <Route path="more" element={<div className="p-8 text-center text-gray-500">More Features Coming Soon</div>} />
         </Route>
       </Routes>

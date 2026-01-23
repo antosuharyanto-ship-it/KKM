@@ -29,6 +29,16 @@ app.get('/', (req, res) => {
     res.send('Server is up and running!');
 });
 
+// DEBUG
+app.get('/api/debug/events', async (req, res) => {
+    try {
+        const data = await googleSheetService.getDebugEvents();
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: String(error) });
+    }
+});
+
 // Middleware
 app.use(cors({
     origin: true, // Allow any origin for local testing simplicity, or use specific IPs
@@ -152,7 +162,7 @@ app.get('/api/events', async (req, res) => {
     try {
         const sheetName = process.env.GOOGLE_SHEET_NAME_EVENTS || 'Events';
         const headers = ['ID', 'Name', 'Date', 'Location', 'Description', 'Price', 'Image URL', 'Registration Link', 'Status'];
-        await googleSheetService.ensureHeaders(sheetName, headers);
+        // await googleSheetService.ensureHeaders(sheetName, headers); // DISABLED: Causing duplicate headers due to schema mismatch
 
         const events = await googleSheetService.getEvents();
         res.json(events);
@@ -545,8 +555,10 @@ const SHEET_COMMUNITY = 'Community';
 app.get('/api/news', async (req, res) => {
     try {
         const news = await googleSheetService.readSheet(SHEET_NEWS);
+        // Filter out empty/bad rows (e.g. from header mix-ups)
+        const validNews = news.filter((n: any) => n.title && n.content && n.date);
         // Reverse to show newest first
-        res.json(news.reverse());
+        res.json(validNews.reverse());
     } catch (error) {
         console.error('Error fetching news:', error);
         res.status(500).json({ message: 'Failed to fetch news' });
@@ -563,12 +575,18 @@ app.post('/api/news', checkOfficer, async (req, res) => {
             id: uuidv4(),
             title,
             content,
-            author: 'Organizer', // Could be req.user.name if available
             date: new Date().toISOString(),
-            type
+            type,
+            author: (req as any).user?.full_name || 'Organizer'
         };
 
-        await googleSheetService.appendRow(SHEET_NEWS, Object.values(newNews));
+        // Enforce Headers first!
+        // This prevents "Data as Header" issue if sheet was wiped.
+        await googleSheetService.ensureHeaders(SHEET_NEWS, ['id', 'title', 'content', 'date', 'type', 'author']);
+
+        // Explicitly map values to header order: id, title, content, date, type, author
+        const rowData = [newNews.id, newNews.title, newNews.content, newNews.date, newNews.type, newNews.author];
+        await googleSheetService.appendRow(SHEET_NEWS, rowData);
         res.json({ success: true, message: 'News posted', data: newNews });
     } catch (error) {
         console.error('Error posting news:', error);
@@ -582,7 +600,9 @@ app.post('/api/news', checkOfficer, async (req, res) => {
 app.get('/api/community', async (req, res) => {
     try {
         const posts = await googleSheetService.readSheet(SHEET_COMMUNITY);
-        res.json(posts.reverse());
+        console.log('[DEBUG] Raw Community Posts:', JSON.stringify(posts, null, 2));
+        const validPosts = posts.filter((p: any) => p.content && p.user_name);
+        res.json(validPosts.reverse());
     } catch (error) {
         console.error('Error fetching community posts:', error);
         res.status(500).json({ message: 'Failed to fetch posts' });
@@ -607,11 +627,29 @@ app.post('/api/community', checkAuth, async (req: any, res) => {
             likes: '0'
         };
 
-        await googleSheetService.appendRow(SHEET_COMMUNITY, Object.values(newPost));
+        // Enforce Headers for Community as well
+        await googleSheetService.ensureHeaders(SHEET_COMMUNITY, ['id', 'user_name', 'user_email', 'content', 'date', 'likes']);
+
+        // Explicitly map values to header order to prevent mismatch
+        const rowData = [newPost.id, newPost.user_name, newPost.user_email, newPost.content, newPost.date, newPost.likes];
+        await googleSheetService.appendRow(SHEET_COMMUNITY, rowData);
         res.json({ success: true, message: 'Posted to community', data: newPost });
     } catch (error) {
         console.error('Error posting to community:', error);
         res.status(500).json({ message: 'Failed to post' });
+    }
+});
+
+// --- SPONSORSHIP APIs ---
+
+// --- MARKETPLACE ORDER API ---
+app.get('/api/marketplace/orders', checkOfficer, async (req, res) => {
+    try {
+        const orders = await googleSheetService.getMarketplaceOrders();
+        res.json(orders);
+    } catch (error) {
+        console.error('Error fetching market orders:', error);
+        res.status(500).json({ message: 'Failed to fetch orders' });
     }
 });
 
@@ -621,12 +659,12 @@ app.listen(PORT, async () => {
     console.log(`Server running on http://localhost:${PORT}`);
     try {
         // Ensure Sheets Exist
-        await googleSheetService.ensureHeaders(process.env.GOOGLE_SHEET_NAME_EVENTS || 'Events',
-            ['id', 'image', 'title', 'date', 'location', 'description', 'status', 'type', 'price_new_member', 'price_alumni', 'price_general']
-        );
-        await googleSheetService.ensureHeaders('Registration Officer', ['Name', 'Email', 'Role']);
-        await googleSheetService.ensureHeaders('News', ['id', 'title', 'content', 'date', 'type', 'author']);
-        await googleSheetService.ensureHeaders('Communities', ['id', 'name', 'description', 'members_count', 'image', 'status']);
+        // await googleSheetService.ensureHeaders(process.env.GOOGLE_SHEET_NAME_EVENTS || 'Events',
+        //     ['id', 'title', 'date', 'location', 'description', 'status', 'type', 'price_new_member', 'price_alumni', 'price_general', 'event_images', 'gallery_images']
+        // );
+        // await googleSheetService.ensureHeaders('Registration Officer', ['Name', 'Email', 'Role']);
+        // await googleSheetService.ensureHeaders('News', ['id', 'title', 'content', 'date', 'type', 'author']);
+        // await googleSheetService.ensureHeaders('Community', ['id', 'user_name', 'user_email', 'content', 'date', 'likes']);
 
         console.log('✅ Sheets initialized');
     } catch (e) {

@@ -6,7 +6,7 @@ import { Calendar, Image as ImageIcon, ArrowRight } from 'lucide-react';
 import { getDisplayImageUrl } from '../utils/imageHelper';
 
 interface Event {
-    event_id: string;
+    id: string;
     activity: string;
     start_time: string;
     location: string;
@@ -64,8 +64,8 @@ export const GalleryPage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {events.map(event => (
                         <div
-                            key={event.event_id}
-                            onClick={() => navigate(`/event/${event.event_id}`)}
+                            key={event.id}
+                            onClick={() => navigate(`/event/${event.id}`)}
                             className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group cursor-pointer border border-gray-100 flex flex-col h-full"
                         >
                             <div className="relative h-48 overflow-hidden">

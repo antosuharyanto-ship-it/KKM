@@ -96,6 +96,34 @@ export class GoogleSheetService {
         }
     }
 
+    async clearSheet(sheetName: string) {
+        try {
+            await this.sheets.spreadsheets.values.clear({
+                spreadsheetId: this.spreadsheetId,
+                range: sheetName,
+            });
+        } catch (error) {
+            console.error(`[clearSheet] Error clearing ${sheetName}:`, error);
+            throw error;
+        }
+    }
+
+    async updateSheet(sheetName: string, values: string[][]) {
+        try {
+            await this.sheets.spreadsheets.values.update({
+                spreadsheetId: this.spreadsheetId,
+                range: sheetName,
+                valueInputOption: 'USER_ENTERED',
+                requestBody: {
+                    values: values,
+                },
+            });
+        } catch (error) {
+            console.error(`[updateSheet] Error updating ${sheetName}:`, error);
+            throw error;
+        }
+    }
+
     async ensureHeaders(sheetName: string, headers: string[]) {
         try {
             const response = await this.sheets.spreadsheets.values.get({
@@ -104,9 +132,45 @@ export class GoogleSheetService {
             });
 
             const rows = response.data.values;
-            if (!rows || rows.length === 0) {
-                console.log(`Sheet "${sheetName}" is empty. Adding headers...`);
-                await this.appendRow(sheetName, headers);
+            const existingHeaders = rows && rows.length > 0 ? rows[0] : null;
+
+            // Check if headers match what we expect (case insensitive, roughly)
+            const headersMatch = existingHeaders && headers.every(h =>
+                existingHeaders.some((eh: string) => eh.toLowerCase().trim() === h.toLowerCase().trim())
+            );
+
+            // SAFETY: Do not auto-repair 'Events' sheet to avoid overwriting user headers
+            if (sheetName.toLowerCase().includes('event') || sheetName === 'Event_schedule') {
+                console.warn(`[ensureHeaders] Skipping auto-repair for protected sheet: ${sheetName}`);
+                return;
+            }
+
+            if (!headersMatch) {
+                console.log(`Sheet "${sheetName}" missing or corrupted headers. repairing...`);
+                // If the sheet is NOT empty but headers don't match, we assume the first row is DATA, not headers.
+                // Or user deleted headers.
+                // We should INSERT headers at the top.
+
+                console.log(`Sheet "${sheetName}" missing or corrupted headers. repair...`);
+
+                // Fetch ALL data to rewrite it with headers
+                const fullResponse = await this.sheets.spreadsheets.values.get({
+                    spreadsheetId: this.spreadsheetId,
+                    range: sheetName,
+                });
+
+                let allRows = fullResponse.data.values || [];
+
+                // Prepend headers
+                allRows.unshift(headers);
+
+                // Write everything back
+                await this.sheets.spreadsheets.values.update({
+                    spreadsheetId: this.spreadsheetId,
+                    range: `${sheetName}!A1`,
+                    valueInputOption: 'USER_ENTERED',
+                    requestBody: { values: allRows }
+                });
             }
         } catch (error: any) {
             console.error(`[ensureHeaders] Failed to read sheet "${sheetName}". Original Error:`, error.message);
@@ -196,19 +260,46 @@ export class GoogleSheetService {
     async getEvents() {
         // Uses env var for flexibility, fallback to 'Events'
         const sheetName = process.env.GOOGLE_SHEET_NAME_EVENTS || 'Events';
+        const data = await this.readSheet(sheetName);
+
+        // Filter out "Garbage" rows (duplicate headers)
+        // If 'date' column contains 'Date', 'Location', or 'Activity', it's not a real event.
+        const validEvents = data.filter((row: any) => {
+            const dateVal = String(row.date || '').toLowerCase();
+            const nameVal = String(row.title || row.name || '').toLowerCase();
+            // Reject if date is 'date' or 'location' (header artifacts)
+            if (dateVal.includes('date') || dateVal.includes('location') || dateVal.includes('activity')) return false;
+            // Reject if name is 'name' or 'image'
+            if (nameVal === 'name' || nameVal === 'image' || nameVal === 'id') return false;
+
+            return true;
+        });
+
+        return validEvents;
+    }
+
+    async getDebugEvents() {
+        const sheetName = process.env.GOOGLE_SHEET_NAME_EVENTS || 'Events';
         return this.readSheet(sheetName);
     }
 
     async getMarketplaceItems() {
-        const sheetName = process.env.GOOGLE_SHEET_NAME_MARKETPLACE || 'Marketplace';
+        const sheetName = process.env.GOOGLE_SHEET_NAME_MARKETPLACE || 'Market Place';
         return this.readSheet(sheetName);
     }
 
+    async getMarketplaceOrders() {
+        const sheetName = process.env.GOOGLE_SHEET_NAME_MARKETPLACE_ORDERS || 'Market OB';
+        return this.readSheet(sheetName);
+    }
+
+
+
     async createMarketplaceOrder(orderData: any) {
-        const sheetName = process.env.GOOGLE_SHEET_NAME_MARKETPLACE_ORDERS || 'Marketplace Orders';
+        const sheetName = process.env.GOOGLE_SHEET_NAME_MARKETPLACE_ORDERS || 'Market OB';
         const headers = ['Order ID', 'Item Name', 'Unit Price', 'Quantity', 'Total Price', 'User Name', 'User Email', 'Phone', 'Status', 'Date'];
 
-        await this.ensureHeaders(sheetName, headers);
+        // await this.ensureHeaders(sheetName, headers);
 
         await this.appendRow(sheetName, [
             orderData.orderId,
@@ -294,7 +385,7 @@ export class GoogleSheetService {
             range: range,
             valueInputOption: 'USER_ENTERED',
             requestBody: {
-                values: [['Checked In']]
+                values: [['Yes']]
             }
         });
     }
