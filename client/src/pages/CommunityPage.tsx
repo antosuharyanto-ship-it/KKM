@@ -13,7 +13,7 @@ interface Post {
 }
 
 interface Event {
-    event_id: string;
+    id: string;
     activity: string;
     start_time: string;
     location: string;
@@ -228,8 +228,8 @@ export const CommunityPage: React.FC = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {events.map(event => (
                                     <div
-                                        key={event.event_id}
-                                        onClick={() => navigate(`/event/${event.event_id}`)}
+                                        key={event.id}
+                                        onClick={() => navigate(`/event/${event.id}`)}
                                         className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-stone-100 cursor-pointer"
                                     >
                                         <div className="h-56 relative overflow-hidden bg-gray-100">
