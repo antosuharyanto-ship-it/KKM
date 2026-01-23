@@ -761,14 +761,7 @@ export const OrganizerDashboard: React.FC = () => {
                         </div>
 
                         {/* Mobile Card View */}
-                        <div className="md:hidden space-y-4 p-4 bg-gray-50 border-4 border-red-500">
-                            <div className="text-xs bg-black text-white p-2 mb-4 overflow-auto">
-                                <strong>DEBUG INFO (MOBILE):</strong>
-                                <br />
-                                Orders Count: {marketOrders.length}
-                                <br />
-                                First Item Keys: {JSON.stringify(Object.keys(marketOrders[0] || {}))}
-                            </div>
+                        <div className="md:hidden space-y-4 p-4 bg-gray-50">
                             {marketOrders.length === 0 ? (
                                 <div className="text-center p-8 text-gray-400 bg-white rounded-xl border border-gray-100">
                                     {marketError ? <span className="text-red-500 font-bold">{marketError}</span> : 'No orders found.'}
