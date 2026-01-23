@@ -71,7 +71,7 @@ export const EventDetailsPage: React.FC = () => {
         const fetchEvent = async () => {
             try {
                 const res = await axios.get(`${API_BASE_URL}/api/events`);
-                const found = res.data.find((e: any) => e.id === id);
+                const found = res.data.find((e: any) => String(e.id).trim() === String(id).trim());
                 if (found) {
                     setEvent(found);
 
@@ -154,7 +154,7 @@ export const EventDetailsPage: React.FC = () => {
     useEffect(() => {
         axios.get(`${API_BASE_URL}/api/events`)
             .then(res => {
-                const found = res.data.find((e: any) => e.id === id);
+                const found = res.data.find((e: any) => String(e.id).trim() === String(id).trim());
                 setEvent(found || null);
             })
             .catch(err => console.error(err))

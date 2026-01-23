@@ -49,6 +49,7 @@ export const OrganizerDashboard: React.FC = () => {
     });
     const [marketOrders, setMarketOrders] = useState<any[]>([]);
     const [activeTab, setActiveTab] = useState<'events' | 'market'>('events');
+    const [marketError, setMarketError] = useState<string | null>(null);
 
     // News State
     const [newsTitle, setNewsTitle] = useState('');
@@ -84,8 +85,9 @@ export const OrganizerDashboard: React.FC = () => {
                 try {
                     const marketRes = await axios.get(`${API_BASE_URL}/api/marketplace/orders`, { withCredentials: true });
                     setMarketOrders(marketRes.data);
-                } catch (e) {
+                } catch (e: any) {
                     console.warn('Failed to fetch market orders', e);
+                    setMarketError('Failed to load market orders: ' + (e.message || 'Unknown error'));
                 }
 
             } catch (error) {
@@ -772,7 +774,9 @@ export const OrganizerDashboard: React.FC = () => {
                                 <tbody className="text-sm text-gray-700">
                                     {marketOrders.length === 0 ? (
                                         <tr>
-                                            <td colSpan={7} className="p-8 text-center text-gray-400">No orders found.</td>
+                                            <td colSpan={7} className="p-8 text-center text-gray-400">
+                                                {marketError ? <span className="text-red-500 font-bold">{marketError}</span> : 'No orders found.'}
+                                            </td>
                                         </tr>
                                     ) : (
                                         marketOrders.map((order, idx) => (
