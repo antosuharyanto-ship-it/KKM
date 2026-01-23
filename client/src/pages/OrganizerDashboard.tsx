@@ -758,7 +758,53 @@ export const OrganizerDashboard: React.FC = () => {
                             <h3 className="font-bold text-lg text-gray-800">Incoming Orders</h3>
                             <p className="text-sm text-gray-500">Orders from Marketplace (Sheet: Market OB)</p>
                         </div>
-                        <div className="overflow-x-auto">
+
+                        {/* Mobile Card View */}
+                        <div className="md:hidden space-y-4 p-4 bg-gray-50">
+                            {marketOrders.length === 0 ? (
+                                <div className="text-center p-8 text-gray-400 bg-white rounded-xl border border-gray-100">
+                                    {marketError ? <span className="text-red-500 font-bold">{marketError}</span> : 'No orders found.'}
+                                </div>
+                            ) : (
+                                marketOrders.map((order, idx) => (
+                                    <div key={idx} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-3">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <div className="font-bold text-gray-900">{order['Item Name'] || order.item_name}</div>
+                                                <div className="text-xs text-gray-500 font-mono">#{order['Order ID'] || order.order_id}</div>
+                                            </div>
+                                            <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-md text-[10px] font-bold">
+                                                {order['Status'] || order.status || 'Pending'}
+                                            </span>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
+                                            <div className="flex flex-col">
+                                                <span className="text-gray-400 uppercase text-[10px] font-bold">Qty</span>
+                                                <span className="font-semibold">{order['Quantity'] || order.quantity}</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-gray-400 uppercase text-[10px] font-bold">Total</span>
+                                                <span className="font-semibold text-teal-700">{order['Total Price'] || order.total_price}</span>
+                                            </div>
+                                            <div className="col-span-2 flex flex-col border-t border-gray-100 pt-2 mt-1">
+                                                <span className="text-gray-400 uppercase text-[10px] font-bold">Customer</span>
+                                                <span className="font-semibold text-gray-800">{order['User Name'] || order.user_name}</span>
+                                                <a href={`https://wa.me/${(order['Phone'] || order.phone || '').replace(/^0/, '62')}`} target="_blank" className="text-teal-600 hover:underline flex items-center gap-1 mt-1">
+                                                    {order['Phone'] || order.phone}
+                                                </a>
+                                            </div>
+                                        </div>
+                                        <div className="text-[10px] text-gray-400 text-right">
+                                            {new Date(order['Date'] || order.date).toLocaleDateString()}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        {/* Desktop Table View */}
+                        <div className="hidden md:block overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
