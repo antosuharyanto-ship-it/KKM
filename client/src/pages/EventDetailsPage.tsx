@@ -20,7 +20,7 @@ interface Event {
     price_new_member?: string;
     price_alumni?: string;
     gallery_images?: string;
-    sponsor?: string; // Column M
+    sponsor?: string;
 }
 
 import { getDisplayImageUrl } from '../utils/imageHelper';
@@ -76,7 +76,6 @@ export const EventDetailsPage: React.FC = () => {
                 if (found) {
                     setEvent(found);
 
-
                     console.log('[DEBUG] Event Found:', found.title || found.activity || found.event_name);
                     console.log('[DEBUG] Gallery Source (Raw):', found.gallery_images);
 
@@ -91,7 +90,7 @@ export const EventDetailsPage: React.FC = () => {
                         console.log('[DEBUG] No gallery_images found in event object');
                     }
 
-                    // 2. Fetch Sponsors (Identical logic)
+                    // 2. Fetch Sponsors
                     if (found.sponsor) {
                         fetchImagesFromSource(found.sponsor).then(setSponsorImages);
                     }
@@ -458,7 +457,7 @@ export const EventDetailsPage: React.FC = () => {
 
                     {/* EVENT SPONSORS */}
                     {sponsorImages.length > 0 && (
-                        <div className="md:bg-white md:p-8 md:rounded-3xl md:shadow-md md:border md:border-gray-100">
+                        <div className="md:bg-white md:p-8 md:rounded-3xl md:shadow-md md:border md:border-gray-100 mt-8 mb-8">
                             <h3 className="font-bold text-gray-900 text-xl mb-6 flex items-center gap-2">
                                 <span className="w-1 h-6 bg-teal-500 rounded-full"></span>
                                 Supported By

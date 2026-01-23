@@ -771,33 +771,33 @@ export const OrganizerDashboard: React.FC = () => {
                                     <div key={idx} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-3">
                                         <div className="flex justify-between items-start">
                                             <div>
-                                                <div className="font-bold text-gray-900">{order['Item Name'] || order.item_name}</div>
-                                                <div className="text-xs text-gray-500 font-mono">#{order['Order ID'] || order.order_id}</div>
+                                                <div className="font-bold text-gray-900">{order.item_name || order['Item Name']}</div>
+                                                <div className="text-xs text-gray-500 font-mono">#{order.order_id || order['Order ID']}</div>
                                             </div>
                                             <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-md text-[10px] font-bold">
-                                                {order['Status'] || order.status || 'Pending'}
+                                                {order.status || order['Status'] || 'Pending'}
                                             </span>
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
                                             <div className="flex flex-col">
                                                 <span className="text-gray-400 uppercase text-[10px] font-bold">Qty</span>
-                                                <span className="font-semibold">{order['Quantity'] || order.quantity}</span>
+                                                <span className="font-semibold">{order.quantity || order['Quantity']}</span>
                                             </div>
                                             <div className="flex flex-col">
                                                 <span className="text-gray-400 uppercase text-[10px] font-bold">Total</span>
-                                                <span className="font-semibold text-teal-700">{order['Total Price'] || order.total_price}</span>
+                                                <span className="font-semibold text-teal-700">{order.total_price || order['Total Price']}</span>
                                             </div>
                                             <div className="col-span-2 flex flex-col border-t border-gray-100 pt-2 mt-1">
                                                 <span className="text-gray-400 uppercase text-[10px] font-bold">Customer</span>
-                                                <span className="font-semibold text-gray-800">{order['User Name'] || order.user_name}</span>
-                                                <a href={`https://wa.me/${(order['Phone'] || order.phone || '').replace(/^0/, '62')}`} target="_blank" className="text-teal-600 hover:underline flex items-center gap-1 mt-1">
-                                                    {order['Phone'] || order.phone}
+                                                <span className="font-semibold text-gray-800">{order.user_name || order['User Name']}</span>
+                                                <a href={`https://wa.me/${(order.phone || order['Phone'] || '').replace(/^0/, '62')}`} target="_blank" className="text-teal-600 hover:underline flex items-center gap-1 mt-1">
+                                                    {order.phone || order['Phone']}
                                                 </a>
                                             </div>
                                         </div>
                                         <div className="text-[10px] text-gray-400 text-right">
-                                            {new Date(order['Date'] || order.date).toLocaleDateString()}
+                                            {new Date(order.date || order['Date']).toLocaleDateString()}
                                         </div>
                                     </div>
                                 ))
