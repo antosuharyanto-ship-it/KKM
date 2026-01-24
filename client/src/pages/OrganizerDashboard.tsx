@@ -35,6 +35,10 @@ export const OrganizerDashboard: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('All');
     const [processingId, setProcessingId] = useState<string | null>(null);
+    const [marketOrders, setMarketOrders] = useState<any[]>([]);
+    const [marketError, setMarketError] = useState<string | null>(null); // Keep original type
+    const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+
 
     // --- Stats State ---
     const [stats, setStats] = useState({
@@ -47,9 +51,7 @@ export const OrganizerDashboard: React.FC = () => {
         tentTypes: {} as Record<string, number>,
         memberTypes: {} as Record<string, number>
     });
-    const [marketOrders, setMarketOrders] = useState<any[]>([]);
     const [activeTab, setActiveTab] = useState<'events' | 'market'>('events');
-    const [marketError, setMarketError] = useState<string | null>(null);
 
     // News State
     const [newsTitle, setNewsTitle] = useState('');
@@ -320,15 +322,23 @@ export const OrganizerDashboard: React.FC = () => {
         }
     };
 
-    const handleVerifyPayment = async (orderId: string) => {
-        if (!confirm('Verify Payment for this order? Seller will be notified to ship.')) return;
+    const handleVerifyPayment = (orderId: string) => {
+        const order = marketOrders.find(o => (o.order_id || o['Order ID']) === orderId);
+        if (order) {
+            setSelectedOrder(order);
+        }
+    };
+
+    const submitVerification = async (order: any) => {
+        const orderId = order.order_id || order['Order ID'];
         setProcessingId(orderId);
         try {
             await axios.post(`${API_BASE_URL}/api/officer/marketplace/verify-payment`, { orderId }, { withCredentials: true });
-            alert('Payment Verified!');
+            alert('Payment Verified! Seller notified.');
             // Refresh Orders
             const res = await axios.get(`${API_BASE_URL}/api/marketplace/orders`, { withCredentials: true });
             setMarketOrders(res.data);
+            setSelectedOrder(null);
         } catch (error) {
             console.error(error);
             alert('Failed to verify payment');
@@ -844,9 +854,9 @@ export const OrganizerDashboard: React.FC = () => {
                                             </div>
 
                                             {/* Proof Link */}
-                                            {(order.proofUrl || order['Payment Proof']) && (
+                                            {(order.payment_proof || order.proofUrl) && (
                                                 <div className="col-span-2 mt-1 text-center">
-                                                    <a href={order.proofUrl || order['Payment Proof']} target="_blank" className="text-blue-600 underline font-bold flex items-center justify-center gap-1">
+                                                    <a href={order.payment_proof || order.proofUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline font-bold flex items-center justify-center gap-1">
                                                         <CheckCircle size={12} /> View Payment Proof
                                                     </a>
                                                 </div>
@@ -913,8 +923,8 @@ export const OrganizerDashboard: React.FC = () => {
                                                     {order.status || order['Status']}
                                                 </span>
                                                 {/* Proof Link Desktop */}
-                                                {(order.proofUrl || order['Payment Proof']) && (
-                                                    <a href={order.proofUrl || order['Payment Proof']} target="_blank" className="block text-xs text-blue-600 hover:underline mt-1">View Proof</a>
+                                                {(order.payment_proof || order.proofUrl) && (
+                                                    <a href={order.payment_proof || order.proofUrl} target="_blank" rel="noreferrer" className="block text-xs text-blue-600 hover:underline mt-1">View Proof</a>
                                                 )}
                                             </td>
                                             <td className="p-4 text-center">
@@ -953,13 +963,88 @@ export const OrganizerDashboard: React.FC = () => {
                             </table>
                         </div>
                     </div>
-                )
-                }
+                )}
+            </main>
 
+            {/* Verification Modal */}
+            {selectedOrder && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 className="font-bold text-lg text-gray-800">Verify Payment</h3>
+                            <button onClick={() => setSelectedOrder(null)} className="text-gray-400 hover:text-gray-600 transition">
+                                <XCircle size={24} />
+                            </button>
+                        </div>
 
+                        <div className="p-6 space-y-4">
+                            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                <p className="text-sm text-blue-800 mb-1">Are you sure you want to verify this order?</p>
+                                <p className="text-xs text-blue-600">This will notify the seller to ship the item.</p>
+                            </div>
 
-            </main >
-        </div >
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <span className="block text-gray-500 text-xs font-bold uppercase">Customer</span>
+                                    <span className="font-semibold text-gray-900">{selectedOrder.user_name || selectedOrder['User Name']}</span>
+                                </div>
+                                <div>
+                                    <span className="block text-gray-500 text-xs font-bold uppercase">Amount</span>
+                                    <span className="font-semibold text-teal-700 text-lg">{selectedOrder.total_price || selectedOrder['Total Price']}</span>
+                                </div>
+                                <div>
+                                    <span className="block text-gray-500 text-xs font-bold uppercase">Order ID</span>
+                                    <span className="font-mono text-gray-600">{selectedOrder.order_id || selectedOrder['Order ID']}</span>
+                                </div>
+                            </div>
+
+                            <div className="border-t border-gray-100 pt-4">
+                                <span className="block text-gray-500 text-xs font-bold uppercase mb-2">Payment Proof</span>
+                                {selectedOrder.payment_proof || selectedOrder.proofUrl ? (
+                                    <div className="relative group rounded-xl overflow-hidden border border-gray-200 bg-gray-100">
+                                        <img
+                                            src={selectedOrder.payment_proof || selectedOrder.proofUrl}
+                                            alt="Payment Proof"
+                                            className="w-full h-auto max-h-[300px] object-contain"
+                                        />
+                                        <a
+                                            href={selectedOrder.payment_proof || selectedOrder.proofUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition flex items-center justify-center opacity-0 group-hover:opacity-100"
+                                        >
+                                            <span className="bg-white/90 text-gray-900 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">
+                                                Open Full Image
+                                            </span>
+                                        </a>
+                                    </div>
+                                ) : (
+                                    <div className="text-center p-8 bg-gray-50 rounded-xl border border-dashed border-gray-300 text-gray-400 text-sm">
+                                        No proof uploaded
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="p-6 border-t border-gray-100 bg-gray-50 flex gap-3">
+                            <button
+                                onClick={() => setSelectedOrder(null)}
+                                className="flex-1 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => submitVerification(selectedOrder)}
+                                disabled={processingId === (selectedOrder.order_id || selectedOrder['Order ID'])}
+                                className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                            >
+                                {processingId === (selectedOrder.order_id || selectedOrder['Order ID']) ? 'Processing...' : 'Confirm Verification'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };
 

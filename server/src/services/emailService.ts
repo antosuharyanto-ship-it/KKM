@@ -149,5 +149,43 @@ export const emailService = {
             console.error('Failed to send payment email:', error);
             throw error;
         }
+    },
+
+    async sendShippingInstruction(order: any, supplierEmail: string) {
+        try {
+            if (!supplierEmail || !process.env.SMTP_USER) {
+                console.warn('Email config missing or no supplier email. Skipping shipping instruction.');
+                return;
+            }
+
+            const mailOptions = {
+                from: process.env.SMTP_FROM || `"KKM Marketplace" <${process.env.SMTP_USER}>`,
+                to: supplierEmail,
+                subject: `SHIP NOW: Order ${order.order_id} - ${order.item_name}`,
+                html: `
+                    <h2>Payment Verified - Please Ship Item</h2>
+                    <p>Dear Seller,</p>
+                    <p>We have verified the payment for the following order. Please proceed with shipping.</p>
+                    <hr />
+                    <p><strong>Order ID:</strong> ${order.order_id}</p>
+                    <p><strong>Item:</strong> ${order.item_name}</p>
+                    <p><strong>Quantity:</strong> ${order.quantity}</p>
+                    <p><strong>Total Price:</strong> ${order.total_price}</p>
+                    <br />
+                    <h3>Customer Details</h3>
+                    <p><strong>Name:</strong> ${order.user_name}</p>
+                    <p><strong>Address/Details:</strong> ${order.phone} (Please contact buyer for shipping address if not provided)</p>
+                    <p><strong>Email:</strong> ${order.user_email}</p>
+                    <br />
+                    <p>Thank you,</p>
+                    <p>KKM Marketplace Team</p>
+                `,
+            };
+
+            const info = await this.transporter.sendMail(mailOptions);
+            console.log('Shipping instruction email sent to SUPPLIER:', info.messageId);
+        } catch (error) {
+            console.error('Failed to send shipping instruction:', error);
+        }
     }
 };

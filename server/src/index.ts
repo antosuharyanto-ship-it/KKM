@@ -777,17 +777,25 @@ app.post('/api/officer/marketplace/verify-payment', checkOfficer, async (req, re
             status: 'Ready to Ship'
         });
 
-        // Fetch Order details to email Seller
-        // We need to implement getOrderById or reuse getMarketplaceOrders + find
+        // Fetch Order details
         const orders = await googleSheetService.getMarketplaceOrders();
         const order = orders.find((o: any) => o.order_id === orderId);
 
         if (order) {
-            // TODO: Trigger Email to Seller (emailService.sendShippingInstruction)
-            console.log(`[VerifyPayment] Payment verified for ${orderId}. Emailing seller: ${order.item_name}`);
-            // Ensure we have seller email. It might not be in the Order row unless we saved it.
-            // Earlier design: createMarketplaceOrder DOES NOT save 'supplierEmail' into the sheet, only emails them.
-            // We might need to fetch the Item to look up the supplier email again.
+            console.log(`[VerifyPayment] Payment verified for ${orderId}. Fetching supplier info...`);
+
+            // Fetch Items to find Supplier Email
+            const items = await googleSheetService.getMarketplaceItems();
+            // Fuzzy match item name
+            const item = items.find((i: any) => i.product_name?.toLowerCase().trim() === order.item_name?.toLowerCase().trim());
+
+            const supplierEmail = item?.supplier_email || process.env.SUPPLIER_EMAIL;
+
+            if (supplierEmail) {
+                await emailService.sendShippingInstruction(order, supplierEmail);
+            } else {
+                console.warn(`[VerifyPayment] No supplier email found for item: ${order.item_name}`);
+            }
         }
 
         res.json({ success: true, message: 'Payment verified. Seller notified to ship.' });

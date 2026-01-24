@@ -17,3 +17,19 @@ export const session = pgTable('session', {
     sess: json('sess').notNull(), // connect-pg-simple uses json/jsonb usually but Drizzle introspection often sees it as generic or we match it. Let's use json if possible, or varchar for safety if type is unknown. check pg-simple docs. usually json.
     expire: timestamp('expire', { precision: 6 }).notNull(),
 });
+
+import { customType } from 'drizzle-orm/pg-core';
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+    dataType() {
+        return 'bytea';
+    },
+});
+
+export const paymentProofs = pgTable('payment_proofs', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    orderId: varchar('order_id').notNull(),
+    fileData: bytea('file_data').notNull(),
+    mimeType: varchar('mime_type').notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+});
