@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Tag, Search, ShoppingCart } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 import { getDisplayImageUrl } from '../utils/imageHelper';
+import { useNavigate } from 'react-router-dom';
 
 interface Product {
     product_name: string;
@@ -20,6 +21,7 @@ interface Product {
 
 export const MarketplacePage: React.FC = () => {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const [items, setItems] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -67,7 +69,8 @@ export const MarketplacePage: React.FC = () => {
 
     const categories = ['All', ...Array.from(new Set(items.map(i => i.category).filter(Boolean)))];
 
-    const handleBuyClick = (item: Product) => {
+    const handleBuyClick = (item: Product, e?: React.MouseEvent) => {
+        e?.stopPropagation(); // Prevent duplicate trigger
         setSelectedItem(item);
         setOrderQty(1);
     };
@@ -94,9 +97,10 @@ export const MarketplacePage: React.FC = () => {
                 phone: userDetails.phone
             });
 
-            alert('Order placed successfully!');
+            alert('Order placed successfully! Please check "My Orders" to upload payment proof.');
             setSelectedItem(null);
             fetchItems(); // Refresh stock
+            navigate('/my-orders');
         } catch (error) {
             console.error(error);
             alert('Failed to place order.');
@@ -158,7 +162,10 @@ export const MarketplacePage: React.FC = () => {
                         No items found for "{searchTerm}"
                     </div>
                 ) : filteredItems.map((item, idx) => (
-                    <div key={idx} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-teal-100 transition group flex flex-col">
+                    <div
+                        key={idx}
+                        onClick={() => handleBuyClick(item)}
+                        className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-teal-100 transition group flex flex-col cursor-pointer active:scale-95 duration-200">
                         <div className="h-32 bg-gray-50 rounded-xl mb-4 flex items-center justify-center relative overflow-hidden">
                             {item.product_image ? (
                                 <img
@@ -179,7 +186,7 @@ export const MarketplacePage: React.FC = () => {
                         <div className="mt-4 flex items-center justify-between">
                             <p className="text-orange-600 font-bold">{item.unit_price || 'Free'}</p>
                             <button
-                                onClick={() => handleBuyClick(item)}
+                                onClick={(e) => handleBuyClick(item, e)}
                                 className="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-teal-800 hover:text-white transition">
                                 <ShoppingCart size={16} />
                             </button>
