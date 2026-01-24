@@ -151,9 +151,21 @@ export const MarketplacePage: React.FC = () => {
         // Item Origin: 'origin_city' from sheet (snake_case from header)
         const originCity = (selectedItem as any).origin_city_id || (selectedItem as any).origin_city || 'Jakarta Barat'; // Fallback
 
+        // Resolve Destination: Must use numeric ID (e.g. from address_city_id or address_subdistrict_id)
+        // selectedAddressId is just the UUID of the record.
+        const addr = addresses.find(a => a.id === selectedAddressId);
+        if (!addr) {
+            console.error('[Marketplace] Address not found for ID:', selectedAddressId);
+            setCalculatingShipping(false);
+            return;
+        }
+
+        // Use ID if available, otherwise name (backend will try to search name)
+        const destValue = addr.address_city_id || addr.address_city_name;
+
         axios.post(`${API_BASE_URL}/api/shipping/cost`, {
-            origin: originCity, // ID or Name (Backend needs to handle Name if passed)
-            destination: addr.address_city_id, // User address has ID
+            origin: originCity,
+            destination: destValue,
             weight: parseInt(selectedItem.weight_gram || '1000') || 1000,
             courier: selectedCourier
         }, { withCredentials: true })
