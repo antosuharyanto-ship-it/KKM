@@ -404,7 +404,7 @@ export const MarketplacePage: React.FC = () => {
 
                         {/* Debug Info (Temporary) */}
                         <div className="bg-yellow-50 p-2 rounded border border-yellow-200 text-[10px] font-mono mb-4">
-                            <p className="font-bold text-red-600">DEBUG v1.6 (Latest)</p>
+                            <p className="font-bold text-red-600">DEBUG v1.7 (Observability)</p>
                             <p>Origin (Sheet): {(selectedItem as any).origin_city_id || (selectedItem as any).origin_city || 'Jakarta Barat'}</p>
 
                             {/* Show the actual resolved destination logic */}

@@ -85,7 +85,17 @@ export const komerceService = {
                     console.log(`[Komerce] Resolved Origin "${origin}" -> ${originId}`);
                 } else {
                     console.warn(`[Komerce] Failed to resolve origin: ${origin}`);
-                    return [];
+                    return [{
+                        code: courier,
+                        name: courier.toUpperCase(),
+                        costs: [],
+                        debug_metadata: {
+                            error: `Origin Search Failed: '${searchStr}' (Raw: '${origin}')`,
+                            inputOrigin: origin,
+                            weight: weight,
+                            courier: courier
+                        }
+                    }];
                 }
             }
 
@@ -100,8 +110,17 @@ export const komerceService = {
                     console.log(`[Komerce] Resolved Destination "${destination}" -> ${destId}`);
                 } else {
                     console.warn(`[Komerce] Failed to resolve destination: ${destination}`);
-                    // return []; // Don't fail yet, try passing raw destination? No, ID is required.
-                    return [];
+                    return [{
+                        code: courier,
+                        name: courier.toUpperCase(),
+                        costs: [],
+                        debug_metadata: {
+                            error: `Dest Search Failed: '${searchStr}' (Raw: '${destination}')`,
+                            inputDest: destination,
+                            weight: weight,
+                            courier: courier
+                        }
+                    }];
                 }
             }
 
