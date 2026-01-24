@@ -1,156 +1,108 @@
-
 import axios from 'axios';
+import { URLSearchParams } from 'url';
 
-const KOMERCE_BASE_URL = 'https://partner.komerce.id/api/v1';
+// Verified Base URL for Komerce RajaOngkir V2
+const KOMERCE_BASE_URL = 'https://rajaongkir.komerce.id/api/v1';
+
 // Keys provided by user
 const KEY_SHIPPING_COST = process.env.KOMERCE_SHIPPING_COST_KEY || 'tT7Xhf7Xca5727d75c01748fapswzdFh';
-const KEY_SHIPPING_DELIVERY = process.env.KOMERCE_SHIPPING_DELIVERY_KEY || 'nrh2oSAHca5727d75c01748fr3pkQcJf';
-
-// Create clients for different scopes if needed, but usually one common client helps.
-// Docs say: "Shipping Cost" key for cost, "Shipping Delivery" for others?
-// Let's assume Cost Calculation needs the Cost Key.
-// Destination Search might work with either, but usually Delivery/Order API.
-// Based on typical Komship:
-// Calculator -> uses Cost Key? Or Delivery Key?
-// Debug script worked with Cost Key on "/destination/domestic".
 
 const costClient = axios.create({
     baseURL: KOMERCE_BASE_URL,
     headers: {
-        'Authorization': `Bearer ${KEY_SHIPPING_COST}`,
         'key': KEY_SHIPPING_COST
-    }
-});
-
-const deliveryClient = axios.create({
-    baseURL: KOMERCE_BASE_URL,
-    headers: {
-        'Authorization': `Bearer ${KEY_SHIPPING_DELIVERY}`,
-        'key': KEY_SHIPPING_DELIVERY
     }
 });
 
 export const komerceService = {
 
     /**
-     * Search for domestic destinations (Cities, Districts, Subdistricts)
-     * Komerce returns a list. required for "origin" and "destination" IDs.
+     * Search for domestic destinations (Subdistricts/Cities)
+     * Endpoint: /destination/domestic-destination
      */
     async searchDestination(query: string) {
         try {
-            // Using Cost Key for search as verified in debug
-            const response = await costClient.get('/destination/domestic', {
-                params: { search: query }
+            console.log(`[Komerce] Searching for: ${query}`);
+            const response = await costClient.get('/destination/domestic-destination', {
+                params: {
+                    search: query,
+                    limit: 20 // Reasonable limit
+                }
             });
-            // Komerce Response: { status: boolean, data: [ ...items ] }
-            return response.data.data;
+
+            // Map response to a standard structure for Frontend
+            // API returns: { meta: {}, data: [{ id, subdistrict_name, type, city_name, province_name, zip_code }] }
+            // We need to return items with an 'id' that we can use for calculation (Subdistrict ID).
+
+            const results = response.data.data || [];
+
+            return results.map((item: any) => ({
+                id: item.id || item.subdistrict_id,
+                label: `${item.subdistrict_name}, ${item.city_name}, ${item.province_name} (${item.zip_code})`,
+                subdistrict_name: item.subdistrict_name,
+                city_name: item.city_name,
+                province_name: item.province_name,
+                zip_code: item.zip_code,
+                // Keep original data for reference if needed
+                original: item
+            }));
+
         } catch (error: any) {
             console.error('[Komerce] Search Destination Error:', error.response?.data || error.message);
-            // Fallback attempt with Delivery Key if forbidden?
             return [];
         }
     },
 
     /**
      * Calculate Shipping Cost
-     * Payload typically: { origin_data, destination_data, weight, item_value? }
-     * Need to verify Exact Payload for "Domestic-Cost" endpoint.
-     * Often: /shipping/cost
+     * Endpoint: /calculate/domestic-cost
+     * Content-Type: application/x-www-form-urlencoded
      */
     async calculateCost(originId: number, destinationId: number, weight: number, courier: string = 'jne') {
         try {
-            // Mapping RajaOngkir style (jne, pos) to Komerce payload
-            // Komerce usually accepts "courier" field or returns all.
-            // Endpoint verified in docs: POST /shipping/cost
 
-            /* Typical Komerce Payload (from docs experience/inference):
-               {
-                 "origin_data": "ID", 
-                 "destination_data": "ID", 
-                 "weight": 1000, 
-                 "courier": "jne" (or array)
-               }
-               OR
-               {
-                 "tariff_code": "..." ? No, that's complex.
-               }
-            */
+            // Construct payload using URLSearchParams for x-www-form-urlencoded
+            const params = new URLSearchParams();
+            params.append('origin', String(originId));
+            params.append('destination', String(destinationId));
+            params.append('weight', String(weight));
+            params.append('courier', courier);
+            params.append('originType', 'subdistrict');
+            params.append('destinationType', 'subdistrict');
 
-            // Based on "RajaOngkir x Komship" implies similar structure to RO?
-            // If it is RO wrapper: origin, destination, weight, courier.
+            console.log(`[Komerce] Calculating Cost: ${originId} -> ${destinationId} (${weight}g) ${courier}`);
 
-            const payload = {
-                origin: originId,
-                destination: destinationId,
-                weight: weight,
-                courier: courier
-            };
+            const response = await costClient.post('/calculate/domestic-cost', params.toString(), {
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+            });
 
-            const response = await costClient.post('/shipping/cost', payload);
+            // API Returns: { meta: {}, data: [ { name, code, service, description, cost, etd } ] }
+            const results = response.data.data || [];
 
-            // Komerce Response wrapper structure to normalize to our App's RajaOngkir-like interface
-            // Our App expects: [ { service: 'REG', description: 'Regular', cost: [{ value: 10000, etd: '2-3' }] } ]
-
-            // If Komerce returns typical RO structure:
-            // response.data.rajaongkir.results...
-
-            // If Komerce returns Komship structure:
-            // data: [ { code, service, price, etd } ]
-
-            // Let's assume we need to normalize.
-            // For now, return raw data in debug mode to see, 
-            // BUT we need it to work for Frontend.
-
-            // Let's Try "Calculate" endpoint from user screenshot? 
-            // Screenshot show "Calculate" under Shipping Delivery.
-            // AND "Domestic-Cost" (POST) under Shipping Cost.
-            // We use client.post('/shipping/cost') matching "Domestic-Cost".
-
-            const results = response.data.data || response.data;
-
-            // Normalize to RajaOngkir format for Frontend compatibility
-            // Input: Komerce Array -> Output: Array<{ service, description, cost: [{value, etd}] }>
-            // We assume Komerce returns array of services.
+            // Normalize to RajaOngkir structure expected by Frontend/Client
+            // Client expects: { service, description, cost: [{ value, etd }] }
 
             if (Array.isArray(results)) {
                 return results.map((r: any) => ({
-                    service: r.service || r.code || r.name,
-                    description: r.description || r.service || '',
+                    service: r.service,
+                    description: r.description,
                     cost: [{
-                        value: r.cost || r.price || 0,
-                        etd: r.etd || r.estimate || ''
+                        value: r.cost,
+                        etd: r.etd
                     }]
                 }));
-            } else if (results.rajaongkir) {
-                return results.rajaongkir.results[0].costs;
             }
 
             return [];
 
         } catch (error: any) {
             console.error('[Komerce] Calculate Cost Error:', error.response?.data || error.message);
-            throw new Error('Failed to calculate shipping cost via Komerce');
+            // Return empty array instead of throwing to prevent crash, let frontend handle "No services"
+            return [];
         }
     },
 
-    // Compatibility Adapter for existing "getProvinces / getCities" flow
-    // Since Komerce uses centralized "Search", we might not have "List All Provinces".
-    // We'll mock or proxy.
-
-    async getProvinces() {
-        // Komerce doesn't seem to have "List All Provinces" easily without ID?
-        // We can search for "Jawa" etc? Or maybe it supports empty search?
-        // Fallback: Return empty/partial?
-        // Frontend "ProfilePage" relies on selecting Province FIRST.
-        // If Komerce is "Search Any", we should change UI to "Autocomplete Search".
-        // BUT to minimize Frontend changes:
-        // Try getting all by empty search or common IDs.
-        // If impossible, we hardcode common Indoneisan islands/provinces or fetch top level.
-        return [];
-    },
-
-    async getCities(provinceId: string) {
-        // Similar issue. Komerce is Search-based.
-        return [];
-    }
+    // Compatibility Adapter (Unused/Deprecated in favor of Search)
+    async getProvinces() { return []; },
+    async getCities(provinceId: string) { return []; }
 };
