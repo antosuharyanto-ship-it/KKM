@@ -46,11 +46,16 @@ export const MarketplacePage: React.FC = () => {
             .catch(() => { }); // Ignore auth error (guest mode)
     }, []);
 
-    useEffect(() => {
+    const fetchItems = () => {
+        setLoading(true);
         axios.get(`${API_BASE_URL}/api/marketplace`)
             .then(res => setItems(res.data))
             .catch(err => console.error(err))
             .finally(() => setLoading(false));
+    };
+
+    useEffect(() => {
+        fetchItems();
     }, []);
 
     // Filter Logic
@@ -91,6 +96,7 @@ export const MarketplacePage: React.FC = () => {
 
             alert('Order placed successfully!');
             setSelectedItem(null);
+            fetchItems(); // Refresh stock
         } catch (error) {
             console.error(error);
             alert('Failed to place order.');

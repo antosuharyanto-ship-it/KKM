@@ -377,6 +377,15 @@ export class GoogleSheetService {
 
         // await this.ensureHeaders(sheetName, headers);
 
+        // Check for duplicate order ID to prevent double submission
+        const existingOrders = await this.readSheet(sheetName);
+        const isDuplicate = existingOrders.some((row: any) => row.order_id === orderData.orderId);
+
+        if (isDuplicate) {
+            console.warn(`Duplicate order ignored: ${orderData.orderId}`);
+            return;
+        }
+
         await this.appendRow(sheetName, [
             orderData.orderId,
             orderData.itemName,
@@ -389,6 +398,64 @@ export class GoogleSheetService {
             'Pending',
             new Date().toISOString()
         ]);
+
+        // Decrement Stock
+        await this.updateMarketplaceStock(orderData.itemName, orderData.quantity);
+    }
+
+    async updateMarketplaceStock(itemName: string, quantitySold: number) {
+        const sheetName = process.env.GOOGLE_SHEET_NAME_MARKETPLACE || 'Market Place';
+
+        const response = await this.sheets.spreadsheets.values.get({
+            spreadsheetId: this.spreadsheetId,
+            range: sheetName,
+        });
+
+        const rows = response.data.values;
+        if (!rows) return;
+
+        const headers = rows[0];
+        // Match product name column (product_name or name)
+        const nameIndex = headers.findIndex(h => {
+            const norm = h.toLowerCase().trim().replace(/_/g, ' ');
+            return norm === 'product name' || norm === 'item name' || norm === 'name' || norm === 'nama barang';
+        });
+
+        // Match stock column (stok or stock)
+        const stockIndex = headers.findIndex(h => {
+            const norm = h.toLowerCase().trim();
+            return norm === 'stok' || norm === 'stock' || norm === 'qty';
+        });
+
+        if (nameIndex === -1 || stockIndex === -1) {
+            console.error('Could not find Name or Stock column in Marketplace sheet');
+            return;
+        }
+
+        // Find the item row
+        const rowIndex = rows.findIndex(row => row[nameIndex] === itemName);
+        if (rowIndex === -1) {
+            console.warn(`Item not found for stock update: ${itemName}`);
+            return;
+        }
+
+        // Calculate new stock
+        const currentStockStr = rows[rowIndex][stockIndex] || '0';
+        const currentStock = parseInt(currentStockStr.replace(/[^0-9-]/g, '')) || 0;
+        const newStock = Math.max(0, currentStock - quantitySold); // Prevent negative
+
+        console.log(`[StockUpdate] ${itemName}: ${currentStock} -> ${newStock}`);
+
+        // Update Cell
+        const colLetter = this.getColumnLetter(stockIndex);
+        const cellRange = `${sheetName}!${colLetter}${rowIndex + 1}`; // +1 because API is 1-based
+
+        await this.sheets.spreadsheets.values.update({
+            spreadsheetId: this.spreadsheetId,
+            range: cellRange,
+            valueInputOption: 'USER_ENTERED',
+            requestBody: { values: [[String(newStock)]] }
+        });
     }
 
     // --- Officer / Scanner Logic ---
