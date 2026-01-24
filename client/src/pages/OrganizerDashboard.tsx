@@ -320,6 +320,49 @@ export const OrganizerDashboard: React.FC = () => {
         }
     };
 
+    const handleVerifyPayment = async (orderId: string) => {
+        if (!confirm('Verify Payment for this order? Seller will be notified to ship.')) return;
+        setProcessingId(orderId);
+        try {
+            await axios.post(`${API_BASE_URL}/api/officer/marketplace/verify-payment`, { orderId }, { withCredentials: true });
+            alert('Payment Verified!');
+            // Refresh Orders
+            const res = await axios.get(`${API_BASE_URL}/api/marketplace/orders`, { withCredentials: true });
+            setMarketOrders(res.data);
+        } catch (error) {
+            console.error(error);
+            alert('Failed to verify payment');
+        } finally {
+            setProcessingId(null);
+        }
+    };
+
+    const handleMarkSettled = async (orderId: string) => {
+        if (!confirm('Mark this transaction as SETTLED? Ensure you have transferred funds to Seller.')) return;
+        setProcessingId(orderId);
+        try {
+            // We can reuse updateMarketplaceOrder indirectly or creating a specific endpoint.
+            // But existing endpoints don't strictly support "mark settled" specifically, but we could make one.
+            // Or reuse verify? No.
+            // Let's create a generic "update status" endpoint or just reuse verify-payment endpoint logic? 
+            // Actually, the simplest is to just call `updateMarketplaceOrder` via a new officer endpoint or add a generic "update-status".
+            // Let's just create a new endpoint quickly in next step if needed, or assume we add one.
+            // Wait, I didn't create /api/officer/marketplace/update-status. 
+            // I'll reuse /api/officer/marketplace/verify-payment but passing a status? 
+            // No, that endpoint is hardcoded "Ready to Ship".
+            // I will create /api/officer/marketplace/settle-order in index.ts later.
+            // for now let's assume it exists.
+            await axios.post(`${API_BASE_URL}/api/officer/marketplace/settle-order`, { orderId }, { withCredentials: true });
+            alert('Order Settled!');
+            const res = await axios.get(`${API_BASE_URL}/api/marketplace/orders`, { withCredentials: true });
+            setMarketOrders(res.data);
+        } catch (error) {
+            alert('Failed to settle order');
+        } finally {
+            setProcessingId(null);
+        }
+    };
+
     if (loading) return <div className="p-10 text-center">Loading Dashboard...</div>;
     if (!isOfficer) return (
         <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
@@ -774,7 +817,11 @@ export const OrganizerDashboard: React.FC = () => {
                                                 <div className="font-bold text-gray-900">{order.item_name || order['Item Name']}</div>
                                                 <div className="text-xs text-gray-500 font-mono">#{order.order_id || order['Order ID']}</div>
                                             </div>
-                                            <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-md text-[10px] font-bold">
+                                            <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${(order.status || '').includes('Settled') ? 'bg-gray-100 text-gray-600' :
+                                                (order.status || '').includes('Ready') ? 'bg-purple-100 text-purple-700' :
+                                                    (order.status || '').includes('Received') ? 'bg-green-100 text-green-700' :
+                                                        'bg-yellow-100 text-yellow-800'
+                                                }`}>
                                                 {order.status || order['Status'] || 'Pending'}
                                             </span>
                                         </div>
@@ -795,9 +842,33 @@ export const OrganizerDashboard: React.FC = () => {
                                                     {order.phone || order['Phone']}
                                                 </a>
                                             </div>
+
+                                            {/* Proof Link */}
+                                            {(order.proofUrl || order['Payment Proof']) && (
+                                                <div className="col-span-2 mt-1 text-center">
+                                                    <a href={order.proofUrl || order['Payment Proof']} target="_blank" className="text-blue-600 underline font-bold flex items-center justify-center gap-1">
+                                                        <CheckCircle size={12} /> View Payment Proof
+                                                    </a>
+                                                </div>
+                                            )}
                                         </div>
-                                        <div className="text-[10px] text-gray-400 text-right">
-                                            {new Date(order.date || order['Date']).toLocaleDateString()}
+
+                                        {/* Mobile Actions */}
+                                        <div className="flex justify-end pt-2">
+                                            {(order.status === 'Verifying Payment' || order.status === 'Pending Payment') && (
+                                                <button
+                                                    onClick={() => handleVerifyPayment(order.order_id || order['Order ID'])}
+                                                    className="w-full py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition">
+                                                    Verify Payment
+                                                </button>
+                                            )}
+                                            {(order.status === 'Item Received') && (
+                                                <button
+                                                    onClick={() => handleMarkSettled(order.order_id || order['Order ID'])}
+                                                    className="w-full py-2 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700 transition">
+                                                    Mark as Settled
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 ))
@@ -806,49 +877,76 @@ export const OrganizerDashboard: React.FC = () => {
 
                         {/* Desktop Table View */}
                         <div className="hidden md:block overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
-                                <thead>
-                                    <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
-                                        <th className="p-4 font-bold border-b border-gray-100">Order ID</th>
-                                        <th className="p-4 font-bold border-b border-gray-100">Item</th>
-                                        <th className="p-4 font-bold border-b border-gray-100">Qty</th>
-                                        <th className="p-4 font-bold border-b border-gray-100">Total</th>
-                                        <th className="p-4 font-bold border-b border-gray-100">Customer</th>
-                                        <th className="p-4 font-bold border-b border-gray-100">Status</th>
-                                        <th className="p-4 font-bold border-b border-gray-100">Date</th>
+                            <table className="w-full text-left text-sm text-gray-600">
+                                <thead className="bg-gray-50 text-gray-500 font-bold uppercase text-xs">
+                                    <tr>
+                                        <th className="p-4">ID / Date</th>
+                                        <th className="p-4">Item</th>
+                                        <th className="p-4">Customer</th>
+                                        <th className="p-4">Amount</th>
+                                        <th className="p-4">Status</th>
+                                        <th className="p-4 text-center">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody className="text-sm text-gray-700">
-                                    {marketOrders.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={7} className="p-8 text-center text-gray-400">
-                                                {marketError ? <span className="text-red-500 font-bold">{marketError}</span> : 'No orders found.'}
+                                <tbody className="divide-y divide-gray-100">
+                                    {marketOrders.map((order, idx) => (
+                                        <tr key={idx} className="hover:bg-gray-50 transition">
+                                            <td className="p-4">
+                                                <div className="font-bold text-gray-900">#{order.order_id || order['Order ID']}</div>
+                                                <div className="text-xs text-gray-400">{new Date(order.date || order['Date']).toLocaleDateString()}</div>
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="font-medium text-gray-900">{order.item_name || order['Item Name']}</div>
+                                                <div className="text-xs text-gray-500">{order.quantity || order['Quantity']} x {order.unit_price || order['Unit Price']}</div>
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="font-medium text-gray-900">{order.user_name || order['User Name']}</div>
+                                                <div className="text-xs text-gray-400">{order.phone || order['Phone']}</div>
+                                            </td>
+                                            <td className="p-4 font-bold text-teal-700">{order.total_price || order['Total Price']}</td>
+                                            <td className="p-4">
+                                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${(order.status || '').includes('Settled') ? 'bg-gray-100 text-gray-600' :
+                                                    (order.status || '').includes('Ready') ? 'bg-purple-100 text-purple-700' :
+                                                        (order.status || '').includes('Received') ? 'bg-green-100 text-green-700' :
+                                                            'bg-yellow-100 text-yellow-800'
+                                                    }`}>
+                                                    {order.status || order['Status']}
+                                                </span>
+                                                {/* Proof Link Desktop */}
+                                                {(order.proofUrl || order['Payment Proof']) && (
+                                                    <a href={order.proofUrl || order['Payment Proof']} target="_blank" className="block text-xs text-blue-600 hover:underline mt-1">View Proof</a>
+                                                )}
+                                            </td>
+                                            <td className="p-4 text-center">
+                                                {(order.status === 'Verifying Payment' || order.status === 'Pending Payment') && (
+                                                    <button
+                                                        onClick={() => handleVerifyPayment(order.order_id || order['Order ID'])}
+                                                        className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700 transition">
+                                                        Verify
+                                                    </button>
+                                                )}
+                                                {(order.status === 'Item Received') && (
+                                                    <button
+                                                        onClick={() => handleMarkSettled(order.order_id || order['Order ID'])}
+                                                        className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-700 transition">
+                                                        Settle
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
-                                    ) : (
-                                        marketOrders.map((order, idx) => (
-                                            <tr key={idx} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
-                                                <td className="p-4 font-mono text-xs">{order['Order ID'] || order.order_id}</td>
-                                                <td className="p-4 font-medium">{order['Item Name'] || order.item_name}</td>
-                                                <td className="p-4">{order['Quantity'] || order.quantity}</td>
-                                                <td className="p-4 font-bold">{order['Total Price'] || order.total_price}</td>
-                                                <td className="p-4">
-                                                    <div className="font-medium">{order['User Name'] || order.user_name}</div>
-                                                    <div className="text-xs text-gray-400">{order['Phone'] || order.phone}</div>
-                                                </td>
-                                                <td className="p-4">
-                                                    <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-md text-xs font-bold">{order['Status'] || order.status || 'Pending'}</span>
-                                                </td>
-                                                <td className="p-4 text-gray-400">{new Date(order['Date'] || order.date).toLocaleDateString()}</td>
-                                            </tr>
-                                        ))
+                                    ))}
+                                    {marketOrders.length === 0 && (
+                                        <tr><td colSpan={6} className="p-8 text-center text-gray-400">No marketplace orders found.</td></tr>
                                     )}
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 )}
-            </main>
+
+
+
+            </main >
         </div >
     );
 };

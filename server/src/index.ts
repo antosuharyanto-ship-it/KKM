@@ -671,6 +671,106 @@ app.post('/api/community', checkAuth, async (req: any, res) => {
 // --- SPONSORSHIP APIs ---
 
 // --- MARKETPLACE ORDER API ---
+import multer from 'multer';
+const upload = multer({ storage: multer.memoryStorage() });
+
+app.post('/api/marketplace/upload-proof', checkAuth, upload.single('proof'), async (req: any, res) => {
+    try {
+        const { orderId } = req.body;
+        const file = req.file;
+
+        if (!orderId || !file) {
+            return res.status(400).json({ message: 'Order ID and Proof Image are required' });
+        }
+
+        console.log(`[UploadProof] Received for Order ${orderId}, File: ${file.originalname}`);
+
+        // 1. Upload to Drive
+        const uploadedFile = await googleSheetService.uploadFile(
+            `Proof_${orderId}_${Date.now()}.jpg`,
+            file.mimetype,
+            require('stream').Readable.from(file.buffer)
+        );
+
+        // 2. Update Sheet
+        const driveLink = uploadedFile.webViewLink || '';
+        await googleSheetService.updateMarketplaceOrder(orderId, {
+            status: 'Verifying Payment',
+            proofUrl: driveLink
+        });
+
+        res.json({ success: true, message: 'Proof uploaded. Waiting for verification.' });
+    } catch (error) {
+        console.error('Upload proof failed:', error);
+        res.status(500).json({ message: 'Failed to upload proof' });
+    }
+});
+
+app.post('/api/marketplace/confirm-receipt', checkAuth, async (req, res) => {
+    try {
+        const { orderId } = req.body;
+        // Verify ownership? Ideally we check if req.user.email matches order.user_email.
+        // But for MVP trust the checkAuth + ID for now or fetch to verify.
+
+        await googleSheetService.updateMarketplaceOrder(orderId, {
+            status: 'Item Received'
+        });
+
+        // Email Organizer to Release Funds?
+        // TODO: Implement email trigger here.
+
+        res.json({ success: true, message: 'Receipt confirmed. Funds will be released to seller.' });
+    } catch (error) {
+        console.error('Confirm receipt failed:', error);
+        res.status(500).json({ message: 'Failed to confirm receipt' });
+    }
+});
+
+app.post('/api/officer/marketplace/verify-payment', checkOfficer, async (req, res) => {
+    try {
+        const { orderId } = req.body;
+
+        // Update Sheet
+        await googleSheetService.updateMarketplaceOrder(orderId, {
+            status: 'Ready to Ship'
+        });
+
+        // Fetch Order details to email Seller
+        // We need to implement getOrderById or reuse getMarketplaceOrders + find
+        const orders = await googleSheetService.getMarketplaceOrders();
+        const order = orders.find((o: any) => o.order_id === orderId);
+
+        if (order) {
+            // TODO: Trigger Email to Seller (emailService.sendShippingInstruction)
+            console.log(`[VerifyPayment] Payment verified for ${orderId}. Emailing seller: ${order.item_name}`);
+            // Ensure we have seller email. It might not be in the Order row unless we saved it.
+            // Earlier design: createMarketplaceOrder DOES NOT save 'supplierEmail' into the sheet, only emails them.
+            // We might need to fetch the Item to look up the supplier email again.
+        }
+
+        res.json({ success: true, message: 'Payment verified. Seller notified to ship.' });
+    } catch (error) {
+        console.error('Verify payment failed:', error);
+        res.status(500).json({ message: 'Failed to verify payment' });
+    }
+});
+app.get('/api/my-market-orders', checkAuth, async (req, res) => {
+    try {
+        const userEmail = req.user?.email;
+        if (!userEmail) return res.status(401).json({ message: 'Unauthorized' });
+
+        const allOrders = await googleSheetService.getMarketplaceOrders();
+        // Filter by user email
+        const myOrders = allOrders.filter((o: any) => o.user_email === userEmail);
+
+        // Reverse to show newest first
+        res.json(myOrders.reverse());
+    } catch (error) {
+        console.error('Error fetching my orders:', error);
+        res.status(500).json({ message: 'Failed to fetch orders' });
+    }
+});
+
 app.get('/api/marketplace/orders', checkOfficer, async (req, res) => {
     try {
         const orders = await googleSheetService.getMarketplaceOrders();

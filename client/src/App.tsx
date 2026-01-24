@@ -9,6 +9,7 @@ import { ScannerPage } from './pages/ScannerPage';
 import { OrganizerDashboard } from './pages/OrganizerDashboard';
 import { NewsPage } from './pages/NewsPage';
 import { CommunityPage } from './pages/CommunityPage';
+import { MyOrdersPage } from './pages/MyOrdersPage';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Route path="community" element={<CommunityPage />} />
           <Route path="event/:id" element={<EventDetailsPage />} />
           <Route path="marketplace" element={<MarketplacePage />} />
+          <Route path="my-orders" element={<MyOrdersPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="islamic-tools" element={<IslamicToolsPage />} />
           <Route path="scanner" element={<ScannerPage />} />
