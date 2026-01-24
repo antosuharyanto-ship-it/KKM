@@ -426,7 +426,7 @@ export const MarketplacePage: React.FC = () => {
                             <div className="mt-2 pt-2 border-t border-yellow-200">
                                 <p className="font-bold">Raw Response:</p>
                                 <pre className="whitespace-pre-wrap break-all text-[9px] text-gray-600">
-                                    {JSON.stringify(shippingCosts.length > 0 ? shippingCosts : "Wait...", null, 2)}
+                                    {JSON.stringify(shippingCosts.length > 0 ? shippingCosts : "EMPTY [] (Check Red Error below if any)", null, 2)}
                                 </pre>
                                 {/* Show Server Echo if available */}
                                 {shippingCosts.length > 0 && (shippingCosts[0] as any).debug_metadata && (

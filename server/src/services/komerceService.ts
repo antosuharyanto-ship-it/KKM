@@ -189,8 +189,17 @@ export const komerceService = {
 
         } catch (error: any) {
             console.error('[Komerce] Calculate Cost Error:', error.response?.data || error.message);
-            // Return empty array instead of throwing to prevent crash, let frontend handle "No services"
-            return [];
+            return [{
+                code: courier,
+                name: courier.toUpperCase(),
+                costs: [],
+                debug_metadata: {
+                    error: `EXCEPTION: ${error.message}`,
+                    details: error.response?.data,
+                    inputOrigin: origin,
+                    inputDest: destination
+                }
+            }];
         }
     },
 
