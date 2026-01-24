@@ -918,20 +918,31 @@ export const OrganizerDashboard: React.FC = () => {
                                                 )}
                                             </td>
                                             <td className="p-4 text-center">
-                                                {(order.status === 'Verifying Payment' || order.status === 'Pending Payment') && (
-                                                    <button
-                                                        onClick={() => handleVerifyPayment(order.order_id || order['Order ID'])}
-                                                        className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700 transition">
-                                                        Verify
-                                                    </button>
-                                                )}
-                                                {(order.status === 'Item Received') && (
-                                                    <button
-                                                        onClick={() => handleMarkSettled(order.order_id || order['Order ID'])}
-                                                        className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-700 transition">
-                                                        Settle
-                                                    </button>
-                                                )}
+                                                {(() => {
+                                                    const status = (order.status || order['Status'] || '').toLowerCase();
+                                                    const isPending = status.includes('pending') || status.includes('verifying');
+                                                    const isReceived = status.includes('received');
+
+                                                    if (isPending) {
+                                                        return (
+                                                            <button
+                                                                onClick={() => handleVerifyPayment(order.order_id || order['Order ID'])}
+                                                                className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700 transition">
+                                                                Verify
+                                                            </button>
+                                                        );
+                                                    }
+                                                    if (isReceived) {
+                                                        return (
+                                                            <button
+                                                                onClick={() => handleMarkSettled(order.order_id || order['Order ID'])}
+                                                                className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-700 transition">
+                                                                Settle
+                                                            </button>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
                                             </td>
                                         </tr>
                                     ))}
@@ -942,7 +953,8 @@ export const OrganizerDashboard: React.FC = () => {
                             </table>
                         </div>
                     </div>
-                )}
+                )
+                }
 
 
 

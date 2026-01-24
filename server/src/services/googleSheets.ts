@@ -421,10 +421,13 @@ export class GoogleSheetService {
             return norm === 'product name' || norm === 'item name' || norm === 'name' || norm === 'nama barang';
         });
 
-        // Match stock column (stok or stock)
+        // Match stock column (stok or stock or # Stok)
         const stockIndex = headers.findIndex(h => {
             const norm = h.toLowerCase().trim();
-            return norm === 'stok' || norm === 'stock' || norm === 'qty';
+            // Handle "# Stok" specifically or generic "#" prefix
+            if (norm === '# stok' || norm === '# stock' || norm === 'stok' || norm === 'stock' || norm === 'qty') return true;
+            // Also relaxed check
+            return norm.includes('stok') || norm.includes('stock');
         });
 
         if (nameIndex === -1 || stockIndex === -1) {
