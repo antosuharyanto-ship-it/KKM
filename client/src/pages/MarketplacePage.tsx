@@ -392,9 +392,21 @@ export const MarketplacePage: React.FC = () => {
 
                         {/* Debug Info (Temporary) */}
                         <div className="bg-yellow-50 p-2 rounded border border-yellow-200 text-[10px] font-mono mb-4">
-                            <p className="font-bold text-red-600">DEBUG v1.5</p>
-                            <p>Origin: {(selectedItem as any).origin_city_id || (selectedItem as any).origin_city || 'Jakarta Barat'}</p>
-                            <p>Dest: {selectedAddressId}</p>
+                            <p className="font-bold text-red-600">DEBUG v1.6 (Latest)</p>
+                            <p>Origin (Sheet): {(selectedItem as any).origin_city_id || (selectedItem as any).origin_city || 'Jakarta Barat'}</p>
+
+                            {/* Show the actual resolved destination logic */}
+                            {(() => {
+                                const debugAddr = addresses.find(a => a.id === selectedAddressId);
+                                const debugDest = debugAddr ? (debugAddr.address_city_id || debugAddr.address_city_name) : 'undefined';
+                                return (
+                                    <>
+                                        <p>Dest ID (Sent): {debugDest}</p>
+                                        <p>Dest UUID (State): {selectedAddressId}</p>
+                                    </>
+                                );
+                            })()}
+
                             <p>Weight: {selectedItem.weight_gram || 1000}</p>
                             <p>Courier: {selectedCourier}</p>
                             <p>Costs: {shippingCosts.length} items</p>
