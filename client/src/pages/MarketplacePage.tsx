@@ -94,7 +94,8 @@ export const MarketplacePage: React.FC = () => {
                 totalPrice: `Rp ${totalPrice.toLocaleString('id-ID')}`,
                 userName: userDetails.name,
                 userEmail: userDetails.email,
-                phone: userDetails.phone
+                phone: userDetails.phone,
+                supplierEmail: selectedItem.supplier_email
             });
 
             alert('Order placed successfully! Please check "My Orders" to upload payment proof.');

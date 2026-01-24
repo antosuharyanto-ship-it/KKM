@@ -911,7 +911,20 @@ export const OrganizerDashboard: React.FC = () => {
                                             </td>
                                             <td className="p-4">
                                                 <div className="font-medium text-gray-900">{order.user_name || order['User Name']}</div>
-                                                <div className="text-xs text-gray-400">{order.phone || order['Phone']}</div>
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-xs text-gray-400">{order.phone || order['Phone']}</span>
+                                                    {(order.phone || order['Phone']) && (
+                                                        <a
+                                                            href={`https://wa.me/${(order.phone || order['Phone']).replace(/^0/, '62')}`}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="text-green-600 hover:text-green-700 bg-green-50 p-1 rounded-full"
+                                                            title="Chat on WhatsApp"
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21" /></svg>
+                                                        </a>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="p-4 font-bold text-teal-700">{order.total_price || order['Total Price']}</td>
                                             <td className="p-4">
@@ -1026,20 +1039,33 @@ export const OrganizerDashboard: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="p-6 border-t border-gray-100 bg-gray-50 flex gap-3">
-                            <button
-                                onClick={() => setSelectedOrder(null)}
-                                className="flex-1 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={() => submitVerification(selectedOrder)}
-                                disabled={processingId === (selectedOrder.order_id || selectedOrder['Order ID'])}
-                                className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition flex items-center justify-center gap-2"
-                            >
-                                {processingId === (selectedOrder.order_id || selectedOrder['Order ID']) ? 'Processing...' : 'Confirm Verification'}
-                            </button>
+                        <div className="p-6 border-t border-gray-100 bg-gray-50 flex flex-col gap-3">
+                            {selectedOrder.supplier_phone && (
+                                <a
+                                    href={`https://wa.me/${selectedOrder.supplier_phone.replace(/^0/, '62')}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="w-full py-2 bg-green-100 text-green-700 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-green-200 transition"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21" /></svg>
+                                    Contact Seller (Urgent)
+                                </a>
+                            )}
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setSelectedOrder(null)}
+                                    className="flex-1 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => submitVerification(selectedOrder)}
+                                    disabled={processingId === (selectedOrder.order_id || selectedOrder['Order ID'])}
+                                    className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                                >
+                                    {processingId === (selectedOrder.order_id || selectedOrder['Order ID']) ? 'Processing...' : 'Confirm Verification'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -241,7 +241,19 @@ app.post('/api/marketplace/order', async (req, res) => {
         console.log(`[OrderDebug] Fetched ${items.length} items. Finding product: ${orderData.itemName}`);
 
         const item = items.find((i: any) => i.product_name?.toLowerCase().trim() === orderData.itemName?.toLowerCase().trim());
-        const supplierEmail = item?.supplier_email || process.env.SUPPLIER_EMAIL;
+
+        // Prioritize: 1. Item Supplier Email (Server Truth) -> 2. Client Provided (Fallback) -> 3. Env Var
+        let supplierEmail = item?.supplier_email || req.body.supplierEmail || process.env.SUPPLIER_EMAIL;
+
+        // Sanitize Email
+        if (supplierEmail) {
+            if (supplierEmail.includes('<')) {
+                const match = supplierEmail.match(/<([^>]+)>/);
+                if (match) supplierEmail = match[1];
+            }
+            supplierEmail = supplierEmail.trim();
+        }
+
         console.log(`[OrderDebug] Supplier email: ${supplierEmail}`);
 
         // 2. Save to Sheets
@@ -789,10 +801,20 @@ app.post('/api/officer/marketplace/verify-payment', checkOfficer, async (req, re
             // Fuzzy match item name
             const item = items.find((i: any) => i.product_name?.toLowerCase().trim() === order.item_name?.toLowerCase().trim());
 
-            const supplierEmail = item?.supplier_email || process.env.SUPPLIER_EMAIL;
+            let supplierEmail = item?.supplier_email || process.env.SUPPLIER_EMAIL;
 
             if (supplierEmail) {
-                await emailService.sendShippingInstruction(order, supplierEmail);
+                // Sanitize email: Handle "Name <email>" or "email (Note)" formats if messy data exists
+                // Simple heuristic: If it has <>, take inside. If not, just trim.
+                if (supplierEmail.includes('<')) {
+                    const match = supplierEmail.match(/<([^>]+)>/);
+                    if (match) supplierEmail = match[1];
+                }
+                supplierEmail = supplierEmail.trim();
+
+                // Background email (fire & forget) to prevent UI blocking
+                emailService.sendShippingInstruction(order, supplierEmail)
+                    .catch(e => console.error('Background Shipping Email Failed:', e));
             } else {
                 console.warn(`[VerifyPayment] No supplier email found for item: ${order.item_name}`);
             }
@@ -824,7 +846,19 @@ app.get('/api/my-market-orders', checkAuth, async (req, res) => {
 app.get('/api/marketplace/orders', checkOfficer, async (req, res) => {
     try {
         const orders = await googleSheetService.getMarketplaceOrders();
-        res.json(orders);
+        const items = await googleSheetService.getMarketplaceItems();
+
+        // Join Orders with Items to get Supplier Details (Phone/Email) for Officer
+        const enrichedOrders = orders.map((order: any) => {
+            const item = items.find((i: any) => i.product_name?.toLowerCase().trim() === order.item_name?.toLowerCase().trim());
+            return {
+                ...order,
+                supplier_phone: item?.phone_number || '',
+                supplier_email: item?.supplier_email || ''
+            };
+        });
+
+        res.json(enrichedOrders);
     } catch (error) {
         console.error('Error fetching market orders:', error);
         res.status(500).json({ message: 'Failed to fetch orders' });
