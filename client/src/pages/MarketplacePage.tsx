@@ -219,10 +219,10 @@ export const MarketplacePage: React.FC = () => {
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Your Name</label>
                                     <input
-                                        required
-                                        className="w-full p-3 rounded-xl bg-gray-50 border border-gray-200 focus:outline-teal-600"
-                                        value={userDetails.name}
-                                        onChange={e => setUserDetails({ ...userDetails, name: e.target.value })}
+                                        readOnly
+                                        disabled
+                                        className="w-full p-3 rounded-xl bg-gray-100 border border-gray-200 text-gray-500 cursor-not-allowed"
+                                        value={userDetails.name || 'Login required'}
                                     />
                                 </div>
                                 <div>
@@ -233,6 +233,7 @@ export const MarketplacePage: React.FC = () => {
                                         className="w-full p-3 rounded-xl bg-gray-50 border border-gray-200 focus:outline-teal-600"
                                         value={userDetails.phone}
                                         onChange={e => setUserDetails({ ...userDetails, phone: e.target.value })}
+                                        placeholder="08..."
                                     />
                                 </div>
                             </div>
@@ -248,11 +249,21 @@ export const MarketplacePage: React.FC = () => {
                                 </span>
                             </div>
 
-                            <button
-                                disabled={isSubmitting}
-                                className="w-full py-4 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-lg shadow-orange-200 transition disabled:opacity-50 disabled:cursor-not-allowed">
-                                {isSubmitting ? 'Processing...' : 'Place Order via WhatsApp / Sheet'}
-                            </button>
+                            {userDetails.email ? (
+                                <button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className="w-full py-4 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-lg shadow-orange-200 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                    {isSubmitting ? 'Processing...' : 'Place Order'}
+                                </button>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => window.location.href = '/login'}
+                                    className="w-full py-4 bg-teal-800 hover:bg-teal-900 text-white font-bold rounded-xl shadow-lg transition">
+                                    Login to Order
+                                </button>
+                            )}
                         </form>
                     </div>
                 </div>

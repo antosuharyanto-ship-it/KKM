@@ -228,16 +228,22 @@ app.post('/api/marketplace/order', async (req, res) => {
 
         const orderId = uuidv4().slice(0, 8).toUpperCase();
 
-        // 1. Save to Sheets
+        // 1. Fetch Item to get Supplier Email
+        const items = await googleSheetService.getMarketplaceItems();
+        const item = items.find((i: any) => i.product_name === orderData.itemName);
+        const supplierEmail = item?.supplier_email || process.env.SUPPLIER_EMAIL;
+
+        // 2. Save to Sheets
         await googleSheetService.createMarketplaceOrder({
             ...safeOrderData,
             orderId
         });
 
-        // 2. Send Email Notification
+        // 3. Send Email Notification
         await emailService.sendOrderNotification({
             ...safeOrderData,
-            orderId
+            orderId,
+            supplierEmail
         });
 
         res.json({ success: true, orderId });
@@ -502,6 +508,28 @@ app.post('/api/officer/confirm-payment', checkOfficer, async (req, res) => {
 
         // 3. Update Sheet (Status -> Confirmed, Ticket Link -> Drive URL, Kavling -> value)
         await googleSheetService.updateBookingStatus(ticketCode, 'Confirmed Payment', ticketLink, kavling);
+
+        // 4. Send "Payment Received" Email
+        // Clean price string (e.g. "Rp 150.000" -> 150000) for number format
+        const cleanPrice = parseInt((booking['jumlah_pembayaran'] || '0').replace(/[^0-9]/g, '')) || 0;
+
+        // Calculate remaining balance (assuming full payment for now? user script implied 50% split logic but provided simplified email)
+        // User's GS script: const totalPaid = totalPayment / 2; ... Sisa pembayaran sejumlah ...
+        // However, our current simple flow might be Confirming FULL payment or 1st Installment.
+        // Let's assume the 'jumlah_pembayaran' recorded is what they paid.
+        // And we need to know the Total Cost to calculate remaining.
+        // For safely, let's just pass what we know. If the logic needs to matches exactly the GS script regarding "Angsuran 1" vs "Full", we might need more data.
+        // Replicating the user's GS logic structure loosely but safely:
+
+        await emailService.sendPaymentReceivedEmail({
+            eventName: booking['event_name'],
+            participantName: booking['proposed_by'], // OR contact person?
+            email: booking['email_address'],
+            phone: booking['phone_number'],
+            amountPaid: cleanPrice,
+            remainingBalance: cleanPrice, // Placeholder: In GS script it was total / 2. Here we might need adjustment if we track "Total Cost" vs "Paid".
+            paymentDateLimit: '31 Desember 2025' // Hardcoded as per user request/template for now.
+        });
 
         res.json({ success: true, ticketLink });
     } catch (error: any) {

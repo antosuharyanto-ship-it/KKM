@@ -2,9 +2,9 @@ import nodemailer from 'nodemailer';
 
 export const emailService = {
     transporter: nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
         port: parseInt(process.env.SMTP_PORT || '587'),
-        secure: false, // true for 465, false for other ports
+        secure: process.env.SMTP_SECURE === 'true' || process.env.SMTP_PORT === '465', // true for 465, false for other ports
         auth: {
             user: process.env.SMTP_USER,
             pass: process.env.SMTP_PASS,
@@ -13,14 +13,16 @@ export const emailService = {
 
     async sendOrderNotification(order: any) {
         try {
-            const supplierEmail = process.env.SUPPLIER_EMAIL;
+            // Use dynamic supplier email from order data, or fallback to env var
+            const supplierEmail = order.supplierEmail || process.env.SUPPLIER_EMAIL;
+
             if (!supplierEmail || !process.env.SMTP_USER) {
-                console.warn('Email config missing. Skipping email notification.');
+                console.warn('Email config missing or no supplier email. Skipping email notification.');
                 return;
             }
 
             const mailOptions = {
-                from: `"KKM Marketplace" <${process.env.SMTP_USER}>`,
+                from: process.env.SMTP_FROM || `"KKM Marketplace" <${process.env.SMTP_USER}>`,
                 to: supplierEmail,
                 subject: `New Order: ${order.orderId} - ${order.itemName}`,
                 html: `
@@ -40,10 +42,112 @@ export const emailService = {
             };
 
             const info = await this.transporter.sendMail(mailOptions);
-            console.log('Order notification email sent:', info.messageId);
+            console.log('Order notification email sent to SUPPLIER:', info.messageId);
+
+            // --- Send User Confirmation ---
+            if (order.userEmail) {
+                const userMailOptions = {
+                    from: process.env.SMTP_FROM || `"KKM Marketplace" <${process.env.SMTP_USER}>`,
+                    to: order.userEmail,
+                    subject: `Order Confirmation: ${order.orderId}`,
+                    html: `
+                        <h2>Order Confirmation</h2>
+                        <p>Dear ${order.userName},</p>
+                        <p>Thank you for your order!</p>
+                        <p><strong>Order ID:</strong> ${order.orderId}</p>
+                        <p><strong>Item:</strong> ${order.itemName}</p>
+                        <p><strong>Quantity:</strong> ${order.quantity}</p>
+                        <p><strong>Total Price:</strong> ${order.totalPrice}</p>
+                        <br />
+                        <p>Your order has been forwarded to the supplier.</p>
+                    `,
+                };
+                try {
+                    const userInfo = await this.transporter.sendMail(userMailOptions);
+                    console.log('Order confirmation email sent to USER:', userInfo.messageId);
+                } catch (e) {
+                    console.error('Failed to send user confirmation email:', e);
+                }
+            }
         } catch (error) {
             console.error('Failed to send email:', error);
             // Don't throw, so we don't block the order completion
+        }
+    },
+
+    async sendPaymentReceivedEmail(details: {
+        eventName: string;
+        participantName: string;
+        email: string;
+        cc?: string; // Optional CC
+        phone: string;
+        amountPaid: number;
+        remainingBalance: number;
+        paymentDateLimit: string;
+    }) {
+        try {
+            if (!details.email || !process.env.SMTP_USER) {
+                console.warn('Email config missing or no recipient. Skipping payment email.');
+                return;
+            }
+
+            const formattedAmountPaid = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(details.amountPaid);
+            const formattedRemaining = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(details.remainingBalance);
+
+            // Use the configured FROM address or fallback
+            const fromAddress = process.env.SMTP_FROM || `"Admin Keuangan KKM" <${process.env.SMTP_USER}>`;
+
+            const mailOptions = {
+                from: fromAddress,
+                to: details.email,
+                cc: details.cc, // Add CC here
+                subject: `[KKM] Payment Received - ${details.eventName}`,
+                html: `
+                    <div style="font-family: sans-serif; line-height: 1.6; color: #333;">
+                        <p style="font-size: 1.1em;">ٱلسَّلَامُ عَلَيْكُمْ وَرَحْمَةُ ٱللَّٰهِ وَبَرَكَاتُهُ</p>
+                        
+                        <p><strong>Kemah Keluarga Muslim</strong></p>
+                        
+                        <p>Telah diterima dari:</p>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="width: 150px;"><strong>Nama</strong></td>
+                                <td>: ${details.participantName}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Email</strong></td>
+                                <td>: ${details.email}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Nomor HP/WA</strong></td>
+                                <td>: ${details.phone}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Sejumlah uang</strong></td>
+                                <td>: ${formattedAmountPaid}</td>
+                            </tr>
+                        </table>
+                        
+                        <p>
+                            Untuk pembayaran angsuran 1 acara <strong>${details.eventName}</strong> di Tiara Camp & Outdoor, tanggal 16-18 Januari 2026.<br>
+                            Sisa pembayaran sejumlah <strong>${formattedRemaining}</strong> akan dibayarkan selambat-lambatnya tanggal ${details.paymentDateLimit}.
+                        </p>
+                        
+                        <p><em>Transaksi ini bersifat non-refundable.</em></p>
+                        
+                        <p dir="rtl" style="font-size: 1.2em;">جَزَاكَ اللهُ خَيْرًا</p>
+                        
+                        <p>- Panitia ${details.eventName}</p>
+                    </div>
+                `,
+            };
+
+            const info = await this.transporter.sendMail(mailOptions);
+            console.log('Payment notification email sent:', info.messageId);
+            return info.messageId;
+        } catch (error) {
+            console.error('Failed to send payment email:', error);
+            throw error;
         }
     }
 };
