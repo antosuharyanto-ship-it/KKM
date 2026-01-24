@@ -919,9 +919,12 @@ app.post('/api/shipping/cost', async (req, res) => {
         // RajaOngkir was Grams. Komship 'calculate' endpoint often Grams.
         // Let's pass as is (number).
 
+        console.log(`[API] Calculating Cost. Origin: ${origin}, Dest: ${destination}, W: ${weight}, Courier: ${courier}`);
         const costs = await komerceService.calculateCost(origin, destination, Number(weight), courier || 'jne');
+        console.log(`[API] Cost Result:`, JSON.stringify(costs));
         res.json(costs);
     } catch (error: any) {
+        console.error('[API] Cost Error:', error);
         res.status(500).json({ error: error.message });
     }
 });

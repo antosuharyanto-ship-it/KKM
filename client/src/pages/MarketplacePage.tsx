@@ -158,10 +158,12 @@ export const MarketplacePage: React.FC = () => {
             courier: selectedCourier
         }, { withCredentials: true })
             .then(res => {
+                console.log('[Marketplace] Shipping Response:', res.data);
                 const results = res.data[0]?.costs || [];
+                console.log('[Marketplace] Parsed Costs:', results);
                 setShippingCosts(results);
             })
-            .catch(err => console.error(err))
+            .catch(err => console.error('[Marketplace] Shipping Error:', err))
             .finally(() => setCalculatingShipping(false));
     };
 
