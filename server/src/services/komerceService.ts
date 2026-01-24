@@ -61,85 +61,99 @@ export const komerceService = {
     async calculateCost(origin: number | string, destination: number | string, weight: number, courier: string = 'jne') {
         try {
 
-            let originId = origin;
-            let destId = destination;
+    async calculateCost(origin: number | string, destination: number | string, weight: number, courier: string = 'jne') {
+                try {
 
-            // Resolve Origin if it's not a number (or string number)
-            if (isNaN(Number(origin))) {
-                console.log(`[Komerce] Resolving Origin Name: ${origin}`);
-                const searchRes = await this.searchDestination(String(origin));
-                if (searchRes.length > 0) {
-                    originId = searchRes[0].id;
-                    console.log(`[Komerce] Resolved Origin "${origin}" -> ${originId}`);
-                } else {
-                    console.warn(`[Komerce] Failed to resolve origin: ${origin}`);
+                    let originId = origin;
+                    let destId = destination;
+
+                    const mapLoc = (name: string) => {
+                        let n = name.toLowerCase();
+                        n = n.replace(/\bsouth\b/g, 'selatan');
+                        n = n.replace(/\bwest\b/g, 'barat');
+                        n = n.replace(/\beast\b/g, 'timur');
+                        n = n.replace(/\bnorth\b/g, 'utara');
+                        n = n.replace(/\bcentral\b/g, 'pusat');
+                        return n;
+                    };
+
+                    // Resolve Origin if it's not a number (or string number)
+                    if (isNaN(Number(origin))) {
+                        const searchStr = mapLoc(String(origin));
+                        console.log(`[Komerce] Resolving Origin Name: ${origin} (mapped: ${searchStr})`);
+                        const searchRes = await this.searchDestination(searchStr);
+                        if (searchRes.length > 0) {
+                            originId = searchRes[0].id;
+                            console.log(`[Komerce] Resolved Origin "${origin}" -> ${originId}`);
+                        } else {
+                            console.warn(`[Komerce] Failed to resolve origin: ${origin}`);
+                            return [];
+                        }
+                    }
+
+                    // Resolve Destination if it's not a number
+                    if (isNaN(Number(destination))) {
+                        console.log(`[Komerce] Resolving Destination Name: ${destination}`);
+                        const searchRes = await this.searchDestination(String(destination));
+                        if (searchRes.length > 0) {
+                            destId = searchRes[0].id;
+                            console.log(`[Komerce] Resolved Destination "${destination}" -> ${destId}`);
+                        } else {
+                            console.warn(`[Komerce] Failed to resolve destination: ${destination}`);
+                            return [];
+                        }
+                    }
+
+                    // Construct payload using URLSearchParams for x-www-form-urlencoded
+                    const params = new URLSearchParams();
+                    params.append('origin', String(originId));
+                    params.append('destination', String(destId));
+                    params.append('weight', String(weight));
+                    params.append('courier', courier);
+                    params.append('originType', 'subdistrict');
+                    params.append('destinationType', 'subdistrict');
+
+                    console.log(`[Komerce] Calculating Cost: ${originId} -> ${destId} (${weight}g) ${courier}`);
+
+                    const response = await costClient.post('/calculate/domestic-cost', params.toString(), {
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                    });
+
+                    // API Returns: { meta: {}, data: [ { name, code, service, description, cost, etd } ] }
+                    const results = response.data.data || [];
+
+                    // Normalize to RajaOngkir structure expected by Frontend/Client
+                    // Client expects: [ { costs: [ { service, description, cost: [{ value, etd }] } ] } ]
+                    // The frontend does: res.data[0]?.costs
+
+                    if (Array.isArray(results)) {
+                        const mappedCosts = results.map((r: any) => ({
+                            service: r.service,
+                            description: r.description,
+                            cost: [{
+                                value: r.cost,
+                                etd: r.etd
+                            }]
+                        }));
+
+                        // WRAPPER: Return an array where the first item has 'costs' property
+                        return [{
+                            code: courier,
+                            name: courier.toUpperCase(),
+                            costs: mappedCosts
+                        }];
+                    }
+
+                    return [];
+
+                } catch (error: any) {
+                    console.error('[Komerce] Calculate Cost Error:', error.response?.data || error.message);
+                    // Return empty array instead of throwing to prevent crash, let frontend handle "No services"
                     return [];
                 }
-            }
-
-            // Resolve Destination if it's not a number
-            if (isNaN(Number(destination))) {
-                console.log(`[Komerce] Resolving Destination Name: ${destination}`);
-                const searchRes = await this.searchDestination(String(destination));
-                if (searchRes.length > 0) {
-                    destId = searchRes[0].id;
-                    console.log(`[Komerce] Resolved Destination "${destination}" -> ${destId}`);
-                } else {
-                    console.warn(`[Komerce] Failed to resolve destination: ${destination}`);
-                    return [];
-                }
-            }
-
-            // Construct payload using URLSearchParams for x-www-form-urlencoded
-            const params = new URLSearchParams();
-            params.append('origin', String(originId));
-            params.append('destination', String(destId));
-            params.append('weight', String(weight));
-            params.append('courier', courier);
-            params.append('originType', 'subdistrict');
-            params.append('destinationType', 'subdistrict');
-
-            console.log(`[Komerce] Calculating Cost: ${originId} -> ${destId} (${weight}g) ${courier}`);
-
-            const response = await costClient.post('/calculate/domestic-cost', params.toString(), {
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-            });
-
-            // API Returns: { meta: {}, data: [ { name, code, service, description, cost, etd } ] }
-            const results = response.data.data || [];
-
-            // Normalize to RajaOngkir structure expected by Frontend/Client
-            // Client expects: [ { costs: [ { service, description, cost: [{ value, etd }] } ] } ]
-            // The frontend does: res.data[0]?.costs
-
-            if (Array.isArray(results)) {
-                const mappedCosts = results.map((r: any) => ({
-                    service: r.service,
-                    description: r.description,
-                    cost: [{
-                        value: r.cost,
-                        etd: r.etd
-                    }]
-                }));
-
-                // WRAPPER: Return an array where the first item has 'costs' property
-                return [{
-                    code: courier,
-                    name: courier.toUpperCase(),
-                    costs: mappedCosts
-                }];
-            }
-
-            return [];
-
-        } catch (error: any) {
-            console.error('[Komerce] Calculate Cost Error:', error.response?.data || error.message);
-            // Return empty array instead of throwing to prevent crash, let frontend handle "No services"
-            return [];
-        }
-    },
+            },
 
     // Compatibility Adapter (Unused/Deprecated in favor of Search)
     async getProvinces() { return []; },
     async getCities(provinceId: string) { return []; }
-};
+        };
