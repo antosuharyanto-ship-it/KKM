@@ -699,26 +699,52 @@ app.post('/api/marketplace/upload-proof', checkAuth, upload.single('proof'), asy
 
         console.log(`[UploadProof] Received for Order ${orderId}, File: ${file.originalname}`);
 
-        // 1. Upload to Drive
-        // 1. Upload to Drive (Readable imported at top)
+        // 1. Insert into Database
+        const insertQuery = `
+            INSERT INTO payment_proofs (order_id, file_data, mime_type)
+            VALUES ($1, $2, $3)
+            RETURNING id;
+        `;
+        const result = await pool.query(insertQuery, [orderId, file.buffer, file.mimetype]);
+        const proofId = result.rows[0].id;
 
-        const uploadedFile = await googleSheetService.uploadFile(
-            `Proof_${orderId}_${Date.now()}.jpg`,
-            file.mimetype,
-            Readable.from(file.buffer)
-        );
+        // 2. Construct Local URL
+        // req.get('host') gets 'host:port'
+        const protocol = req.protocol; // http or https
+        const host = req.get('host');
+        const proofUrl = `${protocol}://${host}/api/marketplace/proof/${proofId}`;
 
-        // 2. Update Sheet
-        const driveLink = uploadedFile.webViewLink || '';
+        // 3. Update Sheet
         await googleSheetService.updateMarketplaceOrder(orderId, {
             status: 'Verifying Payment',
-            proofUrl: driveLink
+            proofUrl: proofUrl
         });
 
         res.json({ success: true, message: 'Proof uploaded. Waiting for verification.' });
     } catch (error: any) {
         console.error('Upload proof failed:', error);
         res.status(500).json({ message: `Failed to upload proof: ${error.message}` });
+    }
+});
+
+// Serve Proof Image
+app.get('/api/marketplace/proof/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const query = 'SELECT file_data, mime_type FROM payment_proofs WHERE id = $1';
+        const result = await pool.query(query, [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).send('Proof not found');
+        }
+
+        const { file_data, mime_type } = result.rows[0];
+
+        res.setHeader('Content-Type', mime_type);
+        res.send(file_data);
+    } catch (error) {
+        console.error('Error serving proof:', error);
+        res.status(500).send('Server Error');
     }
 });
 
