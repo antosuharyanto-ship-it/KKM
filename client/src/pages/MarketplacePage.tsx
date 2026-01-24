@@ -115,9 +115,29 @@ export const MarketplacePage: React.FC = () => {
             <div className="bg-teal-800 text-white pt-10 pb-16 px-6 md:px-10 rounded-b-[2.5rem] shadow-lg relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-teal-700/30 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2"></div>
 
-                <div className="max-w-4xl mx-auto relative z-10">
+                <div className="max-w-4xl mx-auto relative z-10 text-center md:text-left">
                     <h1 className="text-3xl font-bold mb-2">{t('marketplace.title')}</h1>
                     <p className="text-teal-100 text-sm mb-6">{t('marketplace.subtitle')}</p>
+
+                    {/* Islamic Preamble / Muqaddimah */}
+                    <div className="bg-teal-900/40 backdrop-blur-sm p-6 rounded-2xl border border-teal-700/50 mb-8 text-center">
+                        <p className="text-lg font-arabic mb-4 leading-relaxed text-orange-100" dir="rtl">
+                            Bismillāhirraḥmānirraḥīm.<br />
+                            إِنَّ الْحَمْدَ ِللهِ، نَحْمَدُهُ وَنَسْتَعِيْنُهُ وَنَسْتَغْفِرُهُ، وَنَعُوْذُ بِاللهِ مِنْ شُرُوْرِ أَنْفُسِنَا وَمِنْ سَيِّئَاتِ أَعْمَالِنَا، مَنْ يَهْدِهِ اللهُ فَلاَ مُضِلَّ لَهُ، وَمَنْ يُضْلِلْ فَلاَ هَـادِيَ لَهُ، وَأَشْـهَدُ أَنْ لاَ إِلَهَ إِلاَّ اللهُ وَحْدَهُ لاَ شَرِيْكَ لَهُ، وَأَشْهَدُ أَنَّ مُحَمَّدًا عَبْدُهُ وَرَسُوْلُهُ.
+                        </p>
+                        <div className="text-xs text-teal-200 space-y-3 font-light italic">
+                            <p>
+                                "Segala puji hanya bagi Allah, kami memuji-Nya, memohon pertolongan dan ampunan kepada-Nya, kami berlindung kepada Allah dari kejahatan diri-diri kami dan kejelekan amal perbuatan kami. Barangsiapa yang Allah beri petunjuk, maka tidak ada yang dapat menyesatkannya, dan barangsiapa yang Allah sesatkan, maka tidak ada yang dapat memberinya petunjuk.
+                            </p>
+                            <p>
+                                Aku bersaksi bahwasanya tidak ada ilah yang berhak diibadahi dengan benar kecuali Allah saja, tidak ada sekutu bagi-Nya, dan aku bersaksi bahwasanya Nabi Muhammad Shallallahu ‘alaihi wa sallam adalah hamba dan Rasul-Nya."
+                            </p>
+                            <div className="w-16 h-0.5 bg-orange-400/50 mx-auto my-3"></div>
+                            <p className="text-white font-medium not-italic">
+                                "Pada kesempatan ini, akad jual beli dilaksanakan berdasarkan prinsip syariah Islam, dengan kerelaan kedua belah pihak, secara jujur, adil, dan tanpa unsur riba, gharar, maupun maisir. Semoga akad ini sah, halal, dan membawa keberkahan bagi semua pihak. Aamiin"
+                            </p>
+                        </div>
+                    </div>
 
                     {/* Search Bar */}
                     <div className="relative">
