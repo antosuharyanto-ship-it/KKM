@@ -172,10 +172,17 @@ export const MarketplacePage: React.FC = () => {
         }, { withCredentials: true })
             .then(res => {
                 console.log('[Marketplace] Shipping Response:', res.data);
-                const results = res.data[0]?.costs || [];
-                console.log('[Marketplace] Parsed Costs:', results);
-                setShippingCosts(results);
-                if (results.length === 0) setShippingError(`Empty Results. Response: ${JSON.stringify(res.data)}`);
+                // Even if costs are empty, we might have debug_metadata in the first element now
+                const responseArray = Array.isArray(res.data) ? res.data : [];
+                setShippingCosts(responseArray);
+
+                const hasCosts = responseArray.length > 0 && responseArray[0].costs && responseArray[0].costs.length > 0;
+
+                if (!hasCosts) {
+                    setShippingError(`No costs found. Server Info: ${JSON.stringify(responseArray[0]?.debug_metadata || {})}`);
+                } else {
+                    setShippingError(null);
+                }
             })
             .catch(err => {
                 console.error('[Marketplace] Shipping Error:', err);
@@ -419,8 +426,16 @@ export const MarketplacePage: React.FC = () => {
                             <div className="mt-2 pt-2 border-t border-yellow-200">
                                 <p className="font-bold">Raw Response:</p>
                                 <pre className="whitespace-pre-wrap break-all text-[9px] text-gray-600">
-                                    {JSON.stringify(shippingCosts.length > 0 ? shippingCosts : "Empty/Error", null, 2)}
+                                    {JSON.stringify(shippingCosts.length > 0 ? shippingCosts : "Wait...", null, 2)}
                                 </pre>
+                                {/* Show Server Echo if available */}
+                                {shippingCosts.length > 0 && (shippingCosts[0] as any).debug_metadata && (
+                                    <div className="mt-1 text-[9px] text-blue-700 bg-blue-50 p-1 rounded">
+                                        Server Echo:
+                                        <br />OriginID: {(shippingCosts[0] as any).debug_metadata.resolvedOriginId}
+                                        <br />DestID: {(shippingCosts[0] as any).debug_metadata.resolvedDestId}
+                                    </div>
+                                )}
                             </div>
                             {shippingError && (
                                 <div className="mt-2 p-1 bg-red-100 text-red-600 font-bold border border-red-300">

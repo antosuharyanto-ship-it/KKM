@@ -141,11 +141,32 @@ export const komerceService = {
                 return [{
                     code: courier,
                     name: courier.toUpperCase(),
-                    costs: mappedCosts
+                    costs: mappedCosts,
+                    debug_metadata: {
+                        inputOrigin: origin,
+                        resolvedOriginId: originId,
+                        inputDest: destination,
+                        resolvedDestId: destId,
+                        weight: weight,
+                        courier: courier
+                    }
                 }];
             }
 
-            return [];
+            return [{
+                code: courier,
+                name: courier.toUpperCase(),
+                costs: [],
+                debug_metadata: {
+                    inputOrigin: origin,
+                    resolvedOriginId: originId,
+                    inputDest: destination,
+                    resolvedDestId: destId,
+                    weight: weight,
+                    courier: courier,
+                    error: "No Results/Data Empty"
+                }
+            }];
 
         } catch (error: any) {
             console.error('[Komerce] Calculate Cost Error:', error.response?.data || error.message);
