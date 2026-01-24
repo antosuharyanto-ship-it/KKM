@@ -31,4 +31,6 @@ async function testRajaOngkir() {
             console.log(`❌ Failed: ${err.message} (${err.response?.status})`);
         }
     }
+}
 
+testRajaOngkir();
