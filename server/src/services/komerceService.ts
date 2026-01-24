@@ -76,8 +76,9 @@ export const komerceService = {
 
             // Resolve Origin if it's not a number (or string number)
             if (isNaN(Number(origin))) {
-                const searchStr = mapLoc(String(origin));
-                console.log(`[Komerce] Resolving Origin Name: ${origin} (mapped: ${searchStr})`);
+                const cleanOrigin = String(origin).trim();
+                const searchStr = mapLoc(cleanOrigin);
+                console.log(`[Komerce] Resolving Origin Name: "${cleanOrigin}" -> "${searchStr}"`);
                 const searchRes = await this.searchDestination(searchStr);
                 if (searchRes.length > 0) {
                     originId = searchRes[0].id;
@@ -90,18 +91,21 @@ export const komerceService = {
 
             // Resolve Destination if it's not a number
             if (isNaN(Number(destination))) {
-                console.log(`[Komerce] Resolving Destination Name: ${destination}`);
-                const searchRes = await this.searchDestination(String(destination));
+                const cleanDest = String(destination).trim();
+                const searchStr = mapLoc(cleanDest);
+                console.log(`[Komerce] Resolving Destination Name: "${cleanDest}" -> "${searchStr}"`);
+                const searchRes = await this.searchDestination(searchStr);
                 if (searchRes.length > 0) {
                     destId = searchRes[0].id;
                     console.log(`[Komerce] Resolved Destination "${destination}" -> ${destId}`);
                 } else {
                     console.warn(`[Komerce] Failed to resolve destination: ${destination}`);
+                    // return []; // Don't fail yet, try passing raw destination? No, ID is required.
                     return [];
                 }
             }
 
-            // Construct payload using URLSearchParams for x-www-form-urlencoded
+            // Construct payload
             const params = new URLSearchParams();
             params.append('origin', String(originId));
             params.append('destination', String(destId));

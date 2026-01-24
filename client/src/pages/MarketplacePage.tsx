@@ -410,6 +410,13 @@ export const MarketplacePage: React.FC = () => {
                             <p>Weight: {selectedItem.weight_gram || 1000}</p>
                             <p>Courier: {selectedCourier}</p>
                             <p>Costs: {shippingCosts.length} items</p>
+
+                            <div className="mt-2 pt-2 border-t border-yellow-200">
+                                <p className="font-bold">Raw Response:</p>
+                                <pre className="whitespace-pre-wrap break-all text-[9px] text-gray-600">
+                                    {JSON.stringify(shippingCosts.length > 0 ? shippingCosts : "Empty/Error", null, 2)}
+                                </pre>
+                            </div>
                         </div>
 
                         {/* Description */}
