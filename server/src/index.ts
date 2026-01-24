@@ -240,7 +240,7 @@ app.post('/api/marketplace/order', async (req, res) => {
         const items = await googleSheetService.getMarketplaceItems();
         console.log(`[OrderDebug] Fetched ${items.length} items. Finding product: ${orderData.itemName}`);
 
-        const item = items.find((i: any) => i.product_name === orderData.itemName);
+        const item = items.find((i: any) => i.product_name?.toLowerCase().trim() === orderData.itemName?.toLowerCase().trim());
         const supplierEmail = item?.supplier_email || process.env.SUPPLIER_EMAIL;
         console.log(`[OrderDebug] Supplier email: ${supplierEmail}`);
 
