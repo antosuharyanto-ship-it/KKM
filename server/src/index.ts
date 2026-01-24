@@ -24,6 +24,7 @@ console.log('DEBUG: Env Var Loaded Check');
 console.log('GOOGLE_DRIVE_TICKET_FOLDER_ID:', process.env.GOOGLE_DRIVE_TICKET_FOLDER_ID);
 console.log('CLIENT_URL:', process.env.CLIENT_URL);
 console.log('GOOGLE_CALLBACK_URL:', process.env.GOOGLE_CALLBACK_URL);
+console.log('DEPLOY_TIMESTAMP:', new Date().toISOString()); // Force Redeploy v1.7.1
 console.log('---------------------------------------------------');
 
 const app = express();
