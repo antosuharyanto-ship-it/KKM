@@ -234,11 +234,11 @@ export class GoogleSheetService {
             let allItems: any[] = [];
             let pageToken: string | undefined = undefined;
 
-            // Fetch both images AND folders
+            // Fetch images, folders, AND shortcuts
             do {
                 const res: any = await this.drive.files.list({
-                    q: `'${folderId}' in parents and (mimeType contains 'image/' or mimeType = 'application/vnd.google-apps.folder') and trashed = false`,
-                    fields: 'nextPageToken, files(id, name, mimeType, webViewLink, webContentLink, thumbnailLink)',
+                    q: `'${folderId}' in parents and (mimeType contains 'image/' or mimeType = 'application/vnd.google-apps.folder' or mimeType = 'application/vnd.google-apps.shortcut') and trashed = false`,
+                    fields: 'nextPageToken, files(id, name, mimeType, webViewLink, webContentLink, thumbnailLink, shortcutDetails)',
                     pageSize: 1000,
                     supportsAllDrives: true,
                     includeItemsFromAllDrives: true,
@@ -253,8 +253,49 @@ export class GoogleSheetService {
             // Separate items
             const images = allItems.filter(f => f.mimeType.includes('image/'));
             const folders = allItems.filter(f => f.mimeType === 'application/vnd.google-apps.folder');
+            const shortcuts = allItems.filter(f => f.mimeType === 'application/vnd.google-apps.shortcut');
 
-            console.log(`[Drive] Folder ${folderId}: Found ${images.length} images, ${folders.length} subfolders`);
+            console.log(`[Drive] Folder ${folderId}: Found ${images.length} images, ${folders.length} subfolders, ${shortcuts.length} shortcuts`);
+
+            // --- RESOLVE SHORTCUTS ---
+            if (shortcuts.length > 0) {
+                const targetIds = shortcuts
+                    .map(s => s.shortcutDetails?.targetId)
+                    .filter(id => id); // Filter out null/undefined
+
+                if (targetIds.length > 0) {
+                    console.log(`[Drive] Resolving ${targetIds.length} shortcuts...`);
+
+                    // Resolve targets individually (parallelized) since 'list' with ID query is unreliable/unsupported for batch
+                    const chunkSize = 20;
+                    for (let i = 0; i < targetIds.length; i += chunkSize) {
+                        const chunk = targetIds.slice(i, i + chunkSize);
+
+                        const promises = chunk.map(async (id: string) => {
+                            try {
+                                const fileRes = await this.drive.files.get({
+                                    fileId: id,
+                                    fields: 'id, name, mimeType, webViewLink, webContentLink, thumbnailLink, trashed',
+                                    supportsAllDrives: true
+                                });
+                                return fileRes.data;
+                            } catch (e: any) {
+                                // console.warn(`[Drive] Failed to resolve shortcut target ${id}:`, e.message);
+                                return null;
+                            }
+                        });
+
+                        const results = await Promise.all(promises);
+                        // Filter for images and non-trashed
+                        const validImages = results.filter((f: any) =>
+                            f && f.mimeType && f.mimeType.includes('image/') && !f.trashed
+                        );
+
+                        console.log(`[Drive] Resolved chunk ${i / chunkSize + 1}: ${validImages.length} images`);
+                        images.push(...validImages);
+                    }
+                }
+            }
 
             // Recursively fetch subfolders
             for (const folder of folders) {
