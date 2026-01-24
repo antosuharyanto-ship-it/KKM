@@ -12,6 +12,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { ticketService } from './services/ticketService';
 import { googleSheetService } from './services/googleSheets';
 import { emailService } from './services/emailService';
+import { rajaOngkirService } from './services/rajaOngkirService';
+import { pool as dbPool } from './db';
 import passport from './auth';
 
 dotenv.config();
@@ -865,6 +867,105 @@ app.get('/api/marketplace/orders', checkOfficer, async (req, res) => {
     }
 });
 
+
+// --- Shipping & Address API ---
+
+// Get Provinces
+app.get('/api/locations/provinces', async (req, res) => {
+    try {
+        const provinces = await rajaOngkirService.getProvinces();
+        res.json(provinces);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get Cities
+app.get('/api/locations/cities', async (req, res) => {
+    try {
+        const { provinceId } = req.query;
+        if (provinceId && typeof provinceId === 'string') {
+            const cities = await rajaOngkirService.getCities(provinceId);
+            res.json(cities);
+        } else {
+            const cities = await rajaOngkirService.getAllCities();
+            res.json(cities);
+        }
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Calculate Cost
+app.post('/api/shipping/cost', async (req, res) => {
+    try {
+        const { origin, destination, weight, courier } = req.body;
+        if (!origin || !destination || !weight || !courier) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+        const costs = await rajaOngkirService.getCost(origin, destination, Number(weight), courier);
+        res.json(costs);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// User Addresses
+app.get('/api/user/addresses', async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+        const userId = (req.user as any).id;
+        const result = await dbPool.query('SELECT * FROM user_addresses WHERE user_id = $1 ORDER BY is_default DESC, created_at DESC', [userId]);
+        res.json(result.rows);
+    } catch (error: any) {
+        console.error('Fetch Address Error:', error);
+        res.status(500).json({ error: 'Failed to fetch addresses' });
+    }
+});
+
+app.post('/api/user/addresses', async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    const client = await dbPool.connect();
+    try {
+        const userId = (req.user as any).id;
+        const { label, recipientName, phone, addressStreet, addressCityId, addressCityName, addressProvinceId, addressProvinceName, postalCode, isDefault } = req.body;
+
+        await client.query('BEGIN');
+
+        if (isDefault) {
+            await client.query('UPDATE user_addresses SET is_default = false WHERE user_id = $1', [userId]);
+        }
+
+        await client.query(`
+            INSERT INTO user_addresses (
+                user_id, label, recipient_name, phone, address_street,
+                address_city_id, address_city_name, address_province_id, address_province_name,
+                postal_code, is_default
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        `, [userId, label, recipientName, phone, addressStreet, addressCityId, addressCityName, addressProvinceId, addressProvinceName, postalCode, isDefault || false]);
+
+        await client.query('COMMIT');
+        res.json({ success: true });
+    } catch (error: any) {
+        await client.query('ROLLBACK');
+        console.error('Save Address Error:', error);
+        res.status(500).json({ error: 'Failed to save address' });
+    } finally {
+        client.release();
+    }
+});
+
+app.delete('/api/user/addresses/:id', async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+        const userId = (req.user as any).id;
+        const addressId = req.params.id;
+        await dbPool.query('DELETE FROM user_addresses WHERE id = $1 AND user_id = $2', [addressId, userId]);
+        res.json({ success: true });
+    } catch (error: any) {
+        res.status(500).json({ error: 'Failed to delete address' });
+    }
+});
 
 // Start Server
 app.listen(PORT, async () => {

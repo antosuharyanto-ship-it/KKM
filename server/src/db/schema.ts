@@ -1,5 +1,5 @@
 
-import { pgTable, uuid, varchar, timestamp, json } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, timestamp, json, boolean } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -31,5 +31,21 @@ export const paymentProofs = pgTable('payment_proofs', {
     orderId: varchar('order_id').notNull(),
     fileData: bytea('file_data').notNull(),
     mimeType: varchar('mime_type').notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const userAddresses = pgTable('user_addresses', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+    label: varchar('label'),
+    recipientName: varchar('recipient_name'),
+    phone: varchar('phone'),
+    addressStreet: varchar('address_street'),
+    addressCityId: varchar('address_city_id'),
+    addressCityName: varchar('address_city_name'),
+    addressProvinceId: varchar('address_province_id'),
+    addressProvinceName: varchar('address_province_name'),
+    postalCode: varchar('postal_code'),
+    isDefault: boolean('is_default').default(false),
     createdAt: timestamp('created_at').defaultNow(),
 });

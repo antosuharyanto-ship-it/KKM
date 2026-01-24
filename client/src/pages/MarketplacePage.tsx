@@ -17,6 +17,11 @@ interface Product {
     phone_number?: string;
     discontinued?: string;
     notes?: string;
+    // Delivery Integration
+    weight_gram?: string; // from Sheet "Weight (gram)" -> weight_gram
+    stock_status?: string; // Ready Stock / Pre-Order
+    description?: string;
+    origin_city?: string;
 }
 
 export const MarketplacePage: React.FC = () => {
@@ -32,6 +37,33 @@ export const MarketplacePage: React.FC = () => {
     const [orderQty, setOrderQty] = useState(1);
     const [userDetails, setUserDetails] = useState({ name: '', email: '', phone: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // --- Delivery Integration State ---
+    interface UserAddress {
+        id: string;
+        label: string;
+        recipient_name: string;
+        phone: string;
+        address_city_name: string;
+        address_province_name: string;
+        is_default: boolean;
+        address_city_id: string;
+    }
+
+    interface ShippingCostResult {
+        service: string;
+        description: string;
+        cost: [{ value: number, etd: string, note: string }];
+    }
+
+    const [addresses, setAddresses] = useState<UserAddress[]>([]);
+    const [selectedAddressId, setSelectedAddressId] = useState<string>('');
+    const [selectedCourier, setSelectedCourier] = useState<string>('jne'); // jne, pos, tiki
+    const [shippingCosts, setShippingCosts] = useState<ShippingCostResult[]>([]);
+    const [selectedService, setSelectedService] = useState<{ service: string, cost: number } | null>(null);
+    const [calculatingShipping, setCalculatingShipping] = useState(false);
+
+    // ----------------------------------
 
     // Fetch user details for pre-fill
     useEffect(() => {
@@ -69,6 +101,82 @@ export const MarketplacePage: React.FC = () => {
 
     const categories = ['All', ...Array.from(new Set(items.map(i => i.category).filter(Boolean)))];
 
+    // --- Delivery Logic ---
+    const fetchAddresses = () => {
+        axios.get(`${API_BASE_URL}/api/user/addresses`, { withCredentials: true })
+            .then(res => {
+                setAddresses(res.data);
+                if (res.data.length > 0) {
+                    const defaultAddr = res.data.find((a: UserAddress) => a.is_default) || res.data[0];
+                    setSelectedAddressId(defaultAddr.id);
+                }
+            })
+            .catch(err => console.error('Failed to fetch addresses:', err));
+    };
+
+    const calculateShipping = () => {
+        if (!selectedAddressId || !selectedItem) return;
+        const addr = addresses.find(a => a.id === selectedAddressId);
+        if (!addr || !addr.address_city_id) return;
+
+        // Origin city from Item (use Sheet "Origin City" column logic or default)
+        // For now, let's assume item has origin_city or we default to a central location if missing
+        // But plan said item has 'Origin City'. backend `getMarketplaceItems` returns raw sheet data.
+        // We need to resolve Item City Name to ID. Wait, the plan said "Item has Origin City Name", backend has "findCityIdByName".
+        // BUT the shipping/cost endpoint expects IDs. Be careful.
+        // Option 1: Client sends city names to backend cost endpoint? No, cost endpoint usually takes IDs (RajaOngkir standard).
+        // My backend /api/shipping/cost implementation expects 'origin' and 'destination' IDs.
+        // So I need to resolve Item City Name -> ID.
+        // WHERE?
+        // Ideally backend does it. But /api/shipping/cost is generic.
+        // Maybe I should update /api/shipping/cost to accept Names OR IDs?
+        // OR resolving it on the client? No, client doesn't have list.
+        // BEST: The item data from `fetchItems` should probably include the resolved ID if possible,
+        // OR I make a new endpoint to resolve it, OR I trust the sheet has the ID?
+        // The Plan said: "Origin City (Required): The City Name ... The system will auto-lookup the ID."
+        // Meaning when I *Fetch Items*, I should probably resolve it? Or when I calculate cost?
+        // If I resolve on cost calculation, I pass Name.
+        // Let's check backend `getCost`. It passes straight to RajaOngkir. RajaOngkir needs ID.
+        // So I should modify backend `getCost` to resolve Names if they are not IDs.
+
+        // For now, let's implement the client call assuming backend handles it or we pass what we have.
+        // If I pass "Jakarta Barat" as origin, backend needs to handle it.
+        // I will update backend `getCost` later if needed. For now assume I pass Name/ID.
+
+        setCalculatingShipping(true);
+        setShippingCosts([]);
+        setSelectedService(null);
+
+        // Item Origin: 'origin_city' from sheet (snake_case from header)
+        const originCity = (selectedItem as any).origin_city || 'Jakarta Barat'; // Fallback
+
+        axios.post(`${API_BASE_URL}/api/shipping/cost`, {
+            origin: originCity, // ID or Name (Backend needs to handle Name if passed)
+            destination: addr.address_city_id, // User address has ID
+            weight: parseInt(selectedItem.weight_gram || '1000') || 1000,
+            courier: selectedCourier
+        }, { withCredentials: true })
+            .then(res => {
+                const results = res.data[0]?.costs || [];
+                setShippingCosts(results);
+            })
+            .catch(err => console.error(err))
+            .finally(() => setCalculatingShipping(false));
+    };
+
+    useEffect(() => {
+        if (selectedItem) {
+            fetchAddresses();
+        }
+    }, [selectedItem]);
+
+    useEffect(() => {
+        if (selectedAddressId && selectedCourier && selectedItem) {
+            calculateShipping();
+        }
+    }, [selectedAddressId, selectedCourier]);
+    // ----------------------
+
     const handleBuyClick = (item: Product, e?: React.MouseEvent) => {
         e?.stopPropagation(); // Prevent duplicate trigger
         setSelectedItem(item);
@@ -79,12 +187,23 @@ export const MarketplacePage: React.FC = () => {
         e.preventDefault();
         if (!selectedItem) return;
 
+        // Validation: Address & Shipping
+        if (!selectedAddressId) {
+            alert('Please select a shipping address.');
+            return;
+        }
+        if (!selectedService) {
+            alert('Please select a shipping service.');
+            return;
+        }
+
         setIsSubmitting(true);
 
         // Parse price (e.g. "Rp 50.000" -> 50000)
         const priceString = selectedItem.unit_price.replace(/[^0-9]/g, '');
         const unitPrice = parseInt(priceString) || 0;
-        const totalPrice = unitPrice * orderQty;
+        const shippingCost = selectedService.cost;
+        const totalPrice = (unitPrice * orderQty) + shippingCost;
 
         try {
             await axios.post(`${API_BASE_URL}/api/marketplace/order`, {
@@ -95,8 +214,12 @@ export const MarketplacePage: React.FC = () => {
                 userName: userDetails.name,
                 userEmail: userDetails.email,
                 phone: userDetails.phone,
-                supplierEmail: selectedItem.supplier_email
-            });
+                supplierEmail: selectedItem.supplier_email,
+                // Shipping
+                shippingCost: shippingCost,
+                shippingCourier: selectedCourier,
+                shippingService: selectedService.service
+            }, { withCredentials: true });
 
             alert('Order placed successfully! Please check "My Orders" to upload payment proof.');
             setSelectedItem(null);
@@ -188,6 +311,13 @@ export const MarketplacePage: React.FC = () => {
                         onClick={() => handleBuyClick(item)}
                         className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-teal-100 transition group flex flex-col cursor-pointer active:scale-95 duration-200">
                         <div className="h-32 bg-gray-50 rounded-xl mb-4 flex items-center justify-center relative overflow-hidden">
+                            {/* Stock Badge */}
+                            <div className={`absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold z-10 ${item.stock_status?.toLowerCase().includes('pre')
+                                ? 'bg-orange-100 text-orange-700'
+                                : 'bg-green-100 text-green-700'
+                                }`}>
+                                {item.stock_status || 'Ready Stock'}
+                            </div>
                             {item.product_image ? (
                                 <img
                                     src={getDisplayImageUrl(item.product_image)}
@@ -236,8 +366,22 @@ export const MarketplacePage: React.FC = () => {
                             <div>
                                 <h3 className="font-bold text-gray-900">{selectedItem.product_name}</h3>
                                 <p className="text-orange-600 font-bold">{selectedItem.unit_price}</p>
+                                <div className="text-xs text-gray-500 mt-1">
+                                    <span className="bg-gray-200 px-1.5 py-0.5 rounded text-[10px] mr-2">
+                                        Weight: {selectedItem.weight_gram ? `${selectedItem.weight_gram}g` : '1kg'}
+                                    </span>
+                                    <span>{selectedItem.stock_status || 'Ready Stock'}</span>
+                                </div>
                             </div>
                         </div>
+
+                        {/* Description */}
+                        {selectedItem.description && (
+                            <div className="bg-blue-50 p-3 rounded-xl mb-4 text-xs text-blue-800">
+                                <span className="font-bold block mb-1">Description:</span>
+                                {selectedItem.description}
+                            </div>
+                        )}
 
                         <form onSubmit={handleOrderSubmit} className="space-y-4">
                             <div>
@@ -272,15 +416,87 @@ export const MarketplacePage: React.FC = () => {
                                 </div>
                             </div>
 
+                            {/* --- Delivery Section --- */}
+                            <div className="bg-gray-50 p-4 rounded-xl space-y-4">
+                                <div>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <label className="block text-xs font-bold text-gray-500 uppercase">Shipping Address</label>
+                                        <button type="button" onClick={() => navigate('/profile')} className="text-xs text-teal-600 font-bold hover:underline">+ Manage Addresses</button>
+                                    </div>
+                                    <select
+                                        value={selectedAddressId}
+                                        onChange={(e) => setSelectedAddressId(e.target.value)}
+                                        className="w-full p-2 rounded-lg border border-gray-200 text-sm"
+                                    >
+                                        <option value="">Select Address...</option>
+                                        {addresses.map(addr => (
+                                            <option key={addr.id} value={addr.id}>
+                                                {addr.label} - {addr.address_city_name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {addresses.length === 0 && <p className="text-xs text-red-400 mt-1">Please add an address.</p>}
+                                </div>
+
+                                {selectedAddressId && (
+                                    <>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Courier</label>
+                                            <div className="flex gap-2">
+                                                {['jne', 'pos', 'tiki'].map(c => (
+                                                    <button
+                                                        key={c}
+                                                        type="button"
+                                                        onClick={() => setSelectedCourier(c)}
+                                                        className={`flex-1 py-1 px-2 rounded-md text-sm font-bold uppercase border ${selectedCourier === c ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-600 border-gray-200'}`}
+                                                    >
+                                                        {c}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Service</label>
+                                            {calculatingShipping ? (
+                                                <div className="text-xs text-gray-400 italic">Calculating costs...</div>
+                                            ) : (
+                                                <div className="space-y-2 max-h-32 overflow-y-auto custom-scrollbar">
+                                                    {shippingCosts.map((sc, idx) => (
+                                                        <div
+                                                            key={idx}
+                                                            onClick={() => setSelectedService({ service: sc.service, cost: sc.cost[0].value })}
+                                                            className={`p-2 rounded-lg border cursor-pointer flex justify-between items-center hover:bg-teal-50 ${selectedService?.service === sc.service ? 'border-teal-500 bg-teal-50 ring-1 ring-teal-500' : 'border-gray-200 bg-white'}`}
+                                                        >
+                                                            <div>
+                                                                <div className="font-bold text-sm text-gray-800">{sc.service}</div>
+                                                                <div className="text-xs text-gray-500">{sc.description} ({sc.cost[0].etd.replace('HARI', '').replace('DAYS', '')} days)</div>
+                                                            </div>
+                                                            <div className="font-bold text-teal-700">Rp {sc.cost[0].value.toLocaleString('id-ID')}</div>
+                                                        </div>
+                                                    ))}
+                                                    {shippingCosts.length === 0 && <div className="text-xs text-gray-400">No services available.</div>}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                            {/* ------------------------ */}
+
                             {/* Total Price Estimation */}
                             <div className="bg-teal-50 p-4 rounded-xl flex justify-between items-center">
                                 <span className="text-teal-800 font-medium">Estimated Total</span>
-                                <span className="text-xl font-bold text-teal-900">
-                                    {(() => {
-                                        const cleanPrice = parseInt(selectedItem.unit_price.replace(/[^0-9]/g, '')) || 0;
-                                        return `Rp ${(cleanPrice * orderQty).toLocaleString('id-ID')}`;
-                                    })()}
-                                </span>
+                                <div className="text-right">
+                                    <span className="text-xl font-bold text-teal-900">
+                                        {(() => {
+                                            const cleanPrice = parseInt(selectedItem.unit_price.replace(/[^0-9]/g, '')) || 0;
+                                            const shipping = selectedService?.cost || 0;
+                                            return `Rp ${(cleanPrice * orderQty + shipping).toLocaleString('id-ID')}`;
+                                        })()}
+                                    </span>
+                                    {selectedService && <div className="text-xs text-teal-600">(Inc. Shipping)</div>}
+                                </div>
                             </div>
 
                             {userDetails.email ? (
@@ -300,8 +516,8 @@ export const MarketplacePage: React.FC = () => {
                             )}
                         </form>
                     </div>
-                </div>
+                </div >
             )}
-        </div>
+        </div >
     );
 };

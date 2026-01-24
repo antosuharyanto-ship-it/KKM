@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { LogOut, User as UserIcon, Mail, Download } from 'lucide-react';
+import { LogOut, User as UserIcon, Mail, Download, Plus, Trash2 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 interface User {
@@ -18,11 +18,31 @@ export const ProfilePage: React.FC = () => {
 
     const [bookings, setBookings] = useState<any[]>([]);
 
+    const [addresses, setAddresses] = useState<any[]>([]);
+    const [showAddressModal, setShowAddressModal] = useState(false);
+    const [provinces, setProvinces] = useState<any[]>([]);
+    const [cities, setCities] = useState<any[]>([]);
+    const [formData, setFormData] = useState({
+        label: 'Home',
+        recipientName: '',
+        phone: '',
+        addressStreet: '',
+        addressProvinceId: '',
+        addressProvinceName: '',
+        addressCityId: '',
+        addressCityName: '',
+        postalCode: '',
+        isDefault: false
+    });
+
     useEffect(() => {
         // Fetch User Profile
         axios.get(`${API_BASE_URL}/auth/me`, { withCredentials: true })
             .then(res => {
                 setUser(res.data);
+                if (res.data) {
+                    fetchAddresses();
+                }
                 // Check Officer Status
                 axios.get(`${API_BASE_URL}/api/officer/check`, { withCredentials: true })
                     .then(() => setIsOfficer(true))
@@ -39,6 +59,56 @@ export const ProfilePage: React.FC = () => {
             })
             .finally(() => setLoading(false));
     }, []);
+
+    const fetchAddresses = () => {
+        axios.get(`${API_BASE_URL}/api/user/addresses`, { withCredentials: true })
+            .then(res => setAddresses(res.data))
+            .catch(console.error);
+    };
+
+    const fetchProvinces = () => {
+        axios.get(`${API_BASE_URL}/api/locations/provinces`)
+            .then(res => setProvinces(res.data))
+            .catch(console.error);
+    };
+
+    const fetchCities = (provId: string) => {
+        axios.get(`${API_BASE_URL}/api/locations/cities?provinceId=${provId}`)
+            .then(res => setCities(res.data))
+            .catch(console.error);
+    };
+
+    useEffect(() => {
+        if (showAddressModal) {
+            fetchProvinces();
+        }
+    }, [showAddressModal]);
+
+    const handleSaveAddress = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await axios.post(`${API_BASE_URL}/api/user/addresses`, formData, { withCredentials: true });
+            setShowAddressModal(false);
+            fetchAddresses();
+            setFormData({
+                label: 'Home', recipientName: '', phone: '', addressStreet: '',
+                addressProvinceId: '', addressProvinceName: '', addressCityId: '', addressCityName: '',
+                postalCode: '', isDefault: false
+            });
+        } catch (error) {
+            alert('Failed to save address');
+        }
+    };
+
+    const handleDeleteAddress = async (id: string) => {
+        if (!confirm('Delete this address?')) return;
+        try {
+            await axios.delete(`${API_BASE_URL}/api/user/addresses/${id}`, { withCredentials: true });
+            fetchAddresses();
+        } catch (error) {
+            alert('Failed to delete address');
+        }
+    };
 
     const handleLogin = () => {
         // Redirect to backend auth
@@ -189,6 +259,39 @@ export const ProfilePage: React.FC = () => {
                     )}
                 </div>
 
+                {/* My Addresses */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-earth-100 mb-4">
+                    <h3 className="font-bold text-gray-900 mb-4 flex justify-between items-center">
+                        My Addresses
+                        <button onClick={() => setShowAddressModal(true)} className="bg-teal-600 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 hover:bg-teal-700 transition">
+                            <Plus size={12} /> Add
+                        </button>
+                    </h3>
+                    <div className="space-y-3">
+                        {addresses.length === 0 ? (
+                            <p className="text-gray-400 text-xs text-center py-4">No addresses saved.</p>
+                        ) : (
+                            addresses.map((addr, idx) => (
+                                <div key={idx} className="bg-gray-50 p-3 rounded-xl border border-gray-100 flex justify-between items-center">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="font-bold text-sm text-gray-800">{addr.label}</span>
+                                            {addr.is_default && <span className="text-[10px] bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded">Default</span>}
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                            <p>{addr.recipient_name} ({addr.phone})</p>
+                                            <p>{addr.address_street}, {addr.address_city_name}, {addr.address_province_name} {addr.postal_code}</p>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => handleDeleteAddress(addr.id)} className="text-gray-400 hover:text-red-500 transition">
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+
                 {/* Menu Items */}
                 <div className="bg-white rounded-2xl shadow-sm border border-earth-100 overflow-hidden">
                     <button onClick={handleLogout} className="w-full text-left px-6 py-4 text-red-600 font-medium hover:bg-red-50 flex items-center gap-3 transition-colors">
@@ -197,6 +300,97 @@ export const ProfilePage: React.FC = () => {
                     </button>
                 </div>
             </div>
+
+            {/* Address Modal */}
+            {showAddressModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowAddressModal(false)}>
+                    <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl relative animate-in fade-in zoom-in duration-200 h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                        <h2 className="text-xl font-bold text-teal-900 mb-4">Add New Address</h2>
+                        <form onSubmit={handleSaveAddress} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Label (e.g. Home, Office)</label>
+                                <input required className="w-full p-2 rounded-lg border border-gray-200"
+                                    value={formData.label} onChange={e => setFormData({ ...formData, label: e.target.value })} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Recipient Name</label>
+                                    <input required className="w-full p-2 rounded-lg border border-gray-200"
+                                        value={formData.recipientName} onChange={e => setFormData({ ...formData, recipientName: e.target.value })} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Phone</label>
+                                    <input required className="w-full p-2 rounded-lg border border-gray-200"
+                                        value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Province</label>
+                                <select required className="w-full p-2 rounded-lg border border-gray-200"
+                                    value={formData.addressProvinceId}
+                                    onChange={e => {
+                                        const prov = provinces.find(p => p.province_id === e.target.value);
+                                        setFormData({
+                                            ...formData,
+                                            addressProvinceId: e.target.value,
+                                            addressProvinceName: prov?.province || '',
+                                            addressCityId: '', addressCityName: ''
+                                        });
+                                        fetchCities(e.target.value);
+                                    }}>
+                                    <option value="">Select Province...</option>
+                                    {provinces.map(p => (
+                                        <option key={p.province_id} value={p.province_id}>{p.province}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">City</label>
+                                <select required className="w-full p-2 rounded-lg border border-gray-200"
+                                    value={formData.addressCityId}
+                                    onChange={e => {
+                                        const city = cities.find(c => c.city_id === e.target.value);
+                                        setFormData({
+                                            ...formData,
+                                            addressCityId: e.target.value,
+                                            addressCityName: city ? `${city.type} ${city.city_name}` : ''
+                                        });
+                                    }}
+                                    disabled={!formData.addressProvinceId}>
+                                    <option value="">Select City...</option>
+                                    {cities.map(c => (
+                                        <option key={c.city_id} value={c.city_id}>{c.type} {c.city_name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Street Address</label>
+                                <textarea required className="w-full p-2 rounded-lg border border-gray-200 h-20"
+                                    value={formData.addressStreet} onChange={e => setFormData({ ...formData, addressStreet: e.target.value })} />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Postal Code</label>
+                                <input required className="w-full p-2 rounded-lg border border-gray-200"
+                                    value={formData.postalCode} onChange={e => setFormData({ ...formData, postalCode: e.target.value })} />
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <input type="checkbox" id="isDefault"
+                                    checked={formData.isDefault} onChange={e => setFormData({ ...formData, isDefault: e.target.checked })} />
+                                <label htmlFor="isDefault" className="text-sm text-gray-600">Set as primary address</label>
+                            </div>
+
+                            <button type="submit" className="w-full py-3 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 transition">
+                                Save Address
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

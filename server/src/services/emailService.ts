@@ -1,23 +1,32 @@
 import nodemailer from 'nodemailer';
 
 export const emailService = {
-    transporter: nodemailer.createTransport({
-        host: process.env.SMTP_HOST || 'smtp.gmail.com',
-        port: parseInt(process.env.SMTP_PORT || '587'),
-        secure: process.env.SMTP_SECURE === 'true' || process.env.SMTP_PORT === '465', // true for 465, false for other ports
-        auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS,
-        },
-    }),
+    _transporter: null as nodemailer.Transporter | null,
+
+    get transporter() {
+        if (!this._transporter) {
+            this._transporter = nodemailer.createTransport({
+                host: process.env.SMTP_HOST || 'smtp.gmail.com',
+                port: parseInt(process.env.SMTP_PORT || '587'),
+                secure: process.env.SMTP_SECURE === 'true' || process.env.SMTP_PORT === '465',
+                auth: {
+                    user: process.env.SMTP_USER,
+                    pass: process.env.SMTP_PASS,
+                },
+            });
+        }
+        return this._transporter;
+    },
 
     async sendOrderNotification(order: any) {
         try {
             // Use dynamic supplier email from order data, or fallback to env var
             const supplierEmail = order.supplierEmail || process.env.SUPPLIER_EMAIL;
 
+            console.log(`[EmailService] Preparing to send Order Notification. Supplier: '${supplierEmail}', User: '${order.userEmail}'`);
+
             if (!supplierEmail || !process.env.SMTP_USER) {
-                console.warn('Email config missing or no supplier email. Skipping email notification.');
+                console.warn(`[EmailService] SKIPPING. Config missing. Supplier: ${supplierEmail}, SMTP_USER: ${!!process.env.SMTP_USER}`);
                 return;
             }
 
@@ -41,6 +50,7 @@ export const emailService = {
                 `,
             };
 
+            console.log(`[EmailService] Sending 'New Order' email to: ${supplierEmail}`);
             const info = await this.transporter.sendMail(mailOptions);
             console.log('Order notification email sent to SUPPLIER:', info.messageId);
 
