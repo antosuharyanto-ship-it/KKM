@@ -58,19 +58,48 @@ export const komerceService = {
      * Endpoint: /calculate/domestic-cost
      * Content-Type: application/x-www-form-urlencoded
      */
-    async calculateCost(originId: number, destinationId: number, weight: number, courier: string = 'jne') {
+    async calculateCost(origin: number | string, destination: number | string, weight: number, courier: string = 'jne') {
         try {
+
+            let originId = origin;
+            let destId = destination;
+
+            // Resolve Origin if it's not a number (or string number)
+            if (isNaN(Number(origin))) {
+                console.log(`[Komerce] Resolving Origin Name: ${origin}`);
+                const searchRes = await this.searchDestination(String(origin));
+                if (searchRes.length > 0) {
+                    originId = searchRes[0].id;
+                    console.log(`[Komerce] Resolved Origin "${origin}" -> ${originId}`);
+                } else {
+                    console.warn(`[Komerce] Failed to resolve origin: ${origin}`);
+                    return [];
+                }
+            }
+
+            // Resolve Destination if it's not a number
+            if (isNaN(Number(destination))) {
+                console.log(`[Komerce] Resolving Destination Name: ${destination}`);
+                const searchRes = await this.searchDestination(String(destination));
+                if (searchRes.length > 0) {
+                    destId = searchRes[0].id;
+                    console.log(`[Komerce] Resolved Destination "${destination}" -> ${destId}`);
+                } else {
+                    console.warn(`[Komerce] Failed to resolve destination: ${destination}`);
+                    return [];
+                }
+            }
 
             // Construct payload using URLSearchParams for x-www-form-urlencoded
             const params = new URLSearchParams();
             params.append('origin', String(originId));
-            params.append('destination', String(destinationId));
+            params.append('destination', String(destId));
             params.append('weight', String(weight));
             params.append('courier', courier);
             params.append('originType', 'subdistrict');
             params.append('destinationType', 'subdistrict');
 
-            console.log(`[Komerce] Calculating Cost: ${originId} -> ${destinationId} (${weight}g) ${courier}`);
+            console.log(`[Komerce] Calculating Cost: ${originId} -> ${destId} (${weight}g) ${courier}`);
 
             const response = await costClient.post('/calculate/domestic-cost', params.toString(), {
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
@@ -80,10 +109,11 @@ export const komerceService = {
             const results = response.data.data || [];
 
             // Normalize to RajaOngkir structure expected by Frontend/Client
-            // Client expects: { service, description, cost: [{ value, etd }] }
+            // Client expects: [ { costs: [ { service, description, cost: [{ value, etd }] } ] } ]
+            // The frontend does: res.data[0]?.costs
 
             if (Array.isArray(results)) {
-                return results.map((r: any) => ({
+                const mappedCosts = results.map((r: any) => ({
                     service: r.service,
                     description: r.description,
                     cost: [{
@@ -91,6 +121,13 @@ export const komerceService = {
                         etd: r.etd
                     }]
                 }));
+
+                // WRAPPER: Return an array where the first item has 'costs' property
+                return [{
+                    code: courier,
+                    name: courier.toUpperCase(),
+                    costs: mappedCosts
+                }];
             }
 
             return [];
