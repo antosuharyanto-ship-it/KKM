@@ -920,8 +920,23 @@ app.post('/api/shipping/cost', async (req, res) => {
         // RajaOngkir was Grams. Komship 'calculate' endpoint often Grams.
         // Let's pass as is (number).
 
-        console.log(`[API] Calculating Cost. Origin: ${origin}, Dest: ${destination}, W: ${weight}, Courier: ${courier}`);
-        const costs = await komerceService.calculateCost(origin, destination, Number(weight), courier || 'jne');
+        console.log(`[API v1.7.2] Calculating Cost. Origin: ${origin}, Dest: ${destination}, W: ${weight}, Courier: ${courier}`);
+        let costs = await komerceService.calculateCost(origin, destination, Number(weight), courier || 'jne');
+
+        // FAILSAFE: If service returns empty array (should be impossible in v1.7+), force an error object
+        if (!costs || costs.length === 0) {
+            console.error('[API] CRITICAL: Service returned empty array despite v1.7 patch.');
+            costs = [{
+                code: courier || 'unknown',
+                name: (courier || 'unknown').toUpperCase(),
+                costs: [],
+                debug_metadata: {
+                    error: "CRITICAL: Service returned [] (Code Stale?)",
+                    server_timestamp: new Date().toISOString()
+                }
+            }] as any;
+        }
+
         console.log(`[API] Cost Result:`, JSON.stringify(costs));
         res.json(costs);
     } catch (error: any) {
