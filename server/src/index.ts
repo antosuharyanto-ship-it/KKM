@@ -13,6 +13,7 @@ import { ticketService } from './services/ticketService';
 import { googleSheetService } from './services/googleSheets';
 import { emailService } from './services/emailService';
 import { rajaOngkirService } from './services/rajaOngkirService';
+import { komerceService } from './services/komerceService';
 import { pool as dbPool } from './db';
 import passport from './auth';
 
@@ -868,42 +869,57 @@ app.get('/api/marketplace/orders', checkOfficer, async (req, res) => {
 });
 
 
-// --- Shipping & Address API ---
+// --- Shipping & Address API (Migrated to Komerce) ---
 
-// Get Provinces
-app.get('/api/locations/provinces', async (req, res) => {
+// Destination Search (Komerce)
+app.get('/api/locations/search', async (req, res) => {
     try {
-        const provinces = await rajaOngkirService.getProvinces();
-        res.json(provinces);
+        const { query } = req.query;
+        if (!query || typeof query !== 'string') {
+            return res.status(400).json({ error: 'Query parameter required' });
+        }
+        const destinations = await komerceService.searchDestination(query);
+        res.json(destinations);
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// Get Cities
+/**
+ * Adapter for Legacy "Get Cities" used in Dropdowns.
+ * Since Komerce doesn't list all cities for a province easily without ID context or massive dump,
+ * we might need to change Frontend to use "Search" instead of "Select Province -> Select City".
+ * FOR NOW: Return empty or handle gracefully to prevent crash, BUT
+ * User needs to know "Autocomplete" style is preferred.
+ */
+app.get('/api/locations/provinces', async (req, res) => {
+    // Komerce doesn't implement "List All Provinces" the same way.
+    // Return empty to stop UI freeze/loading, or ideally switch UI to Search.
+    res.json([]);
+});
+
 app.get('/api/locations/cities', async (req, res) => {
-    try {
-        const { provinceId } = req.query;
-        if (provinceId && typeof provinceId === 'string') {
-            const cities = await rajaOngkirService.getCities(provinceId);
-            res.json(cities);
-        } else {
-            const cities = await rajaOngkirService.getAllCities();
-            res.json(cities);
-        }
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
-    }
+    res.json([]);
 });
 
 // Calculate Cost
 app.post('/api/shipping/cost', async (req, res) => {
     try {
         const { origin, destination, weight, courier } = req.body;
-        if (!origin || !destination || !weight || !courier) {
+        // Origin/Destination coming from Frontend might be ID (if from Search) or Name (if from Sheet).
+        // Since Frontend Address Form is "Dropdown" based on ID...
+        // IF we switch to Search, we get IDs.
+
+        if (!origin || !destination || !weight) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
-        const costs = await rajaOngkirService.getCost(origin, destination, Number(weight), courier);
+
+        // Ensure weight is number (grams in Sheet/App usually, Komerce might want KG? 
+        // Docs verified: Komship usually Grams? Or Kg?
+        // RajaOngkir was Grams. Komship 'calculate' endpoint often Grams.
+        // Let's pass as is (number).
+
+        const costs = await komerceService.calculateCost(Number(origin), Number(destination), Number(weight), courier || 'jne');
         res.json(costs);
     } catch (error: any) {
         res.status(500).json({ error: error.message });

@@ -326,44 +326,55 @@ export const ProfilePage: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Province</label>
-                                <select required className="w-full p-2 rounded-lg border border-gray-200"
-                                    value={formData.addressProvinceId}
-                                    onChange={e => {
-                                        const prov = provinces.find(p => p.province_id === e.target.value);
-                                        setFormData({
-                                            ...formData,
-                                            addressProvinceId: e.target.value,
-                                            addressProvinceName: prov?.province || '',
-                                            addressCityId: '', addressCityName: ''
-                                        });
-                                        fetchCities(e.target.value);
-                                    }}>
-                                    <option value="">Select Province...</option>
-                                    {provinces.map(p => (
-                                        <option key={p.province_id} value={p.province_id}>{p.province}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">City</label>
-                                <select required className="w-full p-2 rounded-lg border border-gray-200"
-                                    value={formData.addressCityId}
-                                    onChange={e => {
-                                        const city = cities.find(c => c.city_id === e.target.value);
-                                        setFormData({
-                                            ...formData,
-                                            addressCityId: e.target.value,
-                                            addressCityName: city ? `${city.type} ${city.city_name}` : ''
-                                        });
-                                    }}
-                                    disabled={!formData.addressProvinceId}>
-                                    <option value="">Select City...</option>
-                                    {cities.map(c => (
-                                        <option key={c.city_id} value={c.city_id}>{c.type} {c.city_name}</option>
-                                    ))}
-                                </select>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">City / District Search</label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        placeholder="Type city name (e.g. Jakarta Barat)..."
+                                        className="w-full p-2 rounded-lg border border-gray-200"
+                                        value={formData.addressCityName}
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            setFormData(prev => ({ ...prev, addressCityName: val }));
+                                            if (val.length > 2) {
+                                                // Trigger search logic (debounced ideally, but simple here)
+                                                axios.get(`${API_BASE_URL}/api/locations/search?query=${val}`)
+                                                    .then(res => setCities(res.data))
+                                                    .catch(console.error);
+                                            } else {
+                                                setCities([]);
+                                            }
+                                        }}
+                                    />
+                                    {cities.length > 0 && (
+                                        <div className="absolute z-10 w-full bg-white border border-gray-100 mt-1 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                                            {cities.map((city: any, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className="p-2 hover:bg-teal-50 cursor-pointer text-sm border-b border-gray-50 last:border-0"
+                                                    onClick={() => {
+                                                        // Komerce returns rich object. We map to our schema.
+                                                        // Schema: { id, name, zip_code, district_name, city_name, province_name, ... }
+                                                        // We save ID as City ID.
+                                                        setFormData({
+                                                            ...formData,
+                                                            addressCityId: city.id.toString(), // Destination ID
+                                                            addressCityName: `${city.label || city.name}`, // Display Name
+                                                            addressProvinceId: city.province_id || '', // If available
+                                                            addressProvinceName: city.province_name || city.province || '',
+                                                            postalCode: city.zip_code || '',
+                                                        });
+                                                        setCities([]); // Hide list
+                                                    }}
+                                                >
+                                                    <span className="font-bold text-gray-800">{city.label || city.name}</span>
+                                                    {(city.zip_code) && <span className="text-gray-400 text-xs ml-2">({city.zip_code})</span>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <p className="text-[10px] text-gray-400 mt-1">Select from suggestions to calculate accurate shipping.</p>
                             </div>
 
                             <div>
