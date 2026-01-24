@@ -153,15 +153,15 @@ export const MarketplacePage: React.FC = () => {
 
         // Resolve Destination: Must use numeric ID (e.g. from address_city_id or address_subdistrict_id)
         // selectedAddressId is just the UUID of the record.
-        const addr = addresses.find(a => a.id === selectedAddressId);
-        if (!addr) {
+        const selectedAddr = addresses.find(a => a.id === selectedAddressId);
+        if (!selectedAddr) {
             console.error('[Marketplace] Address not found for ID:', selectedAddressId);
             setCalculatingShipping(false);
             return;
         }
 
         // Use ID if available, otherwise name (backend will try to search name)
-        const destValue = addr.address_city_id || addr.address_city_name;
+        const destValue = selectedAddr.address_city_id || selectedAddr.address_city_name;
 
         axios.post(`${API_BASE_URL}/api/shipping/cost`, {
             origin: originCity,
