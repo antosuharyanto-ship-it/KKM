@@ -63,6 +63,7 @@ export const MarketplacePage: React.FC = () => {
     const [shippingCosts, setShippingCosts] = useState<ShippingCostResult[]>([]);
     const [selectedService, setSelectedService] = useState<{ service: string, cost: number } | null>(null);
     const [calculatingShipping, setCalculatingShipping] = useState(false);
+    const [shippingError, setShippingError] = useState<string | null>(null);
 
     // ----------------------------------
 
@@ -174,8 +175,12 @@ export const MarketplacePage: React.FC = () => {
                 const results = res.data[0]?.costs || [];
                 console.log('[Marketplace] Parsed Costs:', results);
                 setShippingCosts(results);
+                if (results.length === 0) setShippingError(`Empty Results. Response: ${JSON.stringify(res.data)}`);
             })
-            .catch(err => console.error('[Marketplace] Shipping Error:', err))
+            .catch(err => {
+                console.error('[Marketplace] Shipping Error:', err);
+                setShippingError(err.message || String(err));
+            })
             .finally(() => setCalculatingShipping(false));
     };
 
@@ -417,6 +422,11 @@ export const MarketplacePage: React.FC = () => {
                                     {JSON.stringify(shippingCosts.length > 0 ? shippingCosts : "Empty/Error", null, 2)}
                                 </pre>
                             </div>
+                            {shippingError && (
+                                <div className="mt-2 p-1 bg-red-100 text-red-600 font-bold border border-red-300">
+                                    ERROR: {shippingError}
+                                </div>
+                            )}
                         </div>
 
                         {/* Description */}
