@@ -65,9 +65,9 @@ export const MyOrdersPage: React.FC = () => {
             alert('Proof uploaded successfully!');
             setUploadingOrder(null);
             fetchOrders(); // Refresh status
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            alert('Failed to upload proof.');
+            alert(err.response?.data?.message || 'Failed to upload proof.');
         } finally {
             setIsUploading(false);
         }

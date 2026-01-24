@@ -2,10 +2,20 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { Pool } from 'pg';
-import { ticketService } from './services/ticketService';
+import path from 'path';
+import session from 'express-session';
+import pgSession from 'connect-pg-simple';
+import multer from 'multer';
+import { Readable } from 'stream';
 import { v4 as uuidv4 } from 'uuid';
 
+import { ticketService } from './services/ticketService';
+import { googleSheetService } from './services/googleSheets';
+import { emailService } from './services/emailService';
+import passport from './auth';
+
 dotenv.config();
+
 console.log('---------------------------------------------------');
 console.log('DEBUG: Env Var Loaded Check');
 console.log('GOOGLE_DRIVE_TICKET_FOLDER_ID:', process.env.GOOGLE_DRIVE_TICKET_FOLDER_ID);
@@ -15,6 +25,7 @@ console.log('---------------------------------------------------');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Trust Proxy for Railway/Vercel (Required for secure cookies)
 app.set('trust proxy', 1);
@@ -46,8 +57,8 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 }));
 app.use(express.json());
+
 // Serve Tickets Statically
-import path from 'path';
 app.use('/tickets', express.static(path.join(__dirname, '../tickets')));
 
 // Database Connection
@@ -56,10 +67,6 @@ const pool = new Pool({
 });
 
 // Session Setup
-import session from 'express-session';
-import pgSession from 'connect-pg-simple';
-import passport from './auth';
-
 // Add types for req.user
 declare global {
     namespace Express {
@@ -156,7 +163,7 @@ app.get('/api/officer/check', checkOfficer, (req, res) => {
 });
 
 // API Routes
-import { googleSheetService } from './services/googleSheets';
+// --- API Routes ---
 
 app.get('/api/events', async (req, res) => {
     try {
@@ -209,7 +216,7 @@ app.get('/api/marketplace', async (req, res) => {
     }
 });
 
-import { emailService } from './services/emailService';
+// --- Email Service Imported at top ---
 
 app.post('/api/marketplace/order', async (req, res) => {
     if (!req.user) {
@@ -229,23 +236,31 @@ app.post('/api/marketplace/order', async (req, res) => {
         const orderId = uuidv4().slice(0, 8).toUpperCase();
 
         // 1. Fetch Item to get Supplier Email
+        console.log('[OrderDebug] Fetching marketplace items...');
         const items = await googleSheetService.getMarketplaceItems();
+        console.log(`[OrderDebug] Fetched ${items.length} items. Finding product: ${orderData.itemName}`);
+
         const item = items.find((i: any) => i.product_name === orderData.itemName);
         const supplierEmail = item?.supplier_email || process.env.SUPPLIER_EMAIL;
+        console.log(`[OrderDebug] Supplier email: ${supplierEmail}`);
 
         // 2. Save to Sheets
+        console.log('[OrderDebug] Creating order in Sheet...');
         await googleSheetService.createMarketplaceOrder({
             ...safeOrderData,
             orderId
         });
+        console.log('[OrderDebug] Order row created.');
 
-        // 3. Send Email Notification
-        await emailService.sendOrderNotification({
+        // 3. Send Email Notification (Async - don't wait)
+        console.log('[OrderDebug] Triggering email...');
+        emailService.sendOrderNotification({
             ...safeOrderData,
             orderId,
             supplierEmail
-        });
+        }).catch(err => console.error('Background Email Failed:', err));
 
+        console.log('[OrderDebug] Response sent.');
         res.json({ success: true, orderId });
     } catch (error) {
         console.error('Order Error:', error);
@@ -671,8 +686,7 @@ app.post('/api/community', checkAuth, async (req: any, res) => {
 // --- SPONSORSHIP APIs ---
 
 // --- MARKETPLACE ORDER API ---
-import multer from 'multer';
-const upload = multer({ storage: multer.memoryStorage() });
+// --- Market Order API ---
 
 app.post('/api/marketplace/upload-proof', checkAuth, upload.single('proof'), async (req: any, res) => {
     try {
@@ -686,10 +700,12 @@ app.post('/api/marketplace/upload-proof', checkAuth, upload.single('proof'), asy
         console.log(`[UploadProof] Received for Order ${orderId}, File: ${file.originalname}`);
 
         // 1. Upload to Drive
+        // 1. Upload to Drive (Readable imported at top)
+
         const uploadedFile = await googleSheetService.uploadFile(
             `Proof_${orderId}_${Date.now()}.jpg`,
             file.mimetype,
-            require('stream').Readable.from(file.buffer)
+            Readable.from(file.buffer)
         );
 
         // 2. Update Sheet
@@ -700,9 +716,9 @@ app.post('/api/marketplace/upload-proof', checkAuth, upload.single('proof'), asy
         });
 
         res.json({ success: true, message: 'Proof uploaded. Waiting for verification.' });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Upload proof failed:', error);
-        res.status(500).json({ message: 'Failed to upload proof' });
+        res.status(500).json({ message: `Failed to upload proof: ${error.message}` });
     }
 });
 
