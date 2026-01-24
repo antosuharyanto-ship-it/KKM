@@ -223,32 +223,67 @@ export class GoogleSheetService {
         }
     }
 
+    private async fetchFilesRecursive(folderId: string, depth: number = 0): Promise<any[]> {
+        if (depth > 5) {
+            console.warn(`[Drive] Max recursion depth reached for folder ${folderId}`);
+            return [];
+        }
+
+        try {
+            console.log(`[Drive] Scanning folder: ${folderId} (Depth: ${depth})`);
+            let allItems: any[] = [];
+            let pageToken: string | undefined = undefined;
+
+            // Fetch both images AND folders
+            do {
+                const res: any = await this.drive.files.list({
+                    q: `'${folderId}' in parents and (mimeType contains 'image/' or mimeType = 'application/vnd.google-apps.folder') and trashed = false`,
+                    fields: 'nextPageToken, files(id, name, mimeType, webViewLink, webContentLink, thumbnailLink)',
+                    pageSize: 1000,
+                    supportsAllDrives: true,
+                    includeItemsFromAllDrives: true,
+                    pageToken: pageToken
+                });
+
+                const files = res.data.files || [];
+                allItems = allItems.concat(files);
+                pageToken = res.data.nextPageToken;
+            } while (pageToken);
+
+            // Separate items
+            const images = allItems.filter(f => f.mimeType.includes('image/'));
+            const folders = allItems.filter(f => f.mimeType === 'application/vnd.google-apps.folder');
+
+            console.log(`[Drive] Folder ${folderId}: Found ${images.length} images, ${folders.length} subfolders`);
+
+            // Recursively fetch subfolders
+            for (const folder of folders) {
+                const subFiles = await this.fetchFilesRecursive(folder.id, depth + 1);
+                images.push(...subFiles);
+            }
+
+            return images;
+
+        } catch (error) {
+            console.error(`[Drive] Error scanning folder ${folderId}:`, error);
+            return [];
+        }
+    }
+
     async getDriveFolderFiles(folderUrlOrId: string) {
         try {
             // Extract ID from URL if necessary
-            // e.g. https://drive.google.com/drive/u/0/folders/123456...
-            // or https://drive.google.com/open?id=123456...
             let folderId = folderUrlOrId;
             const urlMatch = folderUrlOrId.match(/[-\w]{25,}/);
             if (urlMatch) {
                 folderId = urlMatch[0];
             }
 
-            console.log(`[Drive] Fetching files for folder: ${folderId}`);
+            console.log(`[Drive] recursive fetch started for: ${folderId}`);
+            const files = await this.fetchFilesRecursive(folderId);
+            console.log(`[Drive] Total recursive result: ${files.length} images`);
+            return files;
 
-            // list files
-            const res = await this.drive.files.list({
-                q: `'${folderId}' in parents and mimeType contains 'image/' and trashed = false`,
-                fields: 'files(id, name, webViewLink, webContentLink, thumbnailLink)',
-                pageSize: 100,
-                supportsAllDrives: true,
-                includeItemsFromAllDrives: true
-            });
-
-            const fileCount = res.data.files?.length || 0;
-            console.log(`[Drive] Found ${fileCount} files in folder ${folderId}`);
-
-            return res.data.files || [];
         } catch (error) {
             console.error('Failed to list drive files:', error);
             return [];
