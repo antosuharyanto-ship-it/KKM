@@ -44,6 +44,15 @@ app.get('/', (req, res) => {
     res.send('Server is up and running!');
 });
 
+app.get('/api/health-check', (req, res) => {
+    res.json({
+        status: 'ok',
+        version: 'v1.7.2',
+        timestamp: new Date().toISOString(),
+        service: 'KKM Backend'
+    });
+});
+
 // DEBUG
 app.get('/api/debug/events', async (req, res) => {
     try {
