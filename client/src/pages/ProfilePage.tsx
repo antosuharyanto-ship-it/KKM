@@ -20,7 +20,6 @@ export const ProfilePage: React.FC = () => {
 
     const [addresses, setAddresses] = useState<any[]>([]);
     const [showAddressModal, setShowAddressModal] = useState(false);
-    const [provinces, setProvinces] = useState<any[]>([]);
     const [cities, setCities] = useState<any[]>([]);
     const [formData, setFormData] = useState({
         label: 'Home',
@@ -65,24 +64,6 @@ export const ProfilePage: React.FC = () => {
             .then(res => setAddresses(res.data))
             .catch(console.error);
     };
-
-    const fetchProvinces = () => {
-        axios.get(`${API_BASE_URL}/api/locations/provinces`)
-            .then(res => setProvinces(res.data))
-            .catch(console.error);
-    };
-
-    const fetchCities = (provId: string) => {
-        axios.get(`${API_BASE_URL}/api/locations/cities?provinceId=${provId}`)
-            .then(res => setCities(res.data))
-            .catch(console.error);
-    };
-
-    useEffect(() => {
-        if (showAddressModal) {
-            fetchProvinces();
-        }
-    }, [showAddressModal]);
 
     const handleSaveAddress = async (e: React.FormEvent) => {
         e.preventDefault();
