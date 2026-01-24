@@ -378,6 +378,16 @@ export const MarketplacePage: React.FC = () => {
                             </div>
                         </div>
 
+                        {/* Debug Info (Temporary) */}
+                        <div className="bg-yellow-50 p-2 rounded border border-yellow-200 text-[10px] font-mono mb-4">
+                            <p className="font-bold text-red-600">DEBUG v1.5</p>
+                            <p>Origin: {(selectedItem as any).origin_city_id || (selectedItem as any).origin_city || 'Jakarta Barat'}</p>
+                            <p>Dest: {selectedAddressId}</p>
+                            <p>Weight: {selectedItem.weight_gram || 1000}</p>
+                            <p>Courier: {selectedCourier}</p>
+                            <p>Costs: {shippingCosts.length} items</p>
+                        </div>
+
                         {/* Description */}
                         {selectedItem.description && (
                             <div className="bg-blue-50 p-3 rounded-xl mb-4 text-xs text-blue-800">
