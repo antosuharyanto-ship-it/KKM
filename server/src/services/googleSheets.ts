@@ -66,8 +66,9 @@ export class GoogleSheetService {
                 const obj: any = {};
                 headers.forEach((header, index) => {
                     if (header) {
-                        // Sanitize key: remove special chars, trim, then snake_case
-                        const key = header.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim().replace(/\s+/g, '_');
+                        // Sanitize key: remove special chars (except _), trim, then snake_case
+                        // We allow underscores because some headers might already be snake_case in the sheet
+                        const key = header.toLowerCase().replace(/[^a-z0-9\s_]/g, '').trim().replace(/\s+/g, '_');
                         obj[key] = row[index];
                     }
                 });

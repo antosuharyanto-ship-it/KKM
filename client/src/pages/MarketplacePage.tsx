@@ -21,6 +21,7 @@ interface Product {
     weight_gram?: string; // from Sheet "Weight (gram)" -> weight_gram
     stock_status?: string; // Ready Stock / Pre-Order
     description?: string;
+    origin_city_id?: string;
     origin_city?: string;
 }
 
@@ -148,7 +149,7 @@ export const MarketplacePage: React.FC = () => {
         setSelectedService(null);
 
         // Item Origin: 'origin_city' from sheet (snake_case from header)
-        const originCity = (selectedItem as any).origin_city || 'Jakarta Barat'; // Fallback
+        const originCity = (selectedItem as any).origin_city_id || (selectedItem as any).origin_city || 'Jakarta Barat'; // Fallback
 
         axios.post(`${API_BASE_URL}/api/shipping/cost`, {
             origin: originCity, // ID or Name (Backend needs to handle Name if passed)
