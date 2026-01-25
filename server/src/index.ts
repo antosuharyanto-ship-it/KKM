@@ -47,7 +47,7 @@ app.get('/', (req, res) => {
 app.get('/api/health-check', (req, res) => {
     res.json({
         status: 'ok',
-        version: 'v1.7.2',
+        version: 'v1.7.4', // Bumped for Name Mapping Fix
         timestamp: new Date().toISOString(),
         service: 'KKM Backend'
     });

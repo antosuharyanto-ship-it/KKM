@@ -65,12 +65,27 @@ export const komerceService = {
             let destId = destination;
 
             const mapLoc = (name: string) => {
-                let n = name.toLowerCase();
+                let n = name.toLowerCase().trim();
+
+                // Specific Jakarta Mapping (Direction Swap)
+                if (n.includes('jakarta')) {
+                    if (n.includes('south')) return 'jakarta selatan';
+                    if (n.includes('west')) return 'jakarta barat';
+                    if (n.includes('east')) return 'jakarta timur';
+                    if (n.includes('north')) return 'jakarta utara';
+                    if (n.includes('central')) return 'jakarta pusat';
+                }
+
+                // General Mapping
                 n = n.replace(/\bsouth\b/g, 'selatan');
                 n = n.replace(/\bwest\b/g, 'barat');
                 n = n.replace(/\beast\b/g, 'timur');
                 n = n.replace(/\bnorth\b/g, 'utara');
                 n = n.replace(/\bcentral\b/g, 'pusat');
+
+                // Island/Region mapping
+                n = n.replace(/\bjava\b/g, 'jawa');
+
                 return n;
             };
 
