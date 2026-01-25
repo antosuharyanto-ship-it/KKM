@@ -601,4 +601,4 @@ export const MarketplacePage: React.FC = () => {
 }
     </div >
     );
-}; // Fixed v1.7.3
+};
