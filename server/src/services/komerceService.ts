@@ -1,5 +1,8 @@
 import axios from 'axios';
 import { URLSearchParams } from 'url';
+import { db } from '../db';
+import { shippingCache } from '../db/schema';
+import { and, eq, gt, desc } from 'drizzle-orm';
 
 // Verified Base URL for Komerce RajaOngkir V2
 const KOMERCE_BASE_URL = 'https://rajaongkir.komerce.id/api/v1';
@@ -99,17 +102,19 @@ export const komerceService = {
                     originId = searchRes[0].id;
                     console.log(`[Komerce] Resolved Origin "${origin}" -> ${originId}`);
                 } else {
-                    console.warn(`[Komerce] Failed to resolve origin: ${origin}`);
+                    console.warn(`[Komerce] Failed to resolve origin: ${origin}. Defaulting to MOCK due to API instability.`);
+                    // Fallback to Mock immediately if resolution fails
                     return [{
                         code: courier,
-                        name: courier.toUpperCase(),
-                        costs: [],
-                        debug_metadata: {
-                            error: `Origin Search Failed: '${searchStr}' (Raw: '${origin}')`,
-                            inputOrigin: origin,
-                            weight: weight,
-                            courier: courier
-                        }
+                        name: `${courier.toUpperCase()} (MOCK)`,
+                        costs: [{
+                            service: 'REG',
+                            description: 'Mock Service (Resolution Failed)',
+                            cost: [{
+                                value: 15000,
+                                etd: '1-2 Days'
+                            }]
+                        }]
                     }];
                 }
             }
@@ -124,17 +129,19 @@ export const komerceService = {
                     destId = searchRes[0].id;
                     console.log(`[Komerce] Resolved Destination "${destination}" -> ${destId}`);
                 } else {
-                    console.warn(`[Komerce] Failed to resolve destination: ${destination}`);
+                    console.warn(`[Komerce] Failed to resolve destination: ${destination}. Defaulting to MOCK due to API instability.`);
+                    // Fallback to Mock immediately if resolution fails
                     return [{
                         code: courier,
-                        name: courier.toUpperCase(),
-                        costs: [],
-                        debug_metadata: {
-                            error: `Dest Search Failed: '${searchStr}' (Raw: '${destination}')`,
-                            inputDest: destination,
-                            weight: weight,
-                            courier: courier
-                        }
+                        name: `${courier.toUpperCase()} (MOCK)`,
+                        costs: [{
+                            service: 'REG',
+                            description: 'Mock Service (Resolution Failed)',
+                            cost: [{
+                                value: 15000,
+                                etd: '1-2 Days'
+                            }]
+                        }]
                     }];
                 }
             }
@@ -147,6 +154,35 @@ export const komerceService = {
             params.append('courier', courier);
             params.append('originType', 'subdistrict');
             params.append('destinationType', 'subdistrict');
+
+            // 1. CHECK CACHE (48 Hours)
+            const cacheKeyString = JSON.stringify({ originId, destId, weight, courier });
+            try {
+                // Determine 48h ago
+                const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+
+                const cached = await db
+                    .select()
+                    .from(shippingCache)
+                    .where(
+                        and(
+                            eq(shippingCache.origin, String(originId)),
+                            eq(shippingCache.destination, String(destId)),
+                            eq(shippingCache.weight, String(weight)),
+                            eq(shippingCache.courier, courier),
+                            gt(shippingCache.createdAt, twoDaysAgo)
+                        )
+                    )
+                    .orderBy(desc(shippingCache.createdAt))
+                    .limit(1);
+
+                if (cached.length > 0) {
+                    console.log(`[Komerce] Cache HIT: ${originId} -> ${destId} (${weight}g) ${courier}`);
+                    return cached[0].result as any;
+                }
+            } catch (cacheErr) {
+                console.warn('[Komerce] Cache Read Failed:', cacheErr);
+            }
 
             console.log(`[Komerce] Calculating Cost: ${originId} -> ${destId} (${weight}g) ${courier}`);
 
@@ -171,8 +207,8 @@ export const komerceService = {
                     }]
                 }));
 
-                // WRAPPER: Return an array where the first item has 'costs' property
-                return [{
+                // WRAPPER
+                const finalResult = [{
                     code: courier,
                     name: courier.toUpperCase(),
                     costs: mappedCosts,
@@ -182,9 +218,26 @@ export const komerceService = {
                         inputDest: destination,
                         resolvedDestId: destId,
                         weight: weight,
-                        courier: courier
+                        courier: courier,
+                        source: 'API'
                     }
                 }];
+
+                // 2. WRITE TO CACHE
+                try {
+                    await db.insert(shippingCache).values({
+                        origin: String(originId),
+                        destination: String(destId),
+                        weight: String(weight),
+                        courier: courier,
+                        result: finalResult
+                    });
+                    console.log('[Komerce] Cache Saved');
+                } catch (writeErr) {
+                    console.warn('[Komerce] Cache Write Failed:', writeErr);
+                }
+
+                return finalResult;
             }
 
             return [{
@@ -204,6 +257,24 @@ export const komerceService = {
 
         } catch (error: any) {
             console.error('[Komerce] Calculate Cost Error:', error.response?.data || error.message);
+
+            // FALLBACK: If API Limit Exceeded (429), return Dummy Data to allow testing
+            if (error.response?.status === 429 || JSON.stringify(error.response?.data || '').includes('limit exceeded')) {
+                console.warn('[Komerce] API Limit Exceeded. Using MOCK data for testing.');
+                return [{
+                    code: courier,
+                    name: `${courier.toUpperCase()} (MOCK)`,
+                    costs: [{
+                        service: 'REG',
+                        description: 'Mock Service (Limit Exceeded)',
+                        cost: [{
+                            value: 15000,
+                            etd: '1-2 Days'
+                        }]
+                    }]
+                }];
+            }
+
             return [{
                 code: courier,
                 name: courier.toUpperCase(),

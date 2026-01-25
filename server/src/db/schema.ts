@@ -49,3 +49,13 @@ export const userAddresses = pgTable('user_addresses', {
     isDefault: boolean('is_default').default(false),
     createdAt: timestamp('created_at').defaultNow(),
 });
+
+export const shippingCache = pgTable('shipping_cache', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    origin: varchar('origin').notNull(),
+    destination: varchar('destination').notNull(),
+    weight: varchar('weight').notNull(), // using varchar to matching mixed types input, or assume int. let's use varchar for safety as key often stringified
+    courier: varchar('courier').notNull(),
+    result: json('result').notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+});

@@ -26,6 +26,12 @@ interface Event {
 import { getDisplayImageUrl } from '../utils/imageHelper';
 import { API_BASE_URL } from '../config';
 
+declare global {
+    interface Window {
+        snap: any;
+    }
+}
+
 export const EventDetailsPage: React.FC = () => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -34,9 +40,11 @@ export const EventDetailsPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [bookingStatus, setBookingStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
     const [ticketCode, setTicketCode] = useState<string | null>(null);
+    const [paymentToken, setPaymentToken] = useState<string | null>(null);
+    const [paymentRedirectUrl, setPaymentRedirectUrl] = useState<string | null>(null);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [galleryImages, setGalleryImages] = useState<string[]>([]);
-    const [sponsorImages, setSponsorImages] = useState<string[]>([]); // New State
+    const [sponsorImages, setSponsorImages] = useState<string[]>([]);
 
     // Helper to extract Drive ID
     const extractDriveId = (url: string) => {
@@ -76,18 +84,9 @@ export const EventDetailsPage: React.FC = () => {
                 if (found) {
                     setEvent(found);
 
-                    console.log('[DEBUG] Event Found:', found.title || found.activity || found.event_name);
-                    console.log('[DEBUG] Gallery Source (Raw):', found.gallery_images);
-
                     // 1. Fetch Gallery
                     if (found.gallery_images) {
-                        console.log('[DEBUG] Fetching Gallery from source...');
-                        fetchImagesFromSource(found.gallery_images).then(imgs => {
-                            console.log('[DEBUG] Gallery Images Fetched:', imgs.length);
-                            setGalleryImages(imgs);
-                        });
-                    } else {
-                        console.log('[DEBUG] No gallery_images found in event object');
+                        fetchImagesFromSource(found.gallery_images).then(setGalleryImages);
                     }
 
                     // 2. Fetch Sponsors
@@ -156,7 +155,6 @@ export const EventDetailsPage: React.FC = () => {
     const formattedPrice = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(finalPrice);
 
 
-
     const handlePaxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = parseInt(e.target.value);
         setFormData({ ...formData, numberOfPeople: val });
@@ -186,11 +184,13 @@ export const EventDetailsPage: React.FC = () => {
                 price: formattedPrice
             };
 
-            const res = await axios.post(`${API_BASE_URL}/api/book`, payload);
+            const res = await axios.post(`${API_BASE_URL}/api/book`, payload, { withCredentials: true });
 
             if (res.data.success) {
                 setTicketCode(res.data.ticketCode);
-                // setTicketLink(res.data.ticketLink);
+                if (res.data.token) setPaymentToken(res.data.token);
+                if (res.data.redirect_url) setPaymentRedirectUrl(res.data.redirect_url);
+                setBookingStatus('success');
             }
         } catch (error: any) {
             console.error('Booking failed', error);
@@ -233,6 +233,8 @@ export const EventDetailsPage: React.FC = () => {
 
     // --- Success View ---
     if (bookingStatus === 'success') {
+        // We need to capture the payment info from the API response first.
+        // I will update the component state to hold payment info.
         return (
             <div className="min-h-[80vh] flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in">
                 <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md border border-gray-100">
@@ -255,29 +257,46 @@ export const EventDetailsPage: React.FC = () => {
                             </span>
                         </div>
 
+                        {/* PAYMENT BUTTONS */}
                         <div className="space-y-3 relative z-10">
-                            <div>
-                                <p className="text-xs text-gray-500 uppercase font-bold mb-1">Transfer to</p>
-                                <p className="font-bold text-gray-900 text-lg">Mandiri: 125-001-075-7557</p>
+                            {paymentToken ? (
+                                <button
+                                    onClick={() => {
+                                        // @ts-ignore
+                                        window.snap.pay(paymentToken, {
+                                            onSuccess: function (_result: any) { navigate('/my-bookings'); },
+                                            onPending: function (_result: any) { navigate('/my-bookings'); },
+                                            onError: function (_result: any) { alert('Payment failed!'); },
+                                            onClose: function () { alert('You closed the popup without finishing the payment'); }
+                                        });
+                                    }}
+                                    className="w-full bg-teal-800 text-white py-3 rounded-xl font-bold hover:bg-teal-700 transition shadow-lg shadow-teal-900/10 flex items-center justify-center gap-2"
+                                >
+                                    Pay Now (Virtual Account / QRIS)
+                                </button>
+                            ) : (
+                                <p className="text-sm text-red-500">Payment Gateway Unavailable. Use Manual Transfer.</p>
+                            )}
+
+                            <div className="pt-4 border-t border-orange-200/50">
+                                <p className="text-xs text-gray-500 uppercase font-bold mb-1">Manual Transfer (Backup)</p>
+                                <p className="font-bold text-gray-900 text-sm">Mandiri: 125-001-075-7557</p>
                                 <p className="text-xs text-gray-600">a.n Anggi Vitlana Rinaldy</p>
-                            </div>
-                            <div className="pt-2 border-t border-orange-200/50">
-                                <p className="text-xs text-gray-500 uppercase font-bold mb-1">Confirm Payment</p>
-                                <p className="font-bold text-gray-900">Ummu Zahra: +62-813-8236-4484</p>
                             </div>
                         </div>
                     </div>
 
                     <div className="grid gap-3">
-                        <a
-                            href={`https://wa.me/6281382364484?text=Assalamualaikum%2C%20saya%20sudah%20booking%20event%20${encodeURIComponent(event.activity)}%20atas%20nama%20${encodeURIComponent(formData.userName)}.%20Mohon%20info%20pembayaran.`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-full bg-green-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-green-700 transition-colors shadow-lg shadow-green-900/20"
-                        >
-                            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.008-.57-.008-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
-                            Confirm Payment via WhatsApp
-                        </a>
+                        {paymentRedirectUrl && (
+                            <a
+                                href={paymentRedirectUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-sm text-teal-600 underline"
+                            >
+                                Open Payment Link
+                            </a>
+                        )}
 
                         <button
                             onClick={() => navigate('/')}

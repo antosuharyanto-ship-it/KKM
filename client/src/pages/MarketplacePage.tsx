@@ -47,6 +47,12 @@ interface ShippingCostResult {
     };
 }
 
+declare global {
+    interface Window {
+        snap: any;
+    }
+}
+
 export const MarketplacePage: React.FC = () => {
     const { t } = useTranslation();
     const navigate = useNavigate();
@@ -228,7 +234,8 @@ export const MarketplacePage: React.FC = () => {
         const totalPrice = (unitPrice * orderQty) + shippingCost;
 
         try {
-            await axios.post(`${API_BASE_URL}/api/marketplace/order`, {
+            // 1. Create Order in Backend (Pending Status)
+            const orderRes = await axios.post(`${API_BASE_URL}/api/marketplace/order`, {
                 itemName: selectedItem.product_name,
                 unitPrice: selectedItem.unit_price,
                 quantity: orderQty,
@@ -243,13 +250,77 @@ export const MarketplacePage: React.FC = () => {
                 shippingService: selectedService.service
             }, { withCredentials: true });
 
-            alert('Order placed successfully! Please check "My Orders" to upload payment proof.');
-            setSelectedItem(null);
-            fetchItems(); // Refresh stock
-            navigate('/my-orders');
+            if (!orderRes.data.success) throw new Error('Order creation failed');
+            const { orderId } = orderRes.data;
+
+            // 2. Request Payment Token
+            const paymentRes = await axios.post(`${API_BASE_URL}/api/payment/charge`, {
+                orderId: orderId,
+                amount: totalPrice,
+                customerDetails: {
+                    first_name: userDetails.name,
+                    email: userDetails.email,
+                    phone: userDetails.phone
+                },
+                itemDetails: [
+                    {
+                        id: selectedItem.product_name.substring(0, 40), // Midtrans ID max length
+                        price: unitPrice,
+                        quantity: orderQty,
+                        name: selectedItem.product_name.substring(0, 45) // Midtrans Name max length
+                    },
+                    {
+                        id: 'SHIPPING',
+                        price: shippingCost,
+                        quantity: 1,
+                        name: `Shipping: ${selectedCourier.toUpperCase()} ${selectedService.service}`
+                    }
+                ]
+            }, { withCredentials: true });
+
+            const { token, redirect_url } = paymentRes.data;
+            console.log('Payment Token:', token);
+            console.log('Payment URL:', redirect_url);
+
+            // 3. Trigger Snap Popup OR Show Link
+            if (window.snap) {
+                window.snap.pay(token, {
+                    onSuccess: function (result: any) {
+                        console.log('Payment success', result);
+                        alert('Payment Successful!');
+                        setSelectedItem(null);
+                        fetchItems();
+                        navigate('/my-orders');
+                    },
+                    onPending: function (result: any) {
+                        console.log('Payment pending', result);
+                        alert('Order pending payment. Please check "My Orders".');
+                        setSelectedItem(null);
+                        fetchItems();
+                        navigate('/my-orders');
+                    },
+                    onError: function (result: any) {
+                        console.error('Payment error', result);
+                        alert('Payment failed. Please try again.');
+                    },
+                    onClose: function () {
+                        console.log('Customer closed the popup without finishing the payment');
+                        alert(`Payment not completed. You can pay via this link: ${redirect_url}`);
+                    }
+                });
+            } else {
+                // Fallback: Redirect to payment link if Snap is not loaded
+                if (redirect_url) {
+                    const confirmRedirect = confirm('Payment gateway not loaded. Redirect to payment page?');
+                    if (confirmRedirect) window.open(redirect_url, '_blank');
+                } else {
+                    alert('Payment gateway not loaded. Please refresh.');
+                }
+            }
+
         } catch (error) {
             console.error(error);
-            alert('Failed to place order.');
+            alert('Failed to process order.');
         } finally {
             setIsSubmitting(false);
         }

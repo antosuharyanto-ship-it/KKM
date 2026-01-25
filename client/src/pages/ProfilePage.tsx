@@ -165,79 +165,14 @@ export const ProfilePage: React.FC = () => {
                 {/* Stats / Dashboard Cards */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-earth-100">
                     <h3 className="font-bold text-gray-900 mb-4 flex justify-between items-center">
-                        My Bookings
-                        <span className="bg-nature-100 text-nature-800 text-xs px-2 py-1 rounded-full">{bookings.length}</span>
+                        My Activity
                     </h3>
-
-                    {bookings.length === 0 ? (
-                        <div className="text-center py-6 text-gray-400 text-sm">
-                            No bookings yet.
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {bookings.map((booking, idx) => (
-                                <div key={idx} className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div>
-                                            <h4 className="font-bold text-gray-900">{booking.event_name}</h4>
-                                            <p className="text-xs text-gray-500">{booking.date_submitted}</p>
-                                        </div>
-                                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${booking.reservation_status?.toLowerCase().includes('confirm')
-                                            ? 'bg-green-100 text-green-700'
-                                            : 'bg-orange-100 text-orange-700'
-                                            }`}>
-                                            {booking.reservation_status || 'Pending'}
-                                        </span>
-                                    </div>
-                                    <div className="mt-3 pt-3 border-t border-gray-100 grid grid-cols-2 gap-y-2 text-xs text-gray-600">
-                                        <div>
-                                            <span className="text-gray-400 block mb-0.5">Tent Type</span>
-                                            <span className="font-medium text-gray-800">{booking.special_requests || booking.ukuran_tenda || '-'}</span>
-                                        </div>
-                                        <div>
-                                            <span className="text-gray-400 block mb-0.5">Accommodation</span>
-                                            <span className="font-medium text-gray-800">{booking.kavling || 'Allocated on Arrival'}</span>
-                                        </div>
-                                        <div>
-                                            <span className="text-gray-400 block mb-0.5">Member Type</span>
-                                            <span className="font-medium text-gray-800">{booking.jenis_anggota || 'General'}</span>
-                                        </div>
-                                        <div>
-                                            <span className="text-gray-400 block mb-0.5">Pax</span>
-                                            <span className="font-medium text-gray-800">{booking.participant_count} Person(s)</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex justify-between items-center mt-4">
-                                        <div className="text-xs text-gray-400">
-                                            ID: <span className="font-mono">{booking.reservation_id}</span>
-                                        </div>
-
-                                        {/* Actions */}
-                                        {booking.link_tiket ? (
-                                            <a
-                                                href={booking.link_tiket}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="bg-teal-600 text-white text-xs px-3 py-2 rounded-lg font-bold hover:bg-teal-700 transition flex items-center gap-2 shadow-sm"
-                                            >
-                                                <Download size={14} /> Download Ticket
-                                            </a>
-                                        ) : (
-                                            <a
-                                                href={`https://wa.me/6281382364484?text=Assalamualaikum%2C%20saya%20sudah%20booking%20event%20${encodeURIComponent(booking.event_name)}%20(ID:%20${booking.reservation_id})%20dan%20ingin%20konfirmasi%20pembayaran.`}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="bg-green-600 text-white text-xs px-3 py-2 rounded-lg font-bold hover:bg-green-700 transition flex items-center gap-1 shadow-sm"
-                                            >
-                                                Confirm Payment
-                                            </a>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                    <div className="text-center py-6">
+                        <p className="text-gray-500 text-sm mb-4">View your event bookings and marketplace orders in one place.</p>
+                        <a href="/my-bookings" className="inline-block bg-teal-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-teal-700 transition shadow-lg shadow-teal-200">
+                            Go to My Orders
+                        </a>
+                    </div>
                 </div>
 
                 {/* My Addresses */}

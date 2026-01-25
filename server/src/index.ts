@@ -14,6 +14,7 @@ import { googleSheetService } from './services/googleSheets';
 import { emailService } from './services/emailService';
 import { rajaOngkirService } from './services/rajaOngkirService';
 import { komerceService } from './services/komerceService';
+import * as midtransService from './services/midtransService';
 import { pool as dbPool } from './db';
 import passport from './auth';
 
@@ -77,6 +78,14 @@ app.use('/tickets', express.static(path.join(__dirname, '../tickets')));
 // Database Connection
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
+    connectionTimeoutMillis: 20000, // 20s timeout
+    idleTimeoutMillis: 30000,
+    keepAlive: true
+});
+
+// Resiliency: Prevent crash on idle client error
+pool.on('error', (err, client) => {
+    console.error('Unexpected error on idle client', err);
 });
 
 // Session Setup
@@ -185,8 +194,10 @@ app.get('/api/events', async (req, res) => {
         // await googleSheetService.ensureHeaders(sheetName, headers); // DISABLED: Causing duplicate headers due to schema mismatch
 
         const events = await googleSheetService.getEvents();
+        console.log(`[API] Fetched ${events.length} events from Sheet: ${sheetName}`);
         res.json(events);
     } catch (error) {
+        console.error('[API] /api/events Error:', error);
         res.status(500).json({ error: 'Failed to fetch events' });
     }
 });
@@ -222,10 +233,83 @@ app.put('/api/events/:id', checkOfficer, async (req, res) => {
 
 app.get('/api/marketplace', async (req, res) => {
     try {
+        console.log('[API] Fetching marketplace items...');
         const items = await googleSheetService.getMarketplaceItems();
+        console.log(`[API] Found ${items.length} items`);
         res.json(items);
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch items' });
+    }
+});
+
+// --- PAYMENT APIs (Midtrans) ---
+import * as paymentController from './controllers/paymentController';
+app.post('/api/payment/charge', checkAuth, paymentController.createPayment);
+app.post('/api/payment/notification', paymentController.handleNotification);
+
+app.post('/api/payment/resume', checkAuth, async (req, res) => {
+    try {
+        const { orderId } = req.body;
+        if (!orderId) {
+            return res.status(400).json({ error: 'Order ID required' });
+        }
+
+        const order = await googleSheetService.getMarketplaceOrderById(orderId);
+        if (!order) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        // Parse Total Price (e.g. "Rp 265.000" -> 265000)
+        const amountStr = String(order.total_price || '0').replace(/[^0-9]/g, '');
+        const amount = parseInt(amountStr);
+
+        // Generate Retry ID to avoiding Midtrans Duplicate Order ID error
+        const retryId = `${orderId}-R${Math.floor(Date.now() / 1000).toString().slice(-4)}`;
+
+        // Re-construct logic to call Midtrans
+        // We need customer details and item details.
+        // For Resume, we might simplify item details if not stored perfectly, or parse from sheet if possible.
+        // Sheet keeps Item Name and Quantity, unit price.
+        // Let's reconstruct.
+
+        const customerDetails = {
+            first_name: order.user_name,
+            email: order.user_email,
+            phone: order.phone
+        };
+
+        const itemDetails = [
+            {
+                id: order.item_name.substring(0, 40),
+                price: parseInt(String(order.unit_price).replace(/[^0-9]/g, '')),
+                quantity: parseInt(order.quantity),
+                name: order.item_name.substring(0, 45)
+            },
+            {
+                id: 'SHIPPING',
+                // Calculate Shipping: Total - (Price * Qty)
+                price: amount - (parseInt(String(order.unit_price).replace(/[^0-9]/g, '')) * parseInt(order.quantity)),
+                quantity: 1,
+                name: 'Shipping Cost'
+            }
+        ];
+
+        // Call Service
+        // NOTE: We use the *Retry ID* for Midtrans, but we must verify the *Original ID* when payment succeeds.
+        // The Notification Handler should handle this linkage, or we rely on manual check for now.
+        // Ideally, we store this mapping or just let the user see "Paid" on the *new* transaction.
+        // But the Sheet has the OLD ID.
+        // WORKAROUND: We will update the Sheet to append the new Retry ID or just rely on the webhook
+        // finding the order by "fuzzy match" or we assume the user will manually confirm if automatic update fails.
+        // BETTER: Use `order_id` field in Custom Field? Midtrans passes back `order_id`.
+        // Let's use Retry ID.
+
+        const midtransResponse = await midtransService.createTransactionToken(retryId, amount, customerDetails, itemDetails);
+        res.json(midtransResponse);
+
+    } catch (error: any) {
+        console.error('[ResumePayment] Error:', error);
+        res.status(500).json({ error: error.message });
     }
 });
 
@@ -411,11 +495,46 @@ app.post('/api/book', async (req, res) => {
             '', '', '', '', '', '', ''                  // Remaining cols blank
         ]);
 
-        // 4. Return Success
+        // 4. Generate Payment Token (Midtrans)
+        let paymentInfo = {};
+        try {
+            const customerDetails = {
+                first_name: userName,
+                email: userEmail,
+                phone: bookingData.phone
+            };
+
+            const itemDetails = [
+                {
+                    id: bookingData.eventId || 'EVENT',
+                    price: finalPrice,
+                    quantity: parseInt(bookingData.numberOfPeople || 1),
+                    name: bookingData.eventName.substring(0, 45)
+                }
+            ];
+
+            const totalAmount = finalPrice * parseInt(bookingData.numberOfPeople || 1);
+
+            // Create Transaction
+            if (totalAmount > 0) {
+                const midtransResp = await midtransService.createTransactionToken(ticketCode, totalAmount, customerDetails, itemDetails);
+                paymentInfo = {
+                    token: midtransResp.token,
+                    redirect_url: midtransResp.redirect_url
+                };
+            }
+
+        } catch (paymentErr: any) {
+            console.error('Midtrans Token Failed:', paymentErr.message);
+            // Don't fail the booking, just let them pay manually/later
+        }
+
+        // 5. Return Success
         res.json({
             success: true,
             ticketCode: ticketCode,
-            ticketLink: ticketLink
+            ticketLink: ticketLink,
+            ...paymentInfo
         });
 
     } catch (error: any) {

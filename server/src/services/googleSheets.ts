@@ -351,7 +351,12 @@ export class GoogleSheetService {
             if (nameVal === 'name' || nameVal === 'image' || nameVal === 'id') return false;
 
             return true;
-        });
+        }).map((row: any) => ({
+            ...row,
+            activity: row.activity || row.title || row.event_name || 'Untitled Event', // Normalize Title -> Activity
+            price_new_member: row.price_new_member || row.price || '0', // Normalize simple price
+            id: row.id || row.event_id // Normalize ID
+        }));
 
         return validEvents;
     }
@@ -369,6 +374,11 @@ export class GoogleSheetService {
     async getMarketplaceOrders() {
         const sheetName = process.env.GOOGLE_SHEET_NAME_MARKETPLACE_ORDERS || 'Market OB';
         return this.readSheet(sheetName);
+    }
+
+    async getMarketplaceOrderById(orderId: string) {
+        const orders = await this.getMarketplaceOrders();
+        return orders.find((o: any) => o.order_id === orderId);
     }
 
 

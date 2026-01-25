@@ -17,7 +17,9 @@ interface MarketOrder {
 
 export const MyOrdersPage: React.FC = () => {
     // const { t } = useTranslation();
+    const [activeTab, setActiveTab] = useState<'market' | 'event'>('market');
     const [orders, setOrders] = useState<MarketOrder[]>([]);
+    const [bookings, setBookings] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -27,15 +29,24 @@ export const MyOrdersPage: React.FC = () => {
     const [isUploading, setIsUploading] = useState(false);
 
     useEffect(() => {
-        fetchOrders();
+        fetchAll();
     }, []);
 
-    const fetchOrders = () => {
+    const fetchAll = async () => {
         setLoading(true);
-        axios.get(`${API_BASE_URL}/api/my-market-orders`, { withCredentials: true })
-            .then(res => setOrders(res.data))
-            .catch(() => setError('Failed to load orders. Please login.'))
-            .finally(() => setLoading(false));
+        try {
+            const [ordersRes, bookingsRes] = await Promise.all([
+                axios.get(`${API_BASE_URL}/api/my-market-orders`, { withCredentials: true }),
+                axios.get(`${API_BASE_URL}/api/my-bookings`, { withCredentials: true })
+            ]);
+            setOrders(ordersRes.data);
+            setBookings(bookingsRes.data);
+        } catch (err: any) {
+            console.error(err);
+            setError('Failed to load data. Please login.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleUploadClick = (order: MarketOrder) => {
@@ -64,12 +75,53 @@ export const MyOrdersPage: React.FC = () => {
             });
             alert('Proof uploaded successfully!');
             setUploadingOrder(null);
-            fetchOrders(); // Refresh status
+            fetchAll(); // Refresh
         } catch (err: any) {
             console.error(err);
             alert(err.response?.data?.message || 'Failed to upload proof.');
         } finally {
             setIsUploading(false);
+        }
+    };
+
+    const handlePayNow = async (order: MarketOrder) => {
+        try {
+            // Load Snap if needed
+            // @ts-ignore
+            if (!window.snap) {
+                const script = document.createElement('script');
+                // Use Production or Sandbox URL based on global config/env (loaded in index.html)
+                // We rely on index.html script tag.
+                // script.src = 'https://app.midtrans.com/snap/snap.js';
+                // document.head.appendChild(script);
+            }
+
+            const res = await axios.post(`${API_BASE_URL}/api/payment/resume`, { orderId: order.order_id }, { withCredentials: true });
+
+            if (res.data.token) {
+                // @ts-ignore
+                window.snap.pay(res.data.token, {
+                    onSuccess: function (result: any) {
+                        alert('Payment Successful!');
+                        fetchAll();
+                    },
+                    onPending: function (result: any) {
+                        alert('Waiting for payment...');
+                        fetchAll();
+                    },
+                    onError: function (result: any) {
+                        alert('Payment failed!');
+                    },
+                    onClose: function () {
+                        // alert('Closed');
+                    }
+                });
+            } else if (res.data.redirect_url) {
+                window.open(res.data.redirect_url, '_blank');
+            }
+        } catch (err: any) {
+            console.error('Resume Payment Error:', err);
+            alert('Failed to resume payment: ' + (err.response?.data?.message || err.message));
         }
     };
 
@@ -79,7 +131,7 @@ export const MyOrdersPage: React.FC = () => {
         try {
             await axios.post(`${API_BASE_URL}/api/marketplace/confirm-receipt`, { orderId }, { withCredentials: true });
             alert('Receipt confirmed. Thank you!');
-            fetchOrders();
+            fetchAll();
         } catch (err) {
             console.error(err);
             alert('Failed to confirm receipt.');
@@ -103,67 +155,147 @@ export const MyOrdersPage: React.FC = () => {
         <div className="min-h-screen bg-gray-50 pb-20 relative">
             <div className="bg-teal-800 text-white pt-10 pb-16 px-6 md:px-10 rounded-b-[2.5rem] shadow-lg mb-8">
                 <h1 className="text-3xl font-bold">My Orders</h1>
-                <p className="text-teal-100 text-sm">Track your marketplace purchases</p>
+                <p className="text-teal-100 text-sm">Track your purchases and bookings</p>
             </div>
 
-            <div className="px-6 md:px-10 max-w-4xl mx-auto space-y-4">
-                {loading && <p className="text-center text-gray-400">Loading orders...</p>}
-                {error && <p className="text-center text-red-400">{error}</p>}
+            <div className="px-6 md:px-10 max-w-4xl mx-auto space-y-6">
+                {/* TABS */}
+                <div className="flex p-1 bg-white rounded-xl shadow-sm border border-gray-100 max-w-md">
+                    <button
+                        onClick={() => setActiveTab('market')}
+                        className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'market' ? 'bg-teal-100 text-teal-800 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                        Marketplace ({orders.length})
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('event')}
+                        className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'event' ? 'bg-orange-100 text-orange-800 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                        Event Bookings ({bookings.length})
+                    </button>
+                </div>
 
-                {!loading && orders.length === 0 && (
-                    <div className="text-center py-10">
-                        <Tag className="mx-auto text-gray-300 mb-2" size={48} />
-                        <p className="text-gray-500">No orders yet.</p>
+                {loading && <div className="text-center py-10"><div className="animate-spin w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full mx-auto"></div></div>}
+
+                {!loading && error && (
+                    <div className="p-4 bg-red-50 text-red-600 rounded-xl text-center border border-red-100">
+                        <p>{error}</p>
                     </div>
                 )}
 
-                {orders.map(order => (
-                    <div key={order.order_id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between gap-4">
-                        <div>
-                            <div className="flex items-center gap-2 mb-2">
-                                <span className="text-xs font-bold text-gray-400">#{order.order_id}</span>
-                                <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-md ${getStatusColor(order.status)}`}>
-                                    {order.status || 'Pending'}
-                                </span>
+                {/* MARKET ORDERS VIEW */}
+                {!loading && activeTab === 'market' && (
+                    <div className="space-y-4">
+                        {orders.length === 0 && (
+                            <div className="text-center py-10">
+                                <Tag className="mx-auto text-gray-300 mb-2" size={48} />
+                                <p className="text-gray-500">No marketplace orders found.</p>
                             </div>
-                            <h3 className="font-bold text-gray-800">{order.item_name}</h3>
-                            <p className="text-sm text-gray-500">{order.quantity} x {order.unit_price}</p>
-                            <p className="text-orange-600 font-bold mt-1">{order.total_price}</p>
-                            <p className="text-xs text-gray-400 mt-2">{new Date(order.date).toLocaleDateString()}</p>
-                        </div>
+                        )}
+                        {orders.map(order => (
+                            <div key={order.order_id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between gap-4">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <span className="text-xs font-bold text-gray-400">#{order.order_id}</span>
+                                        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-md ${getStatusColor(order.status)}`}>
+                                            {order.status || 'Pending'}
+                                        </span>
+                                    </div>
+                                    <h3 className="font-bold text-gray-800">{order.item_name}</h3>
+                                    <p className="text-sm text-gray-500">{order.quantity} x {order.unit_price}</p>
+                                    <p className="text-orange-600 font-bold mt-1">{order.total_price}</p>
+                                    <p className="text-xs text-gray-400 mt-2">{new Date(order.date).toLocaleDateString()}</p>
+                                </div>
 
-                        <div className="flex flex-col justify-center items-end gap-2">
-                            {/* ACTION BUTTONS */}
-
-                            {(order.status === 'Pending' || order.status === 'Pending Payment') && (
-                                <button
-                                    onClick={() => handleUploadClick(order)}
-                                    className="px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 flex items-center gap-2">
-                                    <Upload size={16} /> Upload Proof
-                                </button>
-                            )}
-
-                            {(order.status === 'Ready to Ship' || order.status === 'Shipped') && (
-                                <button
-                                    onClick={() => confirmReceipt(order.order_id)}
-                                    className="px-4 py-2 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-700 flex items-center gap-2">
-                                    <CheckCircle size={16} /> Confirm Receipt
-                                </button>
-                            )}
-
-                            {order.status === 'Item Received' && (
-                                <p className="text-xs text-green-600 font-bold flex items-center gap-1">
-                                    <CheckCircle size={12} /> Completed
-                                </p>
-                            )}
-                        </div>
+                                <div className="flex flex-col justify-center items-end gap-2">
+                                    {(order.status === 'Pending' || order.status === 'Pending Payment') && (
+                                        <div className="flex gap-2">
+                                            <button onClick={() => handlePayNow(order)} className="px-4 py-2 bg-teal-600 text-white text-sm font-bold rounded-lg hover:bg-teal-700 flex items-center gap-2">
+                                                <Tag size={16} /> Pay Now
+                                            </button>
+                                            <button onClick={() => handleUploadClick(order)} className="px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 flex items-center gap-2">
+                                                <Upload size={16} /> Manual
+                                            </button>
+                                        </div>
+                                    )}
+                                    {(order.status === 'Ready to Ship' || order.status === 'Shipped') && (
+                                        <button onClick={() => confirmReceipt(order.order_id)} className="px-4 py-2 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-700 flex items-center gap-2">
+                                            <CheckCircle size={16} /> Confirm Receipt
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
                     </div>
-                ))}
+                )}
 
+                {/* EVENT BOOKINGS VIEW */}
+                {!loading && activeTab === 'event' && (
+                    <div className="space-y-4">
+                        {bookings.length === 0 && (
+                            <div className="text-center py-10">
+                                <Tag className="mx-auto text-gray-300 mb-2" size={48} />
+                                <p className="text-gray-500">No event bookings found.</p>
+                            </div>
+                        )}
+                        {bookings.map((booking, idx) => (
+                            <div key={idx} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div>
+                                        <h4 className="font-bold text-gray-900 text-lg">{booking.event_name}</h4>
+                                        <p className="text-sm text-gray-500">{booking.date_submitted}</p>
+                                    </div>
+                                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${booking.reservation_status?.toLowerCase().includes('confirm')
+                                        ? 'bg-green-100 text-green-700'
+                                        : 'bg-orange-100 text-orange-700'
+                                        }`}>
+                                        {booking.reservation_status || 'Pending'}
+                                    </span>
+                                </div>
+
+                                <div className="bg-gray-50 p-4 rounded-xl grid grid-cols-2 gap-y-4 text-sm text-gray-600 mb-4">
+                                    <div>
+                                        <span className="text-gray-400 block text-xs uppercase font-bold">Tent Type</span>
+                                        <span className="font-semibold text-gray-800">{booking.special_requests || booking.ukuran_tenda || '-'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-400 block text-xs uppercase font-bold">Accommodation</span>
+                                        <span className="font-semibold text-gray-800">{booking.kavling || 'On Arrival'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-400 block text-xs uppercase font-bold">Member Type</span>
+                                        <span className="font-semibold text-gray-800">{booking.jenis_anggota || 'General'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-400 block text-xs uppercase font-bold">Pax</span>
+                                        <span className="font-semibold text-gray-800">{booking.participant_count} Person(s)</span>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-between items-center border-t border-gray-100 pt-4">
+                                    <div className="text-xs text-gray-400">
+                                        ID: <span className="font-mono bg-gray-100 px-2 py-1 rounded">{booking.reservation_id}</span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        {booking.link_tiket ? (
+                                            <a href={booking.link_tiket} target="_blank" rel="noreferrer" className="bg-teal-600 text-white text-sm px-4 py-2 rounded-xl font-bold hover:bg-teal-700 transition shadow-sm flex items-center gap-2">
+                                                Download Ticket
+                                            </a>
+                                        ) : (
+                                            <a href={`https://wa.me/6281382364484?text=Assalamualaikum%2C%20saya%20sudah%20booking%20event%20${encodeURIComponent(booking.event_name)}%20(ID:%20${booking.reservation_id})%20dan%20ingin%20konfirmasi%20pembayaran.`} target="_blank" rel="noreferrer" className="bg-green-600 text-white text-sm px-4 py-2 rounded-xl font-bold hover:bg-green-700 transition shadow-sm flex items-center gap-2">
+                                                Confirm Payment
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Help / Contact Admin */}
-            <div className="max-w-4xl mx-auto px-6 md:px-10 mt-8 text-center">
+            <div className="max-w-4xl mx-auto px-6 md:px-10 mt-8 text-center pb-10">
                 <p className="text-gray-500 text-sm mb-3">Haven't received your item yet? Or need help?</p>
                 <a
                     href="https://wa.me/628123456789"  // TODO: Replace with actual Admin number
@@ -177,7 +309,7 @@ export const MyOrdersPage: React.FC = () => {
             </div>
 
             {/* Upload Modal */}
-            {uploadingOrder && (
+            {uploadingOrder && activeTab === 'market' && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
                     <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl">
                         <h3 className="font-bold text-lg mb-2">Upload Payment Proof</h3>
