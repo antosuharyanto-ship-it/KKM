@@ -388,7 +388,7 @@ export const MarketplacePage: React.FC = () => {
                             </div>
                         </div>
 
-                        <p className="font-bold text-red-600">DEBUG v1.7.3 (CURL Verify)</p>
+                        <p className="font-bold text-red-600">DEBUG v1.7.4 (Backend Fix Check)</p>
                         <p className="text-[9px] break-all"><b>API URL:</b> {API_BASE_URL}/api/shipping/cost</p>
                         <p>Origin (Sheet): {(selectedItem as any).origin_city_id || (selectedItem as any).origin_city || 'Jakarta Barat'}</p>
 
