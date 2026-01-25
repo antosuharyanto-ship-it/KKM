@@ -144,7 +144,7 @@ export const MarketplacePage: React.FC = () => {
         // Use ID if available, otherwise name (backend will try to search name)
         const destValue = selectedAddr.address_city_id || selectedAddr.address_city_name;
 
-        axios.post(`${API_BASE_URL}/api/shipping/cost`, {
+        axios.post(`${API_BASE_URL}/api/shipping/cost?t=${Date.now()}`, {
             origin: originCity,
             destination: destValue,
             weight: parseInt(selectedItem.weight_gram || '1000') || 1000,
@@ -388,7 +388,7 @@ export const MarketplacePage: React.FC = () => {
                             </div>
                         </div>
 
-                        <p className="font-bold text-red-600">DEBUG v1.7.4 (Backend Fix Check)</p>
+                        <p className="font-bold text-red-600">DEBUG v1.7.5 (Cache Busting)</p>
                         <p className="text-[9px] break-all"><b>API URL:</b> {API_BASE_URL}/api/shipping/cost</p>
                         <p>Origin (Sheet): {(selectedItem as any).origin_city_id || (selectedItem as any).origin_city || 'Jakarta Barat'}</p>
 

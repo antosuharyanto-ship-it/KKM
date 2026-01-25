@@ -47,7 +47,7 @@ app.get('/', (req, res) => {
 app.get('/api/health-check', (req, res) => {
     res.json({
         status: 'ok',
-        version: 'v1.7.4', // Bumped for Name Mapping Fix
+        version: 'v1.7.5', // Bumped for Cache Bust
         timestamp: new Date().toISOString(),
         service: 'KKM Backend'
     });
@@ -947,6 +947,7 @@ app.post('/api/shipping/cost', async (req, res) => {
         }
 
         console.log(`[API] Cost Result:`, JSON.stringify(costs));
+        res.setHeader('X-Backend-Ver', 'v1.7.5-CACHE-BUST');
         res.json(costs);
     } catch (error: any) {
         console.error('[API] Cost Error:', error);
