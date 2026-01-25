@@ -400,7 +400,7 @@ export const MarketplacePage: React.FC = () => {
                             </div>
                         </div>
 
-                        <p className="font-bold text-red-600">DEBUG v1.7.7 (Guard Fix)</p>
+                        <p className="font-bold text-red-600">DEBUG v1.7.8 (Crash Fix)</p>
                         <p className="text-[9px] break-all"><b>API URL:</b> {API_BASE_URL}/api/shipping/cost</p>
                         <p>Origin (Sheet): {(selectedItem as any).origin_city_id || (selectedItem as any).origin_city || 'Jakarta Barat'}</p>
 
@@ -541,20 +541,23 @@ export const MarketplacePage: React.FC = () => {
                                                 <div className="text-xs text-gray-400 italic">Calculating costs...</div>
                                             ) : (
                                                 <div className="space-y-2 max-h-32 overflow-y-auto custom-scrollbar">
-                                                    {shippingCosts.map((sc, idx) => (
-                                                        <div
-                                                            key={idx}
-                                                            onClick={() => setSelectedService({ service: sc.service, cost: sc.cost[0].value })}
-                                                            className={`p-2 rounded-lg border cursor-pointer flex justify-between items-center hover:bg-teal-50 ${selectedService?.service === sc.service ? 'border-teal-500 bg-teal-50 ring-1 ring-teal-500' : 'border-gray-200 bg-white'}`}
-                                                        >
-                                                            <div>
-                                                                <div className="font-bold text-sm text-gray-800">{sc.service}</div>
-                                                                <div className="text-xs text-gray-500">{sc.description} ({sc.cost[0].etd.replace('HARI', '').replace('DAYS', '')} days)</div>
+                                                    {shippingCosts.length > 0 && (shippingCosts[0] as any).costs ? (
+                                                        (shippingCosts[0] as any).costs.map((sc: any, idx: number) => (
+                                                            <div
+                                                                key={idx}
+                                                                onClick={() => setSelectedService({ service: sc.service, cost: sc.cost[0].value })}
+                                                                className={`p-2 rounded-lg border cursor-pointer flex justify-between items-center hover:bg-teal-50 ${selectedService?.service === sc.service ? 'border-teal-500 bg-teal-50 ring-1 ring-teal-500' : 'border-gray-200 bg-white'}`}
+                                                            >
+                                                                <div>
+                                                                    <div className="font-bold text-sm text-gray-800">{sc.service}</div>
+                                                                    <div className="text-xs text-gray-500">{sc.description} ({sc.cost[0].etd.replace('HARI', '').replace('DAYS', '')} days)</div>
+                                                                </div>
+                                                                <div className="font-bold text-teal-700">Rp {sc.cost[0].value.toLocaleString('id-ID')}</div>
                                                             </div>
-                                                            <div className="font-bold text-teal-700">Rp {sc.cost[0].value.toLocaleString('id-ID')}</div>
-                                                        </div>
-                                                    ))}
-                                                    {shippingCosts.length === 0 && <div className="text-xs text-gray-400">No services available.</div>}
+                                                        ))
+                                                    ) : (
+                                                        <div className="text-xs text-gray-400">No services available.</div>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
