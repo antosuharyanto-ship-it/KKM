@@ -411,7 +411,7 @@ export const MarketplacePage: React.FC = () => {
                             <pre className="whitespace-pre-wrap break-all text-[9px] text-blue-800 bg-blue-50 p-1">
                                 {JSON.stringify({
                                     origin: (selectedItem as any).origin_city_id || (selectedItem as any).origin_city || 'Jakarta Barat',
-                                    destination: selectedAddress?.city_id || selectedAddress?.city_name || "Unknown",
+                                    destination: addresses.find(a => a.id === selectedAddressId)?.city_id || addresses.find(a => a.id === selectedAddressId)?.city_name || "Unknown",
                                     weight: parseInt(selectedItem.weight_gram || '1000') || 1000,
                                     courier: selectedCourier
                                 }, null, 2)}
