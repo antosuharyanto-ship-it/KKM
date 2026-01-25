@@ -402,191 +402,203 @@ export const MarketplacePage: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Debug Info (Temporary) */}
-                        <div className="bg-yellow-50 p-2 rounded border border-yellow-200 text-[10px] font-mono mb-4">
-                            <p className="font-bold text-red-600">DEBUG v1.7 (Observability)</p>
-                            <p>Origin (Sheet): {(selectedItem as any).origin_city_id || (selectedItem as any).origin_city || 'Jakarta Barat'}</p>
+                        <p className="font-bold text-red-600">DEBUG v1.7.3 (CURL Verify)</p>
+                        <p className="text-[9px] break-all"><b>API URL:</b> {API_BASE_URL}/api/shipping/cost</p>
+                        <p>Origin (Sheet): {(selectedItem as any).origin_city_id || (selectedItem as any).origin_city || 'Jakarta Barat'}</p>
 
-                            {/* Show the actual resolved destination logic */}
-                            {(() => {
-                                const debugAddr = addresses.find(a => a.id === selectedAddressId);
-                                const debugDest = debugAddr ? (debugAddr.address_city_id || debugAddr.address_city_name) : 'undefined';
-                                return (
-                                    <>
-                                        <p>Dest ID (Sent): {debugDest}</p>
-                                        <p>Dest UUID (State): {selectedAddressId}</p>
-                                    </>
-                                );
-                            })()}
+                        <div className="mt-1 border-t border-yellow-300 pt-1">
+                            <p className="font-bold">Payload (Check vs CURL):</p>
+                            <pre className="whitespace-pre-wrap break-all text-[9px] text-blue-800 bg-blue-50 p-1">
+                                {JSON.stringify({
+                                    origin: (selectedItem as any).origin_city_id || (selectedItem as any).origin_city || 'Jakarta Barat',
+                                    destination: selectedAddress?.city_id || selectedAddress?.city_name || "Unknown",
+                                    weight: parseInt(selectedItem.weight_gram || '1000') || 1000,
+                                    courier: selectedCourier
+                                }, null, 2)}
+                            </pre>
+                        </div>
 
-                            <p>Weight: {selectedItem.weight_gram || 1000}</p>
-                            <p>Courier: {selectedCourier}</p>
-                            <p>Costs: {shippingCosts.length} items</p>
+                        {/* Show the actual resolved destination logic */}
+                        {(() => {
+                            const debugAddr = addresses.find(a => a.id === selectedAddressId);
+                            const debugDest = debugAddr ? (debugAddr.address_city_id || debugAddr.address_city_name) : 'undefined';
+                            return (
+                                <>
+                                    <p>Dest ID (Sent): {debugDest}</p>
+                                    <p>Dest UUID (State): {selectedAddressId}</p>
+                                </>
+                            );
+                        })()}
 
-                            <div className="mt-2 pt-2 border-t border-yellow-200">
-                                <p className="font-bold">Raw Response:</p>
-                                <pre className="whitespace-pre-wrap break-all text-[9px] text-gray-600">
-                                    {JSON.stringify(shippingCosts.length > 0 ? shippingCosts : "EMPTY [] (Check Red Error below if any)", null, 2)}
-                                </pre>
-                                {/* Show Server Echo if available */}
-                                {shippingCosts.length > 0 && (shippingCosts[0] as any).debug_metadata && (
-                                    <div className="mt-1 text-[9px] text-blue-700 bg-blue-50 p-1 rounded">
-                                        Server Echo:
-                                        <br />OriginID: {(shippingCosts[0] as any).debug_metadata.resolvedOriginId}
-                                        <br />DestID: {(shippingCosts[0] as any).debug_metadata.resolvedDestId}
-                                    </div>
-                                )}
-                            </div>
-                            {shippingError && (
-                                <div className="mt-2 p-1 bg-red-100 text-red-600 font-bold border border-red-300">
-                                    ERROR: {shippingError}
+                        <p>Weight: {selectedItem.weight_gram || 1000}</p>
+                        <p>Courier: {selectedCourier}</p>
+                        <p>Costs: {shippingCosts.length} items</p>
+
+                        <div className="mt-2 pt-2 border-t border-yellow-200">
+                            <p className="font-bold">Raw Response:</p>
+                            <pre className="whitespace-pre-wrap break-all text-[9px] text-gray-600">
+                                {JSON.stringify(shippingCosts.length > 0 ? shippingCosts : "EMPTY [] (Check Red Error below if any)", null, 2)}
+                            </pre>
+                            {/* Show Server Echo if available */}
+                            {shippingCosts.length > 0 && (shippingCosts[0] as any).debug_metadata && (
+                                <div className="mt-1 text-[9px] text-blue-700 bg-blue-50 p-1 rounded">
+                                    Server Echo:
+                                    <br />OriginID: {(shippingCosts[0] as any).debug_metadata.resolvedOriginId}
+                                    <br />DestID: {(shippingCosts[0] as any).debug_metadata.resolvedDestId}
                                 </div>
                             )}
                         </div>
-
-                        {/* Description */}
-                        {selectedItem.description && (
-                            <div className="bg-blue-50 p-3 rounded-xl mb-4 text-xs text-blue-800">
-                                <span className="font-bold block mb-1">Description:</span>
-                                {selectedItem.description}
+                        {shippingError && (
+                            <div className="mt-2 p-1 bg-red-100 text-red-600 font-bold border border-red-300">
+                                ERROR: {shippingError}
                             </div>
                         )}
-
-                        <form onSubmit={handleOrderSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Quantity</label>
-                                <div className="flex items-center gap-4">
-                                    <button type="button" onClick={() => setOrderQty(Math.max(1, orderQty - 1))} className="w-10 h-10 rounded-full bg-gray-100 text-lg font-bold hover:bg-gray-200">-</button>
-                                    <span className="text-xl font-bold w-12 text-center">{orderQty}</span>
-                                    <button type="button" onClick={() => setOrderQty(orderQty + 1)} className="w-10 h-10 rounded-full bg-gray-100 text-lg font-bold hover:bg-gray-200">+</button>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Your Name</label>
-                                    <input
-                                        readOnly
-                                        disabled
-                                        className="w-full p-3 rounded-xl bg-gray-100 border border-gray-200 text-gray-500 cursor-not-allowed"
-                                        value={userDetails.name || 'Login required'}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Phone / WA</label>
-                                    <input
-                                        required
-                                        type="tel"
-                                        className="w-full p-3 rounded-xl bg-gray-50 border border-gray-200 focus:outline-teal-600"
-                                        value={userDetails.phone}
-                                        onChange={e => setUserDetails({ ...userDetails, phone: e.target.value })}
-                                        placeholder="08..."
-                                    />
-                                </div>
-                            </div>
-
-                            {/* --- Delivery Section --- */}
-                            <div className="bg-gray-50 p-4 rounded-xl space-y-4">
-                                <div>
-                                    <div className="flex justify-between items-center mb-1">
-                                        <label className="block text-xs font-bold text-gray-500 uppercase">Shipping Address</label>
-                                        <button type="button" onClick={() => navigate('/profile')} className="text-xs text-teal-600 font-bold hover:underline">+ Manage Addresses</button>
-                                    </div>
-                                    <select
-                                        value={selectedAddressId}
-                                        onChange={(e) => setSelectedAddressId(e.target.value)}
-                                        className="w-full p-2 rounded-lg border border-gray-200 text-sm"
-                                    >
-                                        <option value="">Select Address...</option>
-                                        {addresses.map(addr => (
-                                            <option key={addr.id} value={addr.id}>
-                                                {addr.label} - {addr.address_city_name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    {addresses.length === 0 && <p className="text-xs text-red-400 mt-1">Please add an address.</p>}
-                                </div>
-
-                                {selectedAddressId && (
-                                    <>
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Courier</label>
-                                            <div className="flex gap-2">
-                                                {['jne', 'pos', 'tiki'].map(c => (
-                                                    <button
-                                                        key={c}
-                                                        type="button"
-                                                        onClick={() => setSelectedCourier(c)}
-                                                        className={`flex-1 py-1 px-2 rounded-md text-sm font-bold uppercase border ${selectedCourier === c ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-600 border-gray-200'}`}
-                                                    >
-                                                        {c}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Service</label>
-                                            {calculatingShipping ? (
-                                                <div className="text-xs text-gray-400 italic">Calculating costs...</div>
-                                            ) : (
-                                                <div className="space-y-2 max-h-32 overflow-y-auto custom-scrollbar">
-                                                    {shippingCosts.map((sc, idx) => (
-                                                        <div
-                                                            key={idx}
-                                                            onClick={() => setSelectedService({ service: sc.service, cost: sc.cost[0].value })}
-                                                            className={`p-2 rounded-lg border cursor-pointer flex justify-between items-center hover:bg-teal-50 ${selectedService?.service === sc.service ? 'border-teal-500 bg-teal-50 ring-1 ring-teal-500' : 'border-gray-200 bg-white'}`}
-                                                        >
-                                                            <div>
-                                                                <div className="font-bold text-sm text-gray-800">{sc.service}</div>
-                                                                <div className="text-xs text-gray-500">{sc.description} ({sc.cost[0].etd.replace('HARI', '').replace('DAYS', '')} days)</div>
-                                                            </div>
-                                                            <div className="font-bold text-teal-700">Rp {sc.cost[0].value.toLocaleString('id-ID')}</div>
-                                                        </div>
-                                                    ))}
-                                                    {shippingCosts.length === 0 && <div className="text-xs text-gray-400">No services available.</div>}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                            {/* ------------------------ */}
-
-                            {/* Total Price Estimation */}
-                            <div className="bg-teal-50 p-4 rounded-xl flex justify-between items-center">
-                                <span className="text-teal-800 font-medium">Estimated Total</span>
-                                <div className="text-right">
-                                    <span className="text-xl font-bold text-teal-900">
-                                        {(() => {
-                                            const cleanPrice = parseInt(selectedItem.unit_price.replace(/[^0-9]/g, '')) || 0;
-                                            const shipping = selectedService?.cost || 0;
-                                            return `Rp ${(cleanPrice * orderQty + shipping).toLocaleString('id-ID')}`;
-                                        })()}
-                                    </span>
-                                    {selectedService && <div className="text-xs text-teal-600">(Inc. Shipping)</div>}
-                                </div>
-                            </div>
-
-                            {userDetails.email ? (
-                                <button
-                                    type="submit"
-                                    disabled={isSubmitting}
-                                    className="w-full py-4 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-lg shadow-orange-200 transition disabled:opacity-50 disabled:cursor-not-allowed">
-                                    {isSubmitting ? 'Processing...' : 'Place Order'}
-                                </button>
-                            ) : (
-                                <button
-                                    type="button"
-                                    onClick={() => window.location.href = '/login'}
-                                    className="w-full py-4 bg-teal-800 hover:bg-teal-900 text-white font-bold rounded-xl shadow-lg transition">
-                                    Login to Order
-                                </button>
-                            )}
-                        </form>
                     </div>
+
+                    {/* Description */}
+                    {selectedItem.description && (
+                        <div className="bg-blue-50 p-3 rounded-xl mb-4 text-xs text-blue-800">
+                            <span className="font-bold block mb-1">Description:</span>
+                            {selectedItem.description}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleOrderSubmit} className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Quantity</label>
+                            <div className="flex items-center gap-4">
+                                <button type="button" onClick={() => setOrderQty(Math.max(1, orderQty - 1))} className="w-10 h-10 rounded-full bg-gray-100 text-lg font-bold hover:bg-gray-200">-</button>
+                                <span className="text-xl font-bold w-12 text-center">{orderQty}</span>
+                                <button type="button" onClick={() => setOrderQty(orderQty + 1)} className="w-10 h-10 rounded-full bg-gray-100 text-lg font-bold hover:bg-gray-200">+</button>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Your Name</label>
+                                <input
+                                    readOnly
+                                    disabled
+                                    className="w-full p-3 rounded-xl bg-gray-100 border border-gray-200 text-gray-500 cursor-not-allowed"
+                                    value={userDetails.name || 'Login required'}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Phone / WA</label>
+                                <input
+                                    required
+                                    type="tel"
+                                    className="w-full p-3 rounded-xl bg-gray-50 border border-gray-200 focus:outline-teal-600"
+                                    value={userDetails.phone}
+                                    onChange={e => setUserDetails({ ...userDetails, phone: e.target.value })}
+                                    placeholder="08..."
+                                />
+                            </div>
+                        </div>
+
+                        {/* --- Delivery Section --- */}
+                        <div className="bg-gray-50 p-4 rounded-xl space-y-4">
+                            <div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <label className="block text-xs font-bold text-gray-500 uppercase">Shipping Address</label>
+                                    <button type="button" onClick={() => navigate('/profile')} className="text-xs text-teal-600 font-bold hover:underline">+ Manage Addresses</button>
+                                </div>
+                                <select
+                                    value={selectedAddressId}
+                                    onChange={(e) => setSelectedAddressId(e.target.value)}
+                                    className="w-full p-2 rounded-lg border border-gray-200 text-sm"
+                                >
+                                    <option value="">Select Address...</option>
+                                    {addresses.map(addr => (
+                                        <option key={addr.id} value={addr.id}>
+                                            {addr.label} - {addr.address_city_name}
+                                        </option>
+                                    ))}
+                                </select>
+                                {addresses.length === 0 && <p className="text-xs text-red-400 mt-1">Please add an address.</p>}
+                            </div>
+
+                            {selectedAddressId && (
+                                <>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Courier</label>
+                                        <div className="flex gap-2">
+                                            {['jne', 'pos', 'tiki'].map(c => (
+                                                <button
+                                                    key={c}
+                                                    type="button"
+                                                    onClick={() => setSelectedCourier(c)}
+                                                    className={`flex-1 py-1 px-2 rounded-md text-sm font-bold uppercase border ${selectedCourier === c ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-600 border-gray-200'}`}
+                                                >
+                                                    {c}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Service</label>
+                                        {calculatingShipping ? (
+                                            <div className="text-xs text-gray-400 italic">Calculating costs...</div>
+                                        ) : (
+                                            <div className="space-y-2 max-h-32 overflow-y-auto custom-scrollbar">
+                                                {shippingCosts.map((sc, idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        onClick={() => setSelectedService({ service: sc.service, cost: sc.cost[0].value })}
+                                                        className={`p-2 rounded-lg border cursor-pointer flex justify-between items-center hover:bg-teal-50 ${selectedService?.service === sc.service ? 'border-teal-500 bg-teal-50 ring-1 ring-teal-500' : 'border-gray-200 bg-white'}`}
+                                                    >
+                                                        <div>
+                                                            <div className="font-bold text-sm text-gray-800">{sc.service}</div>
+                                                            <div className="text-xs text-gray-500">{sc.description} ({sc.cost[0].etd.replace('HARI', '').replace('DAYS', '')} days)</div>
+                                                        </div>
+                                                        <div className="font-bold text-teal-700">Rp {sc.cost[0].value.toLocaleString('id-ID')}</div>
+                                                    </div>
+                                                ))}
+                                                {shippingCosts.length === 0 && <div className="text-xs text-gray-400">No services available.</div>}
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                        {/* ------------------------ */}
+
+                        {/* Total Price Estimation */}
+                        <div className="bg-teal-50 p-4 rounded-xl flex justify-between items-center">
+                            <span className="text-teal-800 font-medium">Estimated Total</span>
+                            <div className="text-right">
+                                <span className="text-xl font-bold text-teal-900">
+                                    {(() => {
+                                        const cleanPrice = parseInt(selectedItem.unit_price.replace(/[^0-9]/g, '')) || 0;
+                                        const shipping = selectedService?.cost || 0;
+                                        return `Rp ${(cleanPrice * orderQty + shipping).toLocaleString('id-ID')}`;
+                                    })()}
+                                </span>
+                                {selectedService && <div className="text-xs text-teal-600">(Inc. Shipping)</div>}
+                            </div>
+                        </div>
+
+                        {userDetails.email ? (
+                            <button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className="w-full py-4 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-lg shadow-orange-200 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                {isSubmitting ? 'Processing...' : 'Place Order'}
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => window.location.href = '/login'}
+                                className="w-full py-4 bg-teal-800 hover:bg-teal-900 text-white font-bold rounded-xl shadow-lg transition">
+                                Login to Order
+                            </button>
+                        )}
+                    </form>
+                </div>
                 </div >
-            )}
+    )
+}
         </div >
     );
 };
