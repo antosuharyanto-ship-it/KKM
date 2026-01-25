@@ -124,8 +124,13 @@ export const MarketplacePage: React.FC = () => {
 
     const calculateShipping = () => {
         if (!selectedAddressId || !selectedItem) return;
-        const addr = addresses.find(a => a.id === selectedAddressId);
-        if (!addr || !addr.address_city_id) return;
+
+        // Find Address
+        const selectedAddr = addresses.find(a => a.id === selectedAddressId);
+        if (!selectedAddr) {
+            console.error('[Marketplace] Address not found for ID:', selectedAddressId);
+            return;
+        }
 
         setCalculatingShipping(true);
         setShippingCosts([]);
@@ -133,14 +138,6 @@ export const MarketplacePage: React.FC = () => {
 
         // Item Origin: 'origin_city' from sheet (snake_case from header)
         const originCity = (selectedItem as any).origin_city_id || (selectedItem as any).origin_city || 'Jakarta Barat'; // Fallback
-
-        // Resolve Destination: Must use numeric ID (e.g. from address_city_id or address_subdistrict_id)
-        const selectedAddr = addresses.find(a => a.id === selectedAddressId);
-        if (!selectedAddr) {
-            console.error('[Marketplace] Address not found for ID:', selectedAddressId);
-            setCalculatingShipping(false);
-            return;
-        }
 
         // Use ID if available, otherwise name (backend will try to search name)
         const destValue = selectedAddr.address_city_id || selectedAddr.address_city_name;
@@ -403,7 +400,7 @@ export const MarketplacePage: React.FC = () => {
                             </div>
                         </div>
 
-                        <p className="font-bold text-red-600">DEBUG v1.7.6 (Header Inspection)</p>
+                        <p className="font-bold text-red-600">DEBUG v1.7.7 (Guard Fix)</p>
                         <p className="text-[9px] break-all"><b>API URL:</b> {API_BASE_URL}/api/shipping/cost</p>
                         <p>Origin (Sheet): {(selectedItem as any).origin_city_id || (selectedItem as any).origin_city || 'Jakarta Barat'}</p>
 
