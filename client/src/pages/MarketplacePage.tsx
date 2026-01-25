@@ -69,7 +69,6 @@ export const MarketplacePage: React.FC = () => {
     const [selectedService, setSelectedService] = useState<{ service: string, cost: number } | null>(null);
     const [calculatingShipping, setCalculatingShipping] = useState(false);
     const [shippingError, setShippingError] = useState<string | null>(null);
-    const [debugResponseInfo, setDebugResponseInfo] = useState<any>(null); // New Debug State
 
     // ----------------------------------
 
@@ -151,32 +150,38 @@ export const MarketplacePage: React.FC = () => {
             .then(res => {
                 console.log('[Marketplace] Shipping Response:', res.data);
 
-                // Capture Debug Info
-                setDebugResponseInfo({
-                    status: res.status,
-                    headers: res.headers,
-                    dataType: typeof res.data,
-                    isArray: Array.isArray(res.data),
-                    rawData: JSON.stringify(res.data).slice(0, 100) // First 100 chars
-                });
-
                 const responseArray = Array.isArray(res.data) ? res.data : [];
                 setShippingCosts(responseArray);
 
-                const hasCosts = responseArray.length > 0 && responseArray[0].costs && responseArray[0].costs.length > 0;
+                const hasCosts = responseArray.length > 0;
 
                 if (!hasCosts) {
-                    // Try to extract debug_metadata even if empty
-                    const meta = responseArray[0]?.debug_metadata || {};
-                    const errorMsg = meta.error || `No costs found. Status: ${res.status}`;
-                    setShippingError(`${errorMsg} (Server: ${res.headers['x-backend-ver'] || 'Unknown'})`);
+                    setShippingError(`No costs found.`);
                 } else {
                     setShippingError(null);
+
+                    // Auto-select first service (Smart Logic)
+                    try {
+                        let firstService = null;
+                        // Case 1: Wrapped (Standard)
+                        if ((responseArray[0] as any).costs && Array.isArray((responseArray[0] as any).costs)) {
+                            firstService = (responseArray[0] as any).costs[0];
+                        }
+                        // Case 2: Flattened (Anomaly)
+                        else if ((responseArray[0] as any).service) {
+                            firstService = responseArray[0];
+                        }
+
+                        if (firstService?.cost && firstService.cost[0]) {
+                            setSelectedService({ service: firstService.service, cost: firstService.cost[0].value });
+                        }
+                    } catch (e) {
+                        console.warn('Auto-select failed', e);
+                    }
                 }
             })
             .catch(err => {
                 console.error('[Marketplace] Shipping Error:', err);
-                setDebugResponseInfo({ error: err.message, status: err.response?.status });
                 setShippingError(err.message || String(err));
             })
             .finally(() => setCalculatingShipping(false));
@@ -251,22 +256,6 @@ export const MarketplacePage: React.FC = () => {
     };
 
     // --- Helpers / Derived State for Render ---
-    const getDebugPayload = () => {
-        if (!selectedItem) return {};
-        return {
-            origin: (selectedItem as any).origin_city_id || (selectedItem as any).origin_city || 'Jakarta Barat',
-            destination: addresses.find(a => a.id === selectedAddressId)?.address_city_id || addresses.find(a => a.id === selectedAddressId)?.address_city_name || "Unknown",
-            weight: parseInt(selectedItem.weight_gram || '1000') || 1000,
-            courier: selectedCourier
-        };
-    };
-
-    const getDebugDestInfo = () => {
-        const debugAddr = addresses.find(a => a.id === selectedAddressId);
-        const debugDest = debugAddr ? (debugAddr.address_city_id || debugAddr.address_city_name) : 'undefined';
-        return { idSent: debugDest, uuid: selectedAddressId };
-    };
-
     const getEstimatedTotal = () => {
         if (!selectedItem) return "Rp 0";
         const cleanPrice = parseInt(selectedItem.unit_price.replace(/[^0-9]/g, '')) || 0;
@@ -400,53 +389,21 @@ export const MarketplacePage: React.FC = () => {
                             </div>
                         </div>
 
-                        <p className="font-bold text-red-600">DEBUG v1.7.8 (Crash Fix)</p>
-                        <p className="text-[9px] break-all"><b>API URL:</b> {API_BASE_URL}/api/shipping/cost</p>
-                        <p>Origin (Sheet): {(selectedItem as any).origin_city_id || (selectedItem as any).origin_city || 'Jakarta Barat'}</p>
-
+                        {/* 
+                        <p className="font-bold text-red-600">DEBUG v1.7.9 (Robust UI)</p>
                         <div className="mt-1 border-t border-yellow-300 pt-1">
-                            <p className="font-bold">Payload (Check vs CURL):</p>
-                            <pre className="whitespace-pre-wrap break-all text-[9px] text-blue-800 bg-blue-50 p-1">
-                                {JSON.stringify(getDebugPayload(), null, 2)}
-                            </pre>
+                             <p className="font-bold">Payload:</p>
+                             <pre className="whitespace-pre-wrap break-all text-[9px] text-blue-800 bg-blue-50 p-1">
+                                 {JSON.stringify(getDebugPayload(), null, 2)}
+                             </pre>
                         </div>
-
-                        {/* Debug Destination Info */}
-                        <div className="text-xs mt-1">
-                            <p>Dest ID (Sent): {getDebugDestInfo().idSent}</p>
-                            <p>Dest UUID (State): {getDebugDestInfo().uuid}</p>
-                        </div>
-
-                        <p>Weight: {selectedItem.weight_gram || 1000}</p>
-                        <p>Courier: {selectedCourier}</p>
-                        <p>Costs: {shippingCosts.length} items</p>
-
                         <div className="mt-2 pt-2 border-t border-yellow-200">
-                            <p className="font-bold">Raw Response:</p>
-                            <pre className="whitespace-pre-wrap break-all text-[9px] text-gray-600">
-                                {JSON.stringify(shippingCosts.length > 0 ? shippingCosts : "EMPTY []", null, 2)}
-                            </pre>
-                            {shippingCosts.length > 0 && (shippingCosts[0] as any).debug_metadata && (
-                                <div className="mt-1 text-[9px] text-blue-700 bg-blue-50 p-1 rounded">
-                                    Server Echo:
-                                    <br />OriginID: {(shippingCosts[0] as any).debug_metadata.resolvedOriginId}
-                                    <br />DestID: {(shippingCosts[0] as any).debug_metadata.resolvedDestId}
-                                </div>
-                            )}
+                             <p className="font-bold">Raw Response:</p>
+                             <pre className="whitespace-pre-wrap break-all text-[9px] text-gray-600">
+                                 {JSON.stringify(shippingCosts.length > 0 ? shippingCosts : "EMPTY []", null, 2)}
+                             </pre>
                         </div>
-
-                        {/* HEADER DEBUG BOX */}
-                        <div className="mt-2 text-[9px] border p-1 bg-gray-50 font-mono break-all">
-                            <p className="font-bold">Net Debug:</p>
-                            {debugResponseInfo ? (
-                                <>
-                                    Status: {debugResponseInfo.status}<br />
-                                    Ver: {debugResponseInfo.headers && (debugResponseInfo.headers['x-backend-ver'] || 'MISSING')}<br />
-                                    Type: {debugResponseInfo.dataType} (Array? {String(debugResponseInfo.isArray)})<br />
-                                    Raw: {debugResponseInfo.rawData}
-                                </>
-                            ) : 'No Req Yet'}
-                        </div>
+                         */}
 
                         {shippingError && (
                             <div className="mt-2 p-1 bg-red-100 text-red-600 font-bold border border-red-300">
@@ -540,9 +497,24 @@ export const MarketplacePage: React.FC = () => {
                                             {calculatingShipping ? (
                                                 <div className="text-xs text-gray-400 italic">Calculating costs...</div>
                                             ) : (
-                                                <div className="space-y-2 max-h-32 overflow-y-auto custom-scrollbar">
-                                                    {shippingCosts.length > 0 && (shippingCosts[0] as any).costs ? (
-                                                        (shippingCosts[0] as any).costs.map((sc: any, idx: number) => (
+                                                <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+                                                    {(() => {
+                                                        let servicesToRender: any[] = [];
+
+                                                        // Strategy 1: Wrapped (Courier -> Costs)
+                                                        if (shippingCosts.length > 0 && (shippingCosts[0] as any).costs) {
+                                                            servicesToRender = (shippingCosts[0] as any).costs;
+                                                        }
+                                                        // Strategy 2: Flattened (List of Services)
+                                                        else if (shippingCosts.length > 0 && (shippingCosts[0] as any).service) {
+                                                            servicesToRender = shippingCosts;
+                                                        }
+
+                                                        if (servicesToRender.length === 0) {
+                                                            return <div className="text-xs text-gray-400">No services available.</div>;
+                                                        }
+
+                                                        return servicesToRender.map((sc: any, idx: number) => (
                                                             <div
                                                                 key={idx}
                                                                 onClick={() => setSelectedService({ service: sc.service, cost: sc.cost[0].value })}
@@ -550,14 +522,12 @@ export const MarketplacePage: React.FC = () => {
                                                             >
                                                                 <div>
                                                                     <div className="font-bold text-sm text-gray-800">{sc.service}</div>
-                                                                    <div className="text-xs text-gray-500">{sc.description} ({sc.cost[0].etd.replace('HARI', '').replace('DAYS', '')} days)</div>
+                                                                    <div className="text-xs text-gray-500">{sc.description} ({sc.cost[0]?.etd?.replace('HARI', '').replace('DAYS', '')} days)</div>
                                                                 </div>
-                                                                <div className="font-bold text-teal-700">Rp {sc.cost[0].value.toLocaleString('id-ID')}</div>
+                                                                <div className="font-bold text-teal-700">Rp {sc.cost[0]?.value?.toLocaleString('id-ID')}</div>
                                                             </div>
-                                                        ))
-                                                    ) : (
-                                                        <div className="text-xs text-gray-400">No services available.</div>
-                                                    )}
+                                                        ));
+                                                    })()}
                                                 </div>
                                             )}
                                         </div>
