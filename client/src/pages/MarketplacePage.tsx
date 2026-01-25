@@ -597,6 +597,8 @@ export const MarketplacePage: React.FC = () => {
                     </form>
                 </div>
             </div>
-        </div >
+    )
+}
+    </div >
     );
 };
