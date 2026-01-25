@@ -69,6 +69,7 @@ export const MarketplacePage: React.FC = () => {
     const [selectedService, setSelectedService] = useState<{ service: string, cost: number } | null>(null);
     const [calculatingShipping, setCalculatingShipping] = useState(false);
     const [shippingError, setShippingError] = useState<string | null>(null);
+    const [debugResponseInfo, setDebugResponseInfo] = useState<any>(null); // New Debug State
 
     // ----------------------------------
 
@@ -152,19 +153,33 @@ export const MarketplacePage: React.FC = () => {
         }, { withCredentials: true })
             .then(res => {
                 console.log('[Marketplace] Shipping Response:', res.data);
+
+                // Capture Debug Info
+                setDebugResponseInfo({
+                    status: res.status,
+                    headers: res.headers,
+                    dataType: typeof res.data,
+                    isArray: Array.isArray(res.data),
+                    rawData: JSON.stringify(res.data).slice(0, 100) // First 100 chars
+                });
+
                 const responseArray = Array.isArray(res.data) ? res.data : [];
                 setShippingCosts(responseArray);
 
                 const hasCosts = responseArray.length > 0 && responseArray[0].costs && responseArray[0].costs.length > 0;
 
                 if (!hasCosts) {
-                    setShippingError(`No costs found. Server Info: ${JSON.stringify(responseArray[0]?.debug_metadata || {})}`);
+                    // Try to extract debug_metadata even if empty
+                    const meta = responseArray[0]?.debug_metadata || {};
+                    const errorMsg = meta.error || `No costs found. Status: ${res.status}`;
+                    setShippingError(`${errorMsg} (Server: ${res.headers['x-backend-ver'] || 'Unknown'})`);
                 } else {
                     setShippingError(null);
                 }
             })
             .catch(err => {
                 console.error('[Marketplace] Shipping Error:', err);
+                setDebugResponseInfo({ error: err.message, status: err.response?.status });
                 setShippingError(err.message || String(err));
             })
             .finally(() => setCalculatingShipping(false));
@@ -388,7 +403,7 @@ export const MarketplacePage: React.FC = () => {
                             </div>
                         </div>
 
-                        <p className="font-bold text-red-600">DEBUG v1.7.5 (Cache Busting)</p>
+                        <p className="font-bold text-red-600">DEBUG v1.7.6 (Header Inspection)</p>
                         <p className="text-[9px] break-all"><b>API URL:</b> {API_BASE_URL}/api/shipping/cost</p>
                         <p>Origin (Sheet): {(selectedItem as any).origin_city_id || (selectedItem as any).origin_city || 'Jakarta Barat'}</p>
 
@@ -414,14 +429,28 @@ export const MarketplacePage: React.FC = () => {
                             <pre className="whitespace-pre-wrap break-all text-[9px] text-gray-600">
                                 {JSON.stringify(shippingCosts.length > 0 ? shippingCosts : "EMPTY []", null, 2)}
                             </pre>
-                            {shippingCosts.length > 0 && shippingCosts[0].debug_metadata && (
+                            {shippingCosts.length > 0 && (shippingCosts[0] as any).debug_metadata && (
                                 <div className="mt-1 text-[9px] text-blue-700 bg-blue-50 p-1 rounded">
                                     Server Echo:
-                                    <br />OriginID: {shippingCosts[0].debug_metadata.resolvedOriginId}
-                                    <br />DestID: {shippingCosts[0].debug_metadata.resolvedDestId}
+                                    <br />OriginID: {(shippingCosts[0] as any).debug_metadata.resolvedOriginId}
+                                    <br />DestID: {(shippingCosts[0] as any).debug_metadata.resolvedDestId}
                                 </div>
                             )}
                         </div>
+
+                        {/* HEADER DEBUG BOX */}
+                        <div className="mt-2 text-[9px] border p-1 bg-gray-50 font-mono break-all">
+                            <p className="font-bold">Net Debug:</p>
+                            {debugResponseInfo ? (
+                                <>
+                                    Status: {debugResponseInfo.status}<br />
+                                    Ver: {debugResponseInfo.headers && (debugResponseInfo.headers['x-backend-ver'] || 'MISSING')}<br />
+                                    Type: {debugResponseInfo.dataType} (Array? {String(debugResponseInfo.isArray)})<br />
+                                    Raw: {debugResponseInfo.rawData}
+                                </>
+                            ) : 'No Req Yet'}
+                        </div>
+
                         {shippingError && (
                             <div className="mt-2 p-1 bg-red-100 text-red-600 font-bold border border-red-300">
                                 ERROR: {shippingError}
