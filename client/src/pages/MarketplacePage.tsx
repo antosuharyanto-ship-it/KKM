@@ -363,7 +363,7 @@ export const MarketplacePage: React.FC = () => {
             {/* Order Modal - Restored */}
             {selectedItem && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setSelectedItem(null)}>
-                    <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl relative animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                    <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl relative animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto custom-scrollbar" onClick={e => e.stopPropagation()}>
                         <button onClick={() => setSelectedItem(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">✕</button>
 
                         <h2 className="text-xl font-bold text-teal-900 mb-1">Confirm Order</h2>
@@ -390,7 +390,7 @@ export const MarketplacePage: React.FC = () => {
                         </div>
 
                         {/* 
-                        <p className="font-bold text-red-600">DEBUG v1.7.9 (Robust UI)</p>
+                        <p className="font-bold text-red-600">DEBUG v1.7.10 (Scroll Fix)</p>
                         <div className="mt-1 border-t border-yellow-300 pt-1">
                              <p className="font-bold">Payload:</p>
                              <pre className="whitespace-pre-wrap break-all text-[9px] text-blue-800 bg-blue-50 p-1">
