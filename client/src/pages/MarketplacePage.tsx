@@ -13,6 +13,7 @@ interface Product {
     product_image?: string;
     supplier_email?: string;
     stok?: string;
+    '# stok'?: string; // Alternative stock field name from Google Sheets
     contact_person?: string;
     phone_number?: string;
     discontinued?: string;
@@ -329,7 +330,14 @@ export const MarketplacePage: React.FC = () => {
                 navigate('/my-orders');
             } else {
                 const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to process order.';
-                alert(`Order Error: ${errorMsg}`);
+                const availStock = error.response?.data?.availableStock;
+                if (availStock !== undefined) {
+                    alert(`${errorMsg}\n\nPlease adjust your order quantity.`);
+                    // Optional: Auto-adjust quantity to available stock
+                    if (availStock > 0) setOrderQty(availStock);
+                } else {
+                    alert(`Order Error: ${errorMsg}`);
+                }
             }
         } finally {
             setIsSubmitting(false);
@@ -500,6 +508,15 @@ export const MarketplacePage: React.FC = () => {
                                         Weight: {selectedItem.weight_gram ? `${selectedItem.weight_gram}g` : '1kg'}
                                     </span>
                                     <span>{selectedItem.stock_status || 'Ready Stock'}</span>
+                                    {(() => {
+                                        const stockStr = String(selectedItem.stok || selectedItem['# stok'] || '0');
+                                        const availStock = parseInt(stockStr.replace(/[^0-9]/g, '')) || 0;
+                                        if (availStock > 0) {
+                                            return <span className="block mt-1 text-green-600 font-semibold">Stock: {availStock} units</span>;
+                                        } else {
+                                            return <span className="block mt-1 text-red-600 font-semibold">Out of Stock</span>;
+                                        }
+                                    })()}
                                 </div>
                             </div>
                         </div>
@@ -538,10 +555,34 @@ export const MarketplacePage: React.FC = () => {
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Quantity</label>
                                 <div className="flex items-center gap-4">
-                                    <button type="button" onClick={() => setOrderQty(Math.max(1, orderQty - 1))} className="w-10 h-10 rounded-full bg-gray-100 text-lg font-bold hover:bg-gray-200">-</button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setOrderQty(Math.max(1, orderQty - 1))}
+                                        className="w-10 h-10 rounded-full bg-gray-100 text-lg font-bold hover:bg-gray-200 disabled:opacity-50"
+                                        disabled={orderQty <= 1}
+                                    >-</button>
                                     <span className="text-xl font-bold w-12 text-center">{orderQty}</span>
-                                    <button type="button" onClick={() => setOrderQty(orderQty + 1)} className="w-10 h-10 rounded-full bg-gray-100 text-lg font-bold hover:bg-gray-200">+</button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const stockStr = String(selectedItem.stok || selectedItem['# stok'] || '0');
+                                            const availStock = parseInt(stockStr.replace(/[^0-9]/g, '')) || 0;
+                                            if (orderQty < availStock) {
+                                                setOrderQty(orderQty + 1);
+                                            } else {
+                                                alert(`Maximum available stock: ${availStock} units`);
+                                            }
+                                        }}
+                                        className="w-10 h-10 rounded-full bg-gray-100 text-lg font-bold hover:bg-gray-200"
+                                    >+</button>
                                 </div>
+                                {(() => {
+                                    const stockStr = String(selectedItem.stok || selectedItem['# stok'] || '0');
+                                    const availStock = parseInt(stockStr.replace(/[^0-9]/g, '')) || 0;
+                                    if (orderQty > availStock) {
+                                        return <p className="text-xs text-red-500 mt-1 font-semibold">Exceeds available stock ({availStock} units)</p>;
+                                    }
+                                })()}
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">

@@ -427,6 +427,49 @@ app.post('/api/marketplace/order', async (req, res) => {
 
         const item = items.find((i: any) => i.product_name?.toLowerCase().trim() === orderData.itemName?.toLowerCase().trim());
 
+        // STOCK VALIDATION
+        if (!item) {
+            console.log('[OrderDebug] Item not found in marketplace');
+            return res.status(404).json({
+                success: false,
+                message: 'Item not found in marketplace'
+            });
+        }
+
+        // Check if item is discontinued
+        if (item.discontinued?.toLowerCase() === 'yes') {
+            console.log('[OrderDebug] Item discontinued');
+            return res.status(400).json({
+                success: false,
+                message: 'This item is no longer available'
+            });
+        }
+
+        // Parse stock quantity (handle various formats: "10", "# Stok: 10", etc.)
+        const stockStr = String(item.stok || item['# stok'] || item['Stok'] || '0');
+        const availableStock = parseInt(stockStr.replace(/[^0-9]/g, '')) || 0;
+        const requestedQty = parseInt(orderData.quantity || 1);
+
+        console.log(`[StockCheck] Item: ${orderData.itemName}, Available: ${availableStock}, Requested: ${requestedQty}`);
+
+        // Validate stock availability
+        if (availableStock < requestedQty) {
+            console.log('[OrderDebug] Insufficient stock');
+            return res.status(400).json({
+                success: false,
+                message: `Insufficient stock. Only ${availableStock} units available.`,
+                availableStock
+            });
+        }
+
+        if (availableStock === 0) {
+            console.log('[OrderDebug] Out of stock');
+            return res.status(400).json({
+                success: false,
+                message: 'This item is currently out of stock'
+            });
+        }
+
         // Extract supplier contact details
         const supplierName = item?.contact_person || item?.supplier_name || '';
         const supplierPhone = item?.phone_number || item?.supplier_phone || '';
@@ -448,6 +491,7 @@ app.post('/api/marketplace/order', async (req, res) => {
         // Add supplier contact to order data
         safeOrderData.supplierName = supplierName;
         safeOrderData.supplierPhone = supplierPhone;
+
 
 
         // 2. Save to Sheets
