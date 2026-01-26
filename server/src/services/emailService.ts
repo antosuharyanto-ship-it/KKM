@@ -197,5 +197,94 @@ export const emailService = {
         } catch (error) {
             console.error('Failed to send shipping instruction:', error);
         }
+    },
+
+    async sendCancellationEmail(order: any, reason: string, notes?: string) {
+        try {
+            if (!order.user_email || !process.env.SMTP_USER) {
+                console.warn('Email config missing or no customer email. Skipping cancellation email.');
+                return;
+            }
+
+            const reasonText = reason === 'seller_issue'
+                ? 'The seller is unable to fulfill this order'
+                : reason === 'buyer_request'
+                    ? 'Per your request'
+                    : 'Administrative action';
+
+            const mailOptions = {
+                from: process.env.SMTP_FROM || `"KKM Marketplace" <${process.env.SMTP_USER}>`,
+                to: order.user_email,
+                subject: `Order Cancelled: ${order.order_id}`,
+                html: `
+                    <h2>Order Cancellation Notice</h2>
+                    <p>Dear ${order.user_name},</p>
+                    <p>We regret to inform you that your order has been cancelled.</p>
+                    <hr />
+                    <p><strong>Order ID:</strong> ${order.order_id}</p>
+                    <p><strong>Item:</strong> ${order.item_name}</p>
+                    <p><strong>Total Price:</strong> ${order.total_price}</p>
+                    <br />
+                    <p><strong>Cancellation Reason:</strong> ${reasonText}</p>
+                    ${notes ? `<p><strong>Notes:</strong> ${notes}</p>` : ''}
+                    <br />
+                    <p>If you have already made payment, a refund will be processed shortly. You will receive a separate email confirmation once the refund is complete.</p>
+                    <p>If you have any questions, please contact us at ${process.env.SMTP_USER}</p>
+                    <br />
+                    <p>We apologize for any inconvenience.</p>
+                    <p>- KKM Marketplace Team</p>
+                `,
+            };
+
+            const info = await this.transporter.sendMail(mailOptions);
+            console.log('Cancellation email sent to CUSTOMER:', info.messageId);
+        } catch (error) {
+            console.error('Failed to send cancellation email:', error);
+        }
+    },
+
+    async sendRefundEmail(order: any, refundAmount: number, refundMethod: string, notes?: string) {
+        try {
+            if (!order.user_email || !process.env.SMTP_USER) {
+                console.warn('Email config missing or no customer email. Skipping refund email.');
+                return;
+            }
+
+            const formattedAmount = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(refundAmount);
+            const methodText = refundMethod === 'manual_transfer'
+                ? 'Manual Bank Transfer'
+                : 'Midtrans (Auto-processed)';
+
+            const expectedDays = refundMethod === 'manual_transfer' ? '2-5' : '3-7';
+
+            const mailOptions = {
+                from: process.env.SMTP_FROM || `"KKM Marketplace" <${process.env.SMTP_USER}>`,
+                to: order.user_email,
+                subject: `Refund Processed: ${order.order_id}`,
+                html: `
+                    <h2>Refund Confirmation</h2>
+                    <p>Dear ${order.user_name},</p>
+                    <p>Your refund has been processed successfully.</p>
+                    <hr />
+                    <p><strong>Order ID:</strong> ${order.order_id}</p>
+                    <p><strong>Item:</strong> ${order.item_name}</p>
+                    <p><strong>Refund Amount:</strong> ${formattedAmount}</p>
+                    <p><strong>Refund Method:</strong> ${methodText}</p>
+                    ${notes ? `<p><strong>Notes:</strong> ${notes}</p>` : ''}
+                    <br />
+                    <p><strong>Expected Processing Time:</strong> ${expectedDays} business days</p>
+                    <p>The refund will be credited to your original payment method.</p>
+                    <br />
+                    <p>If you don't receive the refund within the expected timeframe, please contact us at ${process.env.SMTP_USER}</p>
+                    <p>Thank you for your understanding.</p>
+                    <p>- KKM Marketplace Team</p>
+                `,
+            };
+
+            const info = await this.transporter.sendMail(mailOptions);
+            console.log('Refund email sent to CUSTOMER:', info.messageId);
+        } catch (error) {
+            console.error('Failed to send refund email:', error);
+        }
     }
 };

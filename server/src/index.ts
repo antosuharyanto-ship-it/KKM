@@ -1142,6 +1142,12 @@ app.post('/api/officer/marketplace/cancel-order', checkOfficer, async (req, res)
             return res.status(400).json({ error: 'Order ID and reason are required' });
         }
 
+        // Fetch order details before updating for email
+        const order = await googleSheetService.getMarketplaceOrderById(orderId);
+        if (!order) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
         const cancelReason = reason === 'seller_issue'
             ? 'Cancelled (Seller Issue)'
             : reason === 'buyer_request'
@@ -1155,7 +1161,9 @@ app.post('/api/officer/marketplace/cancel-order', checkOfficer, async (req, res)
             cancelled_date: new Date().toISOString()
         });
 
-        // TODO: Send email notification to buyer
+        // Send cancellation email to customer
+        await emailService.sendCancellationEmail(order, reason, notes);
+
         res.json({ success: true, message: 'Order cancelled successfully' });
     } catch (error: any) {
         console.error('Cancel order failed:', error);
@@ -1172,6 +1180,12 @@ app.post('/api/officer/marketplace/process-refund', checkOfficer, async (req, re
             return res.status(400).json({ error: 'Order ID, amount, and method are required' });
         }
 
+        // Fetch order details before updating for email
+        const order = await googleSheetService.getMarketplaceOrderById(orderId);
+        if (!order) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
         // Update order with refund information
         await googleSheetService.updateMarketplaceOrder(orderId, {
             status: 'Refunded',
@@ -1184,7 +1198,9 @@ app.post('/api/officer/marketplace/process-refund', checkOfficer, async (req, re
         });
 
         // TODO: If method is 'midtrans_api', call Midtrans Refund API
-        // TODO: Send email notification to buyer
+
+        // Send refund confirmation email to customer
+        await emailService.sendRefundEmail(order, amount, method, notes);
 
         res.json({ success: true, message: 'Refund processed successfully' });
     } catch (error: any) {
