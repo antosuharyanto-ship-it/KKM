@@ -341,19 +341,6 @@ export const MarketplacePage: React.FC = () => {
                 <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl"></div>
                 <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl"></div>
 
-                <div className="max-w-4xl mx-auto relative z-10 text-center md:text-left">
-                    <h1 className="text-3xl font-bold mb-2">{t('marketplace.title')}</h1>
-                    <p className="text-teal-100 text-sm mb-6">{t('marketplace.subtitle')}</p>
-
-                    {/* Islamic Preamble / Muqaddimah */}
-                    <div className="bg-teal-900/40 backdrop-blur-sm p-6 rounded-2xl border border-teal-700/50 mb-8 text-center">
-                        <p className="text-lg font-arabic mb-4 leading-relaxed text-orange-100" dir="rtl">
-                            Bismillāhirraḥmānirraḥīm.<br />
-                            إِنَّ الْحَمْدَ ِللهِ، نَحْمَدُهُ وَنَسْتَعِيْنُهُ وَنَسْتَغْفِرُهُ، وَنَعُوْذُ بِاللهِ مِنْ شُرُوْرِ أَنْفُسِنَا وَمِنْ سَيِّئَاتِ أَعْمَالِنَا، مَنْ يَهْدِهِ اللهُ فَلاَ مُضِلَّ لَهُ، وَمَنْ يُضْلِلْ فَلاَ هَـادِيَ لَهُ، وَأَشْـهَدُ أَنْ لاَ إِلَهَ إِلاَّ اللهُ وَحْدَهُ لاَ شَرِيْكَ لَهُ، وَأَشْهَدُ أَنَّ مُحَمَّدًا عَبْدُهُ وَرَسُوْلُهُ.
-                        </p>
-                    </div>
-
-                    
                 
                 <div className="max-w-6xl mx-auto relative z-10 text-center mb-12">
                     <div className="bg-slate-900/40 backdrop-blur-sm rounded-3xl p-8 md:p-12 border border-amber-300/20 shadow-2xl">
