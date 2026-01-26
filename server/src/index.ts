@@ -388,7 +388,20 @@ app.post('/api/payment/resume', checkAuth, async (req, res) => {
     }
 });
 
+
 // --- Email Service Imported at top ---
+
+// Notify Seller (Paid -> Ready to Ship)
+app.post('/api/officer/marketplace/notify-seller', checkOfficer, async (req, res) => {
+    try {
+        const { orderId } = req.body;
+        await googleSheetService.updateMarketplaceOrder(orderId, { status: 'Ready to Ship' });
+        res.json({ success: true });
+    } catch (error: any) {
+        console.error('Notify seller failed:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
 
 app.post('/api/marketplace/order', async (req, res) => {
     if (!req.user) {
@@ -414,6 +427,10 @@ app.post('/api/marketplace/order', async (req, res) => {
 
         const item = items.find((i: any) => i.product_name?.toLowerCase().trim() === orderData.itemName?.toLowerCase().trim());
 
+        // Extract supplier contact details
+        const supplierName = item?.contact_person || item?.supplier_name || '';
+        const supplierPhone = item?.phone_number || item?.supplier_phone || '';
+
         // Prioritize: 1. Item Supplier Email (Server Truth) -> 2. Client Provided (Fallback) -> 3. Env Var
         let supplierEmail = item?.supplier_email || req.body.supplierEmail || process.env.SUPPLIER_EMAIL;
 
@@ -426,7 +443,12 @@ app.post('/api/marketplace/order', async (req, res) => {
             supplierEmail = supplierEmail.trim();
         }
 
-        console.log(`[OrderDebug] Supplier email: ${supplierEmail}`);
+        console.log(`[OrderDebug] Supplier email: ${supplierEmail}, phone: ${supplierPhone}, name: ${supplierName}`);
+
+        // Add supplier contact to order data
+        safeOrderData.supplierName = supplierName;
+        safeOrderData.supplierPhone = supplierPhone;
+
 
         // 2. Save to Sheets
         console.log('[OrderDebug] Creating order in Sheet...');

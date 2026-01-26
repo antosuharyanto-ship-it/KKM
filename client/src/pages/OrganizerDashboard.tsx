@@ -388,6 +388,50 @@ export const OrganizerDashboard: React.FC = () => {
         }
     };
 
+    const handleNotifySeller = async (orderId: string) => {
+        const order = marketOrders.find(o => (o.order_id || o['Order ID']) === orderId);
+        if (!order) {
+            alert('Order not found');
+            return;
+        }
+
+        const supplierPhone = order.supplier_phone || order['Supplier Phone'];
+        const itemName = order.item_name || order['Item Name'];
+        const userName = order.user_name || order['User Name'];
+
+        if (!supplierPhone) {
+            alert('Supplier contact not available for this order');
+            return;
+        }
+
+        // Open WhatsApp with pre-filled message
+        const message = encodeURIComponent(
+            `Hi! You have a new order #${orderId}\n` +
+            `Item: ${itemName}\n` +
+            `Customer: ${userName}\n` +
+            `Please prepare for shipping.`
+        );
+        window.open(`https://wa.me/${supplierPhone.replace(/^0/, '62')}?text=${message}`, '_blank');
+
+        // Update status to Ready to Ship
+        setProcessingId(orderId);
+        try {
+            await axios.post(`${API_BASE_URL}/api/officer/marketplace/notify-seller`,
+                { orderId },
+                { withCredentials: true }
+            );
+
+            alert('Order marked as Ready to Ship!');
+            // Refresh orders
+            const res = await axios.get(`${API_BASE_URL}/api/marketplace/orders`, { withCredentials: true });
+            setMarketOrders(res.data);
+        } catch (error) {
+            alert('Failed to update order status');
+        } finally {
+            setProcessingId(null);
+        }
+    };
+
     if (loading) return <div className="p-10 text-center">Loading Dashboard...</div>;
     if (!isOfficer) return (
         <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">

@@ -385,7 +385,7 @@ export class GoogleSheetService {
 
     async createMarketplaceOrder(orderData: any) {
         const sheetName = process.env.GOOGLE_SHEET_NAME_MARKETPLACE_ORDERS || 'Market OB';
-        const headers = ['Order ID', 'Item Name', 'Unit Price', 'Quantity', 'Total Price', 'User Name', 'User Email', 'Phone', 'Status', 'Date'];
+        const headers = ['Order ID', 'Item Name', 'Unit Price', 'Quantity', 'Total Price', 'User Name', 'User Email', 'Phone', 'Supplier Name', 'Supplier Phone', 'Status', 'Date'];
 
         // await this.ensureHeaders(sheetName, headers);
 
@@ -407,6 +407,8 @@ export class GoogleSheetService {
             orderData.userName,
             orderData.userEmail,
             orderData.phone,
+            orderData.supplierName || '',
+            orderData.supplierPhone || '',
             'Pending',
             new Date().toISOString()
         ]);
