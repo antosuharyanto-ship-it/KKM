@@ -87,7 +87,27 @@ export const handleNotification = async (req: Request, res: Response): Promise<v
 
                 console.log(`[Midtrans] Ticket generated for ${order_id}: ${ticketLink}`);
             } else {
-                console.log(`[Midtrans] No event booking found for ${order_id}, might be marketplace order`);
+                console.log(`[Midtrans] No event booking found for ${order_id}, checking marketplace orders...`);
+
+                // Check if this is a marketplace order
+                const marketplaceOrder = await googleSheetService.getMarketplaceOrderById(order_id);
+
+                if (marketplaceOrder) {
+                    console.log(`[Midtrans] Found marketplace order for ${order_id}`);
+
+                    // Update marketplace order status to "Paid"
+                    // Store Midtrans transaction info
+                    const proofText = `Midtrans: ${order_id} (Auto-confirmed)`;
+
+                    await googleSheetService.updateMarketplaceOrder(order_id, {
+                        status: 'Paid',
+                        proofUrl: proofText
+                    });
+
+                    console.log(`[Midtrans] Marketplace order ${order_id} auto-confirmed`);
+                } else {
+                    console.log(`[Midtrans] Order ${order_id} not found in either bookings or marketplace`);
+                }
             }
         }
 
