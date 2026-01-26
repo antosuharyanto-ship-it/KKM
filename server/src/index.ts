@@ -237,6 +237,8 @@ app.get('/api/marketplace', async (req, res) => {
         const items = await googleSheetService.getMarketplaceItems();
         console.log(`[API] Found ${items.length} items`);
         res.json(items);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch items' });
     }
 });
 
