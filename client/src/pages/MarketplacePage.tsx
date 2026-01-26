@@ -341,7 +341,7 @@ export const MarketplacePage: React.FC = () => {
                 <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl"></div>
                 <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl"></div>
 
-                
+
                 <div className="max-w-6xl mx-auto relative z-10 text-center mb-12">
                     <div className="bg-slate-900/40 backdrop-blur-sm rounded-3xl p-8 md:p-12 border border-amber-300/20 shadow-2xl">
                         <p className="text-3xl md:text-4xl mb-6 leading-relaxed text-amber-100" dir="rtl">سُوْقُ الْبَرَكَةِ</p>
@@ -354,21 +354,21 @@ export const MarketplacePage: React.FC = () => {
                 <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 relative z-10">
                     <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition group">
                         <div className="w-16 h-16 mx-auto mb-4 bg-amber-500/20 rounded-full flex items-center justify-center group-hover:scale-110 transition">
-                            <svg className="w-10 h-10 text-amber-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/></svg>
+                            <svg className="w-10 h-10 text-amber-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z" /></svg>
                         </div>
                         <h3 className="font-bold text-center mb-2 text-lg">Prinsip Adil & Transparan</h3>
                         <p className="text-xs text-center text-gray-300">(Fairness & Transparency)</p>
                     </div>
                     <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition group">
                         <div className="w-16 h-16 mx-auto mb-4 bg-amber-500/20 rounded-full flex items-center justify-center group-hover:scale-110 transition">
-                            <svg className="w-10 h-10 text-amber-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                            <svg className="w-10 h-10 text-amber-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" /></svg>
                         </div>
                         <h3 className="font-bold text-center mb-2 text-lg">Akad Suka Sama Suka</h3>
                         <p className="text-xs text-center text-gray-300">(Mutual Consent)</p>
                     </div>
                     <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition group">
                         <div className="w-16 h-16 mx-auto mb-4 bg-amber-500/20 rounded-full flex items-center justify-center group-hover:scale-110 transition">
-                            <svg className="w-10 h-10 text-amber-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+                            <svg className="w-10 h-10 text-amber-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" /></svg>
                         </div>
                         <h3 className="font-bold text-center mb-2 text-lg">Keberkahan & Amanah</h3>
                         <p className="text-xs text-center text-gray-300">(Blessing & Trust)</p>
@@ -386,8 +386,8 @@ export const MarketplacePage: React.FC = () => {
                     </div>
                 </div>
 
-                
-                
+
+
                 <div className="max-w-6xl mx-auto relative z-10 text-center mb-12">
                     <div className="bg-slate-900/40 backdrop-blur-sm rounded-3xl p-8 md:p-12 border border-amber-300/20 shadow-2xl">
                         <p className="text-3xl md:text-4xl mb-6 leading-relaxed text-amber-100" dir="rtl">سُوْقُ الْبَرَكَةِ</p>
@@ -400,21 +400,21 @@ export const MarketplacePage: React.FC = () => {
                 <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 relative z-10">
                     <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition group">
                         <div className="w-16 h-16 mx-auto mb-4 bg-amber-500/20 rounded-full flex items-center justify-center group-hover:scale-110 transition">
-                            <svg className="w-10 h-10 text-amber-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/></svg>
+                            <svg className="w-10 h-10 text-amber-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z" /></svg>
                         </div>
                         <h3 className="font-bold text-center mb-2 text-lg">Prinsip Adil & Transparan</h3>
                         <p className="text-xs text-center text-gray-300">(Fairness & Transparency)</p>
                     </div>
                     <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition group">
                         <div className="w-16 h-16 mx-auto mb-4 bg-amber-500/20 rounded-full flex items-center justify-center group-hover:scale-110 transition">
-                            <svg className="w-10 h-10 text-amber-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                            <svg className="w-10 h-10 text-amber-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" /></svg>
                         </div>
                         <h3 className="font-bold text-center mb-2 text-lg">Akad Suka Sama Suka</h3>
                         <p className="text-xs text-center text-gray-300">(Mutual Consent)</p>
                     </div>
                     <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition group">
                         <div className="w-16 h-16 mx-auto mb-4 bg-amber-500/20 rounded-full flex items-center justify-center group-hover:scale-110 transition">
-                            <svg className="w-10 h-10 text-amber-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+                            <svg className="w-10 h-10 text-amber-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" /></svg>
                         </div>
                         <h3 className="font-bold text-center mb-2 text-lg">Keberkahan & Amanah</h3>
                         <p className="text-xs text-center text-gray-300">(Blessing & Trust)</p>
@@ -433,16 +433,15 @@ export const MarketplacePage: React.FC = () => {
                 </div>
 
                 <div className="max-w-2xl mx-auto relative z-10">
-                        <div className="relative">
-                            <input
-                                type="text"
-                                placeholder={t('marketplace.search_placeholder')}
-                                className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-gray-300 focus:outline-none focus:bg-white/20 transition shadow-lg"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={20} />
-                        </div>
+                    <div className="relative">
+                        <input
+                            type="text"
+                            placeholder={t('marketplace.search_placeholder')}
+                            className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-gray-300 focus:outline-none focus:bg-white/20 transition shadow-lg"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={20} />
                     </div>
                 </div>
             </div>
