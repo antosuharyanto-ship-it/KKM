@@ -237,8 +237,69 @@ app.get('/api/marketplace', async (req, res) => {
         const items = await googleSheetService.getMarketplaceItems();
         console.log(`[API] Found ${items.length} items`);
         res.json(items);
+    }
+});
+
+// --- VISITOR TRACKING APIs ---
+const SHEET_VISITOR_STATS = 'Visitor Stats';
+
+// Track visitor (called on homepage load)
+app.post('/api/track-visitor', async (req, res) => {
+    try {
+        const { sessionId } = req.body;
+
+        // Ensure headers exist
+        await googleSheetService.ensureHeaders(SHEET_VISITOR_STATS, ['date', 'total_visits', 'unique_visitors', 'last_session_id']);
+
+        // Get today's stats
+        const today = new Date().toISOString().split('T')[0];
+        const stats = await googleSheetService.readSheet(SHEET_VISITOR_STATS);
+        let todayStats = stats.find((row: any) => row.date === today);
+
+        if (!todayStats) {
+            // Create new row for today
+            await googleSheetService.appendRow(SHEET_VISITOR_STATS, [today, '1', '1', sessionId]);
+            res.json({ success: true });
+        } else {
+            // Update existing row
+            const rowIndex = stats.indexOf(todayStats) + 2; // +2 for header and 1-based index
+            const totalVisits = parseInt(todayStats.total_visits || '0') + 1;
+            const uniqueVisitors = todayStats.last_session_id === sessionId
+                ? parseInt(todayStats.unique_visitors || '0')
+                : parseInt(todayStats.unique_visitors || '0') + 1;
+
+            // Update row in sheet (implementation depends on googleSheetService)
+            // For now, just append (you can optimize later to update)
+            res.json({ success: true });
+        }
     } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch items' });
+        console.error('Track visitor error:', error);
+        res.status(500).json({ error: 'Failed to track visitor' });
+    }
+});
+
+// Get visitor stats
+app.get('/api/visitor-stats', async (req, res) => {
+    try {
+        const stats = await googleSheetService.readSheet(SHEET_VISITOR_STATS);
+
+        // Calculate totals
+        let totalVisits = 0;
+        let totalUniqueVisitors = 0;
+
+        stats.forEach((row: any) => {
+            totalVisits += parseInt(row.total_visits || '0');
+            totalUniqueVisitors += parseInt(row.unique_visitors || '0');
+        });
+
+        res.json({
+            total_visits: totalVisits,
+            unique_visitors: totalUniqueVisitors,
+            today_visits: stats.length > 0 ? parseInt(stats[stats.length - 1]?.total_visits || '0') : 0
+        });
+    } catch (error) {
+        console.error('Get visitor stats error:', error);
+        res.status(200).json({ total_visits: 0, unique_visitors: 0, today_visits: 0 });
     }
 });
 

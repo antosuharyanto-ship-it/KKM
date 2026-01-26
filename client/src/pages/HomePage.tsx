@@ -24,8 +24,10 @@ export const HomePage: React.FC = () => {
     const [events, setEvents] = useState<EventData[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [visitorStats, setVisitorStats] = useState({ total_visits: 0, unique_visitors: 0 });
 
     useEffect(() => {
+        // Fetch events
         axios.get(`${API_BASE_URL}/api/events`)
             .then(res => setEvents(res.data))
             .catch(err => {
@@ -34,6 +36,18 @@ export const HomePage: React.FC = () => {
                 setError(`Failed to load events: ${msg}`);
             })
             .finally(() => setLoading(false));
+
+        // Get visitor stats
+        axios.get(`${API_BASE_URL}/api/visitor-stats`)
+            .then(res => setVisitorStats(res.data))
+            .catch(() => { }); // Silent fail for stats
+
+        // Track this visit
+        const sessionId = localStorage.getItem('visitor_session_id') || Math.random().toString(36).substring(7);
+        if (!localStorage.getItem('visitor_session_id')) {
+            localStorage.setItem('visitor_session_id', sessionId);
+        }
+        axios.post(`${API_BASE_URL}/api/track-visitor`, { sessionId }).catch(() => { });
     }, []);
 
     const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -77,10 +91,22 @@ export const HomePage: React.FC = () => {
                     </div>
                     <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight drop-shadow-lg leading-tight">{t('home.welcome')}</h1>
                     <p className="text-lg md:text-xl text-gray-200 mb-10 max-w-2xl mx-auto leading-relaxed text-shadow">{t('home.subtitle')}</p>
-                    <div className="flex flex-col md:flex-row gap-4 justify-center">
-                        <button onClick={() => document.getElementById('featured-section')?.scrollIntoView({ behavior: 'smooth' })} className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-full font-bold text-lg transition-all shadow-lg hover:shadow-orange-500/30 hover:-translate-y-1 flex items-center justify-center gap-2">
-                            {t('home.explore_events')} <ArrowRight size={20} />
-                        </button>
+
+                    {/* Visitor Counter */}
+                    <div className="flex items-center justify-center gap-6 mb-10">
+                        <div className="bg-white/10 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/20 shadow-xl">
+                            <div className="text-3xl font-bold text-white">{visitorStats.total_visits.toLocaleString()}</div>
+                            <div className="text-xs text-gray-300 uppercase tracking-wider">Total Visits</div>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/20 shadow-xl">
+                            <div className="text-3xl font-bold text-orange-300">{visitorStats.unique_visitors.toLocaleString()}</div>
+                            <div className="text-xs text-gray-300 uppercase tracking-wider">Visitors</div>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col md:flex-row gap-4 justify-center">\n                        <button onClick={() => document.getElementById('featured-section')?.scrollIntoView({ behavior: 'smooth' })} className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-full font-bold text-lg transition-all shadow-lg hover:shadow-orange-500/30 hover:-translate-y-1 flex items-center justify-center gap-2">
+                        {t('home.explore_events')} <ArrowRight size={20} />
+                    </button>
                     </div>
                 </div>
             </div>
