@@ -549,6 +549,61 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Resume Payment for Event Booking (Pay Now button functionality)
+app.post('/api/events/resume-payment', checkAuth, async (req, res) => {
+    try {
+        const { reservationId } = req.body;
+        if (!reservationId) {
+            return res.status(400).json({ error: 'Reservation ID required' });
+        }
+
+        // Get booking from sheet
+        const booking = await googleSheetService.getBookingByCode(reservationId);
+        if (!booking) {
+            return res.status(404).json({ error: 'Booking not found' });
+        }
+
+        // Verify ownership
+        if (booking['email_address'] !== req.user?.email) {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+
+        // Parse amount
+        const amountStr = String(booking['jumlah_pembayaran'] || '0').replace(/[^0-9]/g, '');
+        const totalAmount = parseInt(amountStr);
+
+        if (totalAmount <= 0) {
+            return res.status(400).json({ error: 'Invalid booking amount' });
+        }
+
+        // Prepare Midtrans transaction
+        const customerDetails = {
+            first_name: booking['proposed_by'] || booking['contact_person'],
+            email: booking['email_address'],
+            phone: booking['phone_number']
+        };
+
+        const itemDetails = [
+            {
+                id: booking['event_id'] || 'EVENT',
+                price: Math.floor(totalAmount / parseInt(booking['participant_count'] || '1')),
+                quantity: parseInt(booking['participant_count'] || '1'),
+                name: (booking['event_name'] || 'Event Booking').substring(0, 45)
+            }
+        ];
+
+        // Generate retry ID to avoid duplicate order ID error
+        const retryId = `${reservationId}-R${Math.floor(Date.now() / 1000).toString().slice(-4)}`;
+
+        const midtransResponse = await midtransService.createTransactionToken(retryId, totalAmount, customerDetails, itemDetails);
+        res.json(midtransResponse);
+
+    } catch (error: any) {
+        console.error('[Event Resume Payment] Error:', error);
+        res.status(500).json({ error: error.message || 'Failed to resume payment' });
+    }
+});
+
 app.get('/api/my-bookings', async (req, res) => {
     if (!req.user) {
         return res.status(401).json({ error: 'Unauthorized' });

@@ -138,6 +138,49 @@ export const MyOrdersPage: React.FC = () => {
         }
     };
 
+    // Payment Resume for Event Bookings
+    const handlePayNowEvent = async (booking: any) => {
+        try {
+            // @ts-ignore - Snap.js is loaded globally
+            if (!window.snap) {
+                console.error('Midtrans Snap not loaded');
+                alert('Payment gateway is not available');
+                return;
+            }
+
+            const res = await axios.post(
+                `${API_BASE_URL}/api/events/resume-payment`,
+                { reservationId: booking.reservation_id },
+                { withCredentials: true }
+            );
+
+            if (res.data.token) {
+                // @ts-ignore
+                window.snap.pay(res.data.token, {
+                    onSuccess: function (result: any) {
+                        alert('Payment Successful!');
+                        fetchAll();
+                    },
+                    onPending: function (result: any) {
+                        alert('Waiting for payment...');
+                        fetchAll();
+                    },
+                    onError: function (result: any) {
+                        alert('Payment failed!');
+                    },
+                    onClose: function () {
+                        // User closed payment modal
+                    }
+                });
+            } else if (res.data.redirect_url) {
+                window.open(res.data.redirect_url, '_blank');
+            }
+        } catch (err: any) {
+            console.error('Resume Event Payment Error:', err);
+            alert('Failed to resume payment: ' + (err.response?.data?.error || err.message));
+        }
+    };
+
     // Helper for Status Color
     const getStatusColor = (status: string) => {
         switch (status?.toLowerCase()) {
@@ -277,6 +320,15 @@ export const MyOrdersPage: React.FC = () => {
                                         ID: <span className="font-mono bg-gray-100 px-2 py-1 rounded">{booking.reservation_id}</span>
                                     </div>
                                     <div className="flex gap-2">
+                                        {/* Pay Now button for Pending Payment bookings */}
+                                        {(booking.reservation_status === 'Pending Payment' || booking.reservation_status === 'Pending') && (
+                                            <button
+                                                onClick={() => handlePayNowEvent(booking)}
+                                                className="bg-teal-600 text-white text-sm px-4 py-2 rounded-xl font-bold hover:bg-teal-700 transition shadow-sm flex items-center gap-2"
+                                            >
+                                                <Tag size={16} /> Pay Now
+                                            </button>
+                                        )}
                                         {booking.link_tiket ? (
                                             <a href={booking.link_tiket} target="_blank" rel="noreferrer" className="bg-teal-600 text-white text-sm px-4 py-2 rounded-xl font-bold hover:bg-teal-700 transition shadow-sm flex items-center gap-2">
                                                 Download Ticket
