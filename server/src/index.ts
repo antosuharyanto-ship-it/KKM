@@ -1133,6 +1133,66 @@ app.post('/api/officer/marketplace/archive-order', checkOfficer, async (req, res
     }
 });
 
+// Cancel Order (NEW - Refund Flow)
+app.post('/api/officer/marketplace/cancel-order', checkOfficer, async (req, res) => {
+    try {
+        const { orderId, reason, notes } = req.body;
+
+        if (!orderId || !reason) {
+            return res.status(400).json({ error: 'Order ID and reason are required' });
+        }
+
+        const cancelReason = reason === 'seller_issue'
+            ? 'Cancelled (Seller Issue)'
+            : reason === 'buyer_request'
+                ? 'Cancelled (Buyer Request)'
+                : 'Cancelled (Admin Action)';
+
+        await googleSheetService.updateMarketplaceOrder(orderId, {
+            status: cancelReason,
+            cancellation_reason: notes || reason,
+            cancelled_by: req.user?.email || 'Unknown',
+            cancelled_date: new Date().toISOString()
+        });
+
+        // TODO: Send email notification to buyer
+        res.json({ success: true, message: 'Order cancelled successfully' });
+    } catch (error: any) {
+        console.error('Cancel order failed:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Process Refund (NEW - Refund Flow)
+app.post('/api/officer/marketplace/process-refund', checkOfficer, async (req, res) => {
+    try {
+        const { orderId, amount, method, proofUrl, notes } = req.body;
+
+        if (!orderId || !amount || !method) {
+            return res.status(400).json({ error: 'Order ID, amount, and method are required' });
+        }
+
+        // Update order with refund information
+        await googleSheetService.updateMarketplaceOrder(orderId, {
+            status: 'Refunded',
+            refund_amount: amount,
+            refund_method: method,
+            refund_date: new Date().toISOString(),
+            refund_proof: proofUrl || '',
+            refund_notes: notes || '',
+            refunded_by: req.user?.email || 'Unknown'
+        });
+
+        // TODO: If method is 'midtrans_api', call Midtrans Refund API
+        // TODO: Send email notification to buyer
+
+        res.json({ success: true, message: 'Refund processed successfully' });
+    } catch (error: any) {
+        console.error('Process refund failed:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.post('/api/officer/marketplace/verify-payment', checkOfficer, async (req, res) => {
     try {
         const { orderId } = req.body;

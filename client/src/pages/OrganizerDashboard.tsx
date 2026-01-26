@@ -39,6 +39,16 @@ export const OrganizerDashboard: React.FC = () => {
     const [marketError, setMarketError] = useState<string | null>(null); // Keep original type
     const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
 
+    // Refund/Cancel State
+    const [cancelModal, setCancelModal] = useState<any | null>(null);
+    const [refundModal, setRefundModal] = useState<any | null>(null);
+    const [cancelReason, setCancelReason] = useState('seller_issue');
+    const [cancelNotes, setCancelNotes] = useState('');
+    const [refundAmount, setRefundAmount] = useState('');
+    const [refundMethod, setRefundMethod] = useState('manual_transfer');
+    const [refundNotes, setRefundNotes] = useState('');
+    const [refundProof, setRefundProof] = useState('');
+
 
     // --- Stats State ---
     const [stats, setStats] = useState({
@@ -383,6 +393,83 @@ export const OrganizerDashboard: React.FC = () => {
             setMarketOrders(res.data);
         } catch (error) {
             alert('Failed to archive order');
+        } finally {
+            setProcessingId(null);
+        }
+    };
+
+    const handleCancelOrder = async (order: any) => {
+        setCancelModal(order);
+        setCancelNotes('');
+    };
+
+    const submitCancellation = async () => {
+        if (!cancelModal) return;
+
+        try {
+            setProcessingId(cancelModal.order_id || cancelModal['Order ID']);
+            await axios.post(
+                `${API_BASE_URL}/api/officer/marketplace/cancel-order`,
+                {
+                    orderId: cancelModal.order_id || cancelModal['Order ID'],
+                    reason: cancelReason,
+                    notes: cancelNotes
+                },
+                { withCredentials: true }
+            );
+
+            alert('Order cancelled successfully');
+            setCancelModal(null);
+
+            // Refresh orders
+            const res = await axios.get(`${API_BASE_URL}/api/marketplace/orders`, { withCredentials: true });
+            setMarketOrders(res.data);
+        } catch (error) {
+            console.error('Cancel failed:', error);
+            alert('Failed to cancel order');
+        } finally {
+            setProcessingId(null);
+        }
+    };
+
+    const handleProcessRefund = async (order: any) => {
+        // Extract total price number
+        const total = (order.total_price || order['Total Price'] || '0').replace(/[^0-9]/g, '');
+        setRefundAmount(total);
+        setRefundModal(order);
+        setRefundNotes('');
+        setRefundProof('');
+    };
+
+    const submitRefund = async () => {
+        if (!refundModal || !refundAmount) {
+            alert('Please enter refund amount');
+            return;
+        }
+
+        try {
+            setProcessingId(refundModal.order_id || refundModal['Order ID']);
+            await axios.post(
+                `${API_BASE_URL}/api/officer/marketplace/process-refund`,
+                {
+                    orderId: refundModal.order_id || refundModal['Order ID'],
+                    amount: parseInt(refundAmount),
+                    method: refundMethod,
+                    proofUrl: refundProof,
+                    notes: refundNotes
+                },
+                { withCredentials: true }
+            );
+
+            alert(`Refund processed successfully via ${refundMethod}`);
+            setRefundModal(null);
+
+            // Refresh orders
+            const res = await axios.get(`${API_BASE_URL}/api/marketplace/orders`, { withCredentials: true });
+            setMarketOrders(res.data);
+        } catch (error) {
+            console.error('Refund failed:', error);
+            alert('Failed to process refund');
         } finally {
             setProcessingId(null);
         }
@@ -1018,25 +1105,51 @@ export const OrganizerDashboard: React.FC = () => {
                                                     const status = (order.status || order['Status'] || '').toLowerCase();
                                                     const isPending = status.includes('pending') || status.includes('verifying');
                                                     const isPaid = status.includes('paid') && !status.includes('ready');
+                                                    const isReady = status.includes('ready');
                                                     const isReceived = status.includes('received');
                                                     const isSettled = status.includes('settled') && !status.includes('archived');
+                                                    const isCancelled = status.includes('cancelled');
+                                                    const isRefunded = status.includes('refunded');
 
                                                     if (isPending) {
                                                         return (
-                                                            <button
-                                                                onClick={() => handleVerifyPayment(order.order_id || order['Order ID'])}
-                                                                className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700 transition">
-                                                                Verify
-                                                            </button>
+                                                            <div className="flex flex-col gap-1">
+                                                                <button
+                                                                    onClick={() => handleVerifyPayment(order.order_id || order['Order ID'])}
+                                                                    className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700 transition">
+                                                                    Verify
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleCancelOrder(order)}
+                                                                    className="text-red-500 hover:text-red-700 text-[10px] font-bold uppercase">
+                                                                    Cancel
+                                                                </button>
+                                                            </div>
                                                         );
                                                     }
                                                     if (isPaid) {
                                                         return (
+                                                            <div className="flex flex-col gap-1">
+                                                                <button
+                                                                    onClick={() => handleNotifySeller(order.order_id || order['Order ID'])}
+                                                                    className="bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-purple-700 transition"
+                                                                    disabled={processingId === (order.order_id || order['Order ID'])}>
+                                                                    {processingId === (order.order_id || order['Order ID']) ? 'Processing...' : 'Notify Seller'}
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleCancelOrder(order)}
+                                                                    className="text-red-500 hover:text-red-700 text-[10px] font-bold uppercase">
+                                                                    Cancel
+                                                                </button>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    if (isReady) {
+                                                        return (
                                                             <button
-                                                                onClick={() => handleNotifySeller(order.order_id || order['Order ID'])}
-                                                                className="bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-purple-700 transition"
-                                                                disabled={processingId === (order.order_id || order['Order ID'])}>
-                                                                {processingId === (order.order_id || order['Order ID']) ? 'Processing...' : 'Notify Seller'}
+                                                                onClick={() => handleCancelOrder(order)}
+                                                                className="text-red-500 hover:text-red-700 text-xs font-bold">
+                                                                Cancel Order
                                                             </button>
                                                         );
                                                     }
@@ -1056,7 +1169,16 @@ export const OrganizerDashboard: React.FC = () => {
                                                             </div>
                                                         );
                                                     }
-                                                    if (isSettled) {
+                                                    if (isCancelled && !isRefunded) {
+                                                        return (
+                                                            <button
+                                                                onClick={() => handleProcessRefund(order)}
+                                                                className="bg-orange-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-orange-700 transition">
+                                                                Process Refund
+                                                            </button>
+                                                        );
+                                                    }
+                                                    if (isSettled || isRefunded) {
                                                         return (
                                                             <button
                                                                 onClick={() => handleArchiveOrder(order.order_id || order['Order ID'])}
@@ -1179,6 +1301,149 @@ export const OrganizerDashboard: React.FC = () => {
                                     {processingId === (selectedOrder.order_id || selectedOrder['Order ID']) ? 'Processing...' : 'Confirm Verification'}
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Cancel Order Modal */}
+            {cancelModal && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-red-50">
+                            <h3 className="font-bold text-lg text-gray-800">Cancel Order</h3>
+                            <button onClick={() => setCancelModal(null)} className="text-gray-400 hover:text-gray-600 transition">
+                                <XCircle size={24} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200">
+                                <p className="text-sm text-yellow-800 font-semibold mb-1">⚠️ This will cancel the order</p>
+                                <p className="text-xs text-yellow-700">Order ID: {cancelModal.order_id || cancelModal['Order ID']}</p>
+                                <p className="text-xs text-yellow-700">Customer: {cancelModal.user_name || cancelModal['User Name']}</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Cancellation Reason</label>
+                                <select
+                                    value={cancelReason}
+                                    onChange={(e) => setCancelReason(e.target.value)}
+                                    className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-red-500 outline-none">
+                                    <option value="seller_issue">Seller Can't Fulfill</option>
+                                    <option value="buyer_request">Buyer Request</option>
+                                    <option value="admin_action">Admin Action</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Notes (Optional)</label>
+                                <textarea
+                                    value={cancelNotes}
+                                    onChange={(e) => setCancelNotes(e.target.value)}
+                                    placeholder="e.g., Item out of stock, customer changed mind..."
+                                    className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-red-500 outline-none"
+                                    rows={3}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="p-6 border-t border-gray-100 bg-gray-50 flex gap-3">
+                            <button
+                                onClick={() => setCancelModal(null)}
+                                className="flex-1 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition">
+                                Back
+                            </button>
+                            <button
+                                onClick={submitCancellation}
+                                disabled={processingId === (cancelModal.order_id || cancelModal['Order ID'])}
+                                className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition">
+                                {processingId === (cancelModal.order_id || cancelModal['Order ID']) ? 'Cancelling...' : 'Confirm Cancellation'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Process Refund Modal */}
+            {refundModal && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-orange-50">
+                            <h3 className="font-bold text-lg text-gray-800">Process Refund</h3>
+                            <button onClick={() => setRefundModal(null)} className="text-gray-400 hover:text-gray-600 transition">
+                                <XCircle size={24} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                                <p className="text-sm text-blue-800 font-semibold mb-1">💰 Refund Details</p>
+                                <p className="text-xs text-blue-700">Order ID: {refundModal.order_id || refundModal['Order ID']}</p>
+                                <p className="text-xs text-blue-700">Customer: {refundModal.user_name || refundModal['User Name']}</p>
+                                <p className="text-xs text-blue-700">Original Amount: {refundModal.total_price || refundModal['Total Price']}</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Refund Amount (Rp)</label>
+                                <input
+                                    type="number"
+                                    value={refundAmount}
+                                    onChange={(e) => setRefundAmount(e.target.value)}
+                                    className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-orange-500 outline-none"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Refund Method</label>
+                                <select
+                                    value={refundMethod}
+                                    onChange={(e) => setRefundMethod(e.target.value)}
+                                    className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-orange-500 outline-none">
+                                    <option value="manual_transfer">Manual Bank Transfer</option>
+                                    <option value="midtrans_api">Midtrans Refund API (Auto)</option>
+                                </select>
+                            </div>
+
+                            {refundMethod === 'manual_transfer' && (
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Proof URL (Optional)</label>
+                                    <input
+                                        type="url"
+                                        value={refundProof}
+                                        onChange={(e) => setRefundProof(e.target.value)}
+                                        placeholder="https://drive.google.com/..."
+                                        className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-orange-500 outline-none"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">Upload receipt to Google Drive and paste link</p>
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Notes (Optional)</label>
+                                <textarea
+                                    value={refundNotes}
+                                    onChange={(e) => setRefundNotes(e.target.value)}
+                                    placeholder="e.g., Refunded to account ending 1234..."
+                                    className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-orange-500 outline-none"
+                                    rows={2}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="p-6 border-t border-gray-100 bg-gray-50 flex gap-3">
+                            <button
+                                onClick={() => setRefundModal(null)}
+                                className="flex-1 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition">
+                                Cancel
+                            </button>
+                            <button
+                                onClick={submitRefund}
+                                disabled={processingId === (refundModal.order_id || refundModal['Order ID'])}
+                                className="flex-1 py-2.5 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition">
+                                {processingId === (refundModal.order_id || refundModal['Order ID']) ? 'Processing...' : 'Process Refund'}
+                            </button>
                         </div>
                     </div>
                 </div>

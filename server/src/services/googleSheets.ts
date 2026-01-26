@@ -475,7 +475,19 @@ export class GoogleSheetService {
         });
     }
 
-    async updateMarketplaceOrder(orderId: string, updates: { status?: string, proofUrl?: string }) {
+    async updateMarketplaceOrder(orderId: string, updates: {
+        status?: string,
+        proofUrl?: string,
+        cancellation_reason?: string,
+        cancelled_by?: string,
+        cancelled_date?: string,
+        refund_amount?: number,
+        refund_method?: string,
+        refund_date?: string,
+        refund_proof?: string,
+        refund_notes?: string,
+        refunded_by?: string
+    }) {
         const sheetName = process.env.GOOGLE_SHEET_NAME_MARKETPLACE_ORDERS || 'Market OB';
         const response = await this.sheets.spreadsheets.values.get({
             spreadsheetId: this.spreadsheetId,
@@ -531,6 +543,48 @@ export class GoogleSheetService {
                 valueInputOption: 'USER_ENTERED',
                 requestBody: { values: [[updates.proofUrl]] }
             });
+        }
+
+        // Update other fields dynamically
+        const fieldMappings: Record<string, string> = {
+            'cancellation_reason': 'Cancellation Reason',
+            'cancelled_by': 'Cancelled By',
+            'cancelled_date': 'Cancelled Date',
+            'refund_amount': 'Refund Amount',
+            'refund_method': 'Refund Method',
+            'refund_date': 'Refund Date',
+            'refund_proof': 'Refund Proof',
+            'refund_notes': 'Refund Notes',
+            'refunded_by': 'Refunded By'
+        };
+
+        for (const [fieldKey, fieldHeader] of Object.entries(fieldMappings)) {
+            const fieldValue = (updates as any)[fieldKey];
+            if (fieldValue !== undefined && fieldValue !== null) {
+                let fieldIndex = headers.findIndex(h => h.trim().toLowerCase() === fieldHeader.toLowerCase());
+
+                if (fieldIndex === -1) {
+                    // Create column if it doesn't exist
+                    fieldIndex = headers.length;
+                    headers.push(fieldHeader); // Update local headers array
+
+                    const headerRange = `${sheetName}!${this.getColumnLetter(fieldIndex)}1`;
+                    await this.sheets.spreadsheets.values.update({
+                        spreadsheetId: this.spreadsheetId,
+                        range: headerRange,
+                        valueInputOption: 'USER_ENTERED',
+                        requestBody: { values: [[fieldHeader]] }
+                    });
+                }
+
+                const range = `${sheetName}!${this.getColumnLetter(fieldIndex)}${rowIndex + 1}`;
+                await this.sheets.spreadsheets.values.update({
+                    spreadsheetId: this.spreadsheetId,
+                    range: range,
+                    valueInputOption: 'USER_ENTERED',
+                    requestBody: { values: [[String(fieldValue)]] }
+                });
+            }
         }
     }
 
