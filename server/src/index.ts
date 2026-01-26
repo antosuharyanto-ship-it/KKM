@@ -367,12 +367,24 @@ app.post('/api/payment/resume', checkAuth, async (req, res) => {
         // BETTER: Use `order_id` field in Custom Field? Midtrans passes back `order_id`.
         // Let's use Retry ID.
 
+        // Validate required data before calling Midtrans
+        if (!order.user_name || !order.user_email) {
+            return res.status(400).json({ error: 'Order missing customer details' });
+        }
+
+        if (!midtransService || !midtransService.createTransactionToken) {
+            return res.status(500).json({ error: 'Payment service not available' });
+        }
+
         const midtransResponse = await midtransService.createTransactionToken(retryId, amount, customerDetails, itemDetails);
         res.json(midtransResponse);
 
     } catch (error: any) {
         console.error('[ResumePayment] Error:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({
+            error: error.message || 'Failed to resume payment',
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 });
 

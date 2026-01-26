@@ -661,8 +661,19 @@ export const MarketplacePage: React.FC = () => {
                             ) : (
                                 <button
                                     type="button"
-                                    onClick={() => window.location.href = '/login'}
-                                    className="w-full py-4 bg-teal-800 hover:bg-teal-900 text-white font-bold rounded-xl shadow-lg transition">
+                                    onClick={() => {
+                                        const width = 500;
+                                        const height = 600;
+                                        const left = (window.screen.width / 2) - (width / 2);
+                                        const top = (window.screen.height / 2) - (height / 2);
+                                        window.open(
+                                            `${window.location.origin.replace('localhost:5173', 'localhost:3000')}/auth/google`,
+                                            'Login',
+                                            `width=${width},height=${height},left=${left},top=${top}`
+                                        );
+                                    }}
+                                    className="w-full py-4 bg-teal-800 hover:bg-teal-900 text-white font-bold rounded-xl shadow-lg transition"
+                                >
                                     Login to Order
                                 </button>
                             )}
