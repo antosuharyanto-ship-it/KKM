@@ -1042,6 +1042,31 @@ app.post('/api/marketplace/confirm-receipt', checkAuth, async (req, res) => {
     }
 });
 
+// OFFICER ACTIONS
+// Settle Order
+app.post('/api/officer/marketplace/settle-order', checkOfficer, async (req, res) => {
+    try {
+        const { orderId } = req.body;
+        await googleSheetService.updateMarketplaceOrder(orderId, { status: 'Settled' });
+        res.json({ success: true });
+    } catch (error: any) {
+        console.error('Settle failed:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Archive Order
+app.post('/api/officer/marketplace/archive-order', checkOfficer, async (req, res) => {
+    try {
+        const { orderId } = req.body;
+        await googleSheetService.updateMarketplaceOrder(orderId, { status: 'Archived' });
+        res.json({ success: true });
+    } catch (error: any) {
+        console.error('Archive failed:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.post('/api/officer/marketplace/verify-payment', checkOfficer, async (req, res) => {
     try {
         const { orderId } = req.body;
