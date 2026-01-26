@@ -82,7 +82,35 @@ const createAddressesTable = async () => {
   }
 };
 
+const createShippingCacheTable = async () => {
+  const cachePool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+  });
+  try {
+    console.log('🏗️ Creating Shipping Cache Table...');
+    await cachePool.query(`
+            CREATE TABLE IF NOT EXISTS shipping_cache (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                origin VARCHAR(50) NOT NULL,
+                destination VARCHAR(50) NOT NULL,
+                weight VARCHAR(20) NOT NULL,
+                courier VARCHAR(50) NOT NULL,
+                result JSON NOT NULL,
+                created_at TIMESTAMP DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_shipping_lookup 
+            ON shipping_cache(origin, destination, weight, courier, created_at);
+        `);
+    console.log('✅ Shipping Cache Table created/verified');
+  } catch (error: any) {
+    console.error('❌ Error creating shipping cache table:', error.message);
+  } finally {
+    await cachePool.end();
+  }
+};
+
 (async () => {
   await createTables();
   await createAddressesTable();
+  await createShippingCacheTable();
 })();
