@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { LogOut, User as UserIcon, Mail, Download, Plus, Trash2 } from 'lucide-react';
+import { LogOut, User as UserIcon, Mail, Plus, Trash2 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 interface User {
