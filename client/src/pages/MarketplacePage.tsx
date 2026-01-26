@@ -318,9 +318,11 @@ export const MarketplacePage: React.FC = () => {
                 }
             }
 
-        } catch (error) {
-            console.error(error);
-            alert('Failed to process order.');
+        } catch (error: any) {
+            console.error('Marketplace Order Error:', error);
+            console.error('Error Response:', error.response?.data);
+            const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to process order.';
+            alert(`Order Error: ${errorMsg}`);
         } finally {
             setIsSubmitting(false);
         }
