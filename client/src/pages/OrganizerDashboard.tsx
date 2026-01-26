@@ -1017,7 +1017,9 @@ export const OrganizerDashboard: React.FC = () => {
                                                 {(() => {
                                                     const status = (order.status || order['Status'] || '').toLowerCase();
                                                     const isPending = status.includes('pending') || status.includes('verifying');
+                                                    const isPaid = status.includes('paid') && !status.includes('ready');
                                                     const isReceived = status.includes('received');
+                                                    const isSettled = status.includes('settled') && !status.includes('archived');
 
                                                     if (isPending) {
                                                         return (
@@ -1025,6 +1027,16 @@ export const OrganizerDashboard: React.FC = () => {
                                                                 onClick={() => handleVerifyPayment(order.order_id || order['Order ID'])}
                                                                 className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700 transition">
                                                                 Verify
+                                                            </button>
+                                                        );
+                                                    }
+                                                    if (isPaid) {
+                                                        return (
+                                                            <button
+                                                                onClick={() => handleNotifySeller(order.order_id || order['Order ID'])}
+                                                                className="bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-purple-700 transition"
+                                                                disabled={processingId === (order.order_id || order['Order ID'])}>
+                                                                {processingId === (order.order_id || order['Order ID']) ? 'Processing...' : 'Notify Seller'}
                                                             </button>
                                                         );
                                                     }
@@ -1042,6 +1054,15 @@ export const OrganizerDashboard: React.FC = () => {
                                                                     Archive
                                                                 </button>
                                                             </div>
+                                                        );
+                                                    }
+                                                    if (isSettled) {
+                                                        return (
+                                                            <button
+                                                                onClick={() => handleArchiveOrder(order.order_id || order['Order ID'])}
+                                                                className="text-gray-500 hover:text-gray-700 text-xs font-bold">
+                                                                Archive
+                                                            </button>
                                                         );
                                                     }
                                                     return null;
