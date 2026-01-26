@@ -86,14 +86,12 @@ export const MyOrdersPage: React.FC = () => {
 
     const handlePayNow = async (order: MarketOrder) => {
         try {
-            // Load Snap if needed
+            // Snap.js is already loaded via index.html script tag
             // @ts-ignore
             if (!window.snap) {
-                const script = document.createElement('script');
-                // Use Production or Sandbox URL based on global config/env (loaded in index.html)
-                // We rely on index.html script tag.
-                // script.src = 'https://app.midtrans.com/snap/snap.js';
-                // document.head.appendChild(script);
+                console.error('Midtrans Snap not loaded');
+                alert('Payment gateway is not available');
+                return;
             }
 
             const res = await axios.post(`${API_BASE_URL}/api/payment/resume`, { orderId: order.order_id }, { withCredentials: true });
@@ -101,19 +99,19 @@ export const MyOrdersPage: React.FC = () => {
             if (res.data.token) {
                 // @ts-ignore
                 window.snap.pay(res.data.token, {
-                    onSuccess: function (result: any) {
+                    onSuccess: function () {
                         alert('Payment Successful!');
                         fetchAll();
                     },
-                    onPending: function (result: any) {
+                    onPending: function () {
                         alert('Waiting for payment...');
                         fetchAll();
                     },
-                    onError: function (result: any) {
+                    onError: function () {
                         alert('Payment failed!');
                     },
                     onClose: function () {
-                        // alert('Closed');
+                        // User closed modal
                     }
                 });
             } else if (res.data.redirect_url) {
@@ -157,15 +155,15 @@ export const MyOrdersPage: React.FC = () => {
             if (res.data.token) {
                 // @ts-ignore
                 window.snap.pay(res.data.token, {
-                    onSuccess: function (result: any) {
+                    onSuccess: function () {
                         alert('Payment Successful!');
                         fetchAll();
                     },
-                    onPending: function (result: any) {
+                    onPending: function () {
                         alert('Waiting for payment...');
                         fetchAll();
                     },
-                    onError: function (result: any) {
+                    onError: function () {
                         alert('Payment failed!');
                     },
                     onClose: function () {

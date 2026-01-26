@@ -275,14 +275,8 @@ export const EventDetailsPage: React.FC = () => {
                                     Pay Now (Virtual Account / QRIS)
                                 </button>
                             ) : (
-                                <p className="text-sm text-red-500">Payment Gateway Unavailable. Use Manual Transfer.</p>
+                                <p className="text-sm text-red-500">Payment Gateway Unavailable. Please contact support.</p>
                             )}
-
-                            <div className="pt-4 border-t border-orange-200/50">
-                                <p className="text-xs text-gray-500 uppercase font-bold mb-1">Manual Transfer (Backup)</p>
-                                <p className="font-bold text-gray-900 text-sm">Mandiri: 125-001-075-7557</p>
-                                <p className="text-xs text-gray-600">a.n Anggi Vitlana Rinaldy</p>
-                            </div>
                         </div>
                     </div>
 

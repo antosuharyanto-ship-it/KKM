@@ -14,9 +14,7 @@ interface User {
 export const ProfilePage: React.FC = () => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
-    const [isOfficer, setIsOfficer] = useState(false); // New state
-
-    const [bookings, setBookings] = useState<any[]>([]);
+    const [isOfficer, setIsOfficer] = useState(false);
 
     const [addresses, setAddresses] = useState<any[]>([]);
     const [showAddressModal, setShowAddressModal] = useState(false);
@@ -46,12 +44,6 @@ export const ProfilePage: React.FC = () => {
                 axios.get(`${API_BASE_URL}/api/officer/check`, { withCredentials: true })
                     .then(() => setIsOfficer(true))
                     .catch(() => setIsOfficer(false));
-
-                // Fetch User Bookings
-                return axios.get(`${API_BASE_URL}/api/my-bookings`, { withCredentials: true });
-            })
-            .then(res => {
-                setBookings(res.data || []);
             })
             .catch(() => {
                 setUser(null);
