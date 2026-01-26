@@ -321,8 +321,16 @@ export const MarketplacePage: React.FC = () => {
         } catch (error: any) {
             console.error('Marketplace Order Error:', error);
             console.error('Error Response:', error.response?.data);
-            const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to process order.';
-            alert(`Order Error: ${errorMsg}`);
+
+            // If order was created but payment failed, allow manual payment
+            if (error.config?.url?.includes('/payment/charge')) {
+                alert('Payment gateway unavailable. Your order is saved! Please go to "My Orders" to upload payment proof or pay later.');
+                setSelectedItem(null);
+                navigate('/my-orders');
+            } else {
+                const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to process order.';
+                alert(`Order Error: ${errorMsg}`);
+            }
         } finally {
             setIsSubmitting(false);
         }
