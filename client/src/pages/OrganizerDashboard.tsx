@@ -856,9 +856,15 @@ export const OrganizerDashboard: React.FC = () => {
                                             {/* Proof Link */}
                                             {(order.payment_proof || order.proofUrl) && (
                                                 <div className="col-span-2 mt-1 text-center">
-                                                    <a href={order.payment_proof || order.proofUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline font-bold flex items-center justify-center gap-1">
-                                                        <CheckCircle size={12} /> View Payment Proof
-                                                    </a>
+                                                    {(order.payment_proof || order.proofUrl).toString().startsWith('Midtrans:') ? (
+                                                        <span className="text-green-600 font-bold flex items-center justify-center gap-1 text-xs">
+                                                            <CheckCircle size={12} /> Auto-Confirmed (Midtrans)
+                                                        </span>
+                                                    ) : (
+                                                        <a href={order.payment_proof || order.proofUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline font-bold flex items-center justify-center gap-1">
+                                                            <CheckCircle size={12} /> View Payment Proof
+                                                        </a>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -937,7 +943,13 @@ export const OrganizerDashboard: React.FC = () => {
                                                 </span>
                                                 {/* Proof Link Desktop */}
                                                 {(order.payment_proof || order.proofUrl) && (
-                                                    <a href={order.payment_proof || order.proofUrl} target="_blank" rel="noreferrer" className="block text-xs text-blue-600 hover:underline mt-1">View Proof</a>
+                                                    (order.payment_proof || order.proofUrl).toString().startsWith('Midtrans:') ? (
+                                                        <span className="block text-xs text-green-600 font-bold mt-1 flex items-center gap-1">
+                                                            <CheckCircle size={10} /> Auto-Confirmed
+                                                        </span>
+                                                    ) : (
+                                                        <a href={order.payment_proof || order.proofUrl} target="_blank" rel="noreferrer" className="block text-xs text-blue-600 hover:underline mt-1">View Proof</a>
+                                                    )
                                                 )}
                                             </td>
                                             <td className="p-4 text-center">
@@ -1014,23 +1026,35 @@ export const OrganizerDashboard: React.FC = () => {
                             <div className="border-t border-gray-100 pt-4">
                                 <span className="block text-gray-500 text-xs font-bold uppercase mb-2">Payment Proof</span>
                                 {selectedOrder.payment_proof || selectedOrder.proofUrl ? (
-                                    <div className="relative group rounded-xl overflow-hidden border border-gray-200 bg-gray-100">
-                                        <img
-                                            src={selectedOrder.payment_proof || selectedOrder.proofUrl}
-                                            alt="Payment Proof"
-                                            className="w-full h-auto max-h-[300px] object-contain"
-                                        />
-                                        <a
-                                            href={selectedOrder.payment_proof || selectedOrder.proofUrl}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition flex items-center justify-center opacity-0 group-hover:opacity-100"
-                                        >
-                                            <span className="bg-white/90 text-gray-900 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">
-                                                Open Full Image
-                                            </span>
-                                        </a>
-                                    </div>
+                                    (selectedOrder.payment_proof || selectedOrder.proofUrl).toString().startsWith('Midtrans:') ? (
+                                        <div className="p-4 bg-green-50 border border-green-200 rounded-xl flex flex-col items-center justify-center text-center">
+                                            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-2 text-green-600">
+                                                <CheckCircle size={24} />
+                                            </div>
+                                            <p className="font-bold text-green-800">Payment Auto-Confirmed</p>
+                                            <p className="text-xs text-green-600 mt-1 font-mono break-all">
+                                                {selectedOrder.payment_proof || selectedOrder.proofUrl}
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="relative group rounded-xl overflow-hidden border border-gray-200 bg-gray-100">
+                                            <img
+                                                src={selectedOrder.payment_proof || selectedOrder.proofUrl}
+                                                alt="Payment Proof"
+                                                className="w-full h-auto max-h-[300px] object-contain"
+                                            />
+                                            <a
+                                                href={selectedOrder.payment_proof || selectedOrder.proofUrl}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition flex items-center justify-center opacity-0 group-hover:opacity-100"
+                                            >
+                                                <span className="bg-white/90 text-gray-900 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">
+                                                    Open Full Image
+                                                </span>
+                                            </a>
+                                        </div>
+                                    )
                                 ) : (
                                     <div className="text-center p-8 bg-gray-50 rounded-xl border border-dashed border-gray-300 text-gray-400 text-sm">
                                         No proof uploaded
