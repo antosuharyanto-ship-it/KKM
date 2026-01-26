@@ -66,15 +66,15 @@ export const handleNotification = async (req: Request, res: Response): Promise<v
                     kavling: booking.kavling || 'Allocated on Arrival'
                 };
 
+
                 const ticketLink = await ticketService.generateTicket(ticketData);
 
-                // Update Google Sheet
-                // We need to update the row with new status and ticket link
-                await googleSheetService.updateRow(sheetName, bookingIndex + 2, {
-                    reservation_status: 'Confirmed Payment',
-                    link_tiket: ticketLink,
-                    notification_status: 'Ticket Generated'
-                });
+                // Update Google Sheet with new status and ticket link
+                await googleSheetService.updateBookingStatus(
+                    booking.reservation_id,
+                    'Confirmed Payment',
+                    ticketLink
+                );
 
                 console.log(`[Midtrans] Ticket generated for ${order_id}: ${ticketLink}`);
             } else {
