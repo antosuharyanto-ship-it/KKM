@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
-import { Tag, Search, ShoppingCart } from 'lucide-react';
+import { Tag, Search, ShoppingCart, MessageCircle } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 import { getDisplayImageUrl } from '../utils/imageHelper';
 import { useNavigate } from 'react-router-dom';
@@ -479,6 +479,20 @@ export const MarketplacePage: React.FC = () => {
                                 <ShoppingCart size={16} />
                             </button>
                         </div>
+                        {item.phone_number && (
+                            <a
+                                href={`https://wa.me/${item.phone_number.replace(/^0/, '62')}?text=${encodeURIComponent(
+                                    `Hi! I'm interested in ${item.product_name}. Is it still available?`
+                                )}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-2 text-xs text-green-600 hover:text-green-700 font-medium flex items-center gap-1 justify-center"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <MessageCircle size={12} />
+                                Contact Seller
+                            </a>
+                        )}
                     </div>
                 ))}
             </div>
@@ -548,6 +562,29 @@ export const MarketplacePage: React.FC = () => {
                             <div className="bg-blue-50 p-3 rounded-xl mb-4 text-xs text-blue-800">
                                 <span className="font-bold block mb-1">Description:</span>
                                 {selectedItem.description}
+                            </div>
+                        )}
+
+                        {/* Contact Seller */}
+                        {selectedItem.phone_number && (
+                            <div className="bg-green-50 border border-green-200 p-3 rounded-xl mb-4">
+                                <p className="text-xs text-green-800 font-semibold mb-2">
+                                    💬 Questions about this item?
+                                </p>
+                                <a
+                                    href={`https://wa.me/${selectedItem.phone_number.replace(/^0/, '62')}?text=${encodeURIComponent(
+                                        `Hi! I have questions about ${selectedItem.product_name}.\n\nMy questions:\n1. `
+                                    )}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-sm text-green-700 hover:text-green-800 font-medium flex items-center gap-2"
+                                >
+                                    <MessageCircle size={16} />
+                                    Contact Seller on WhatsApp
+                                </a>
+                                <p className="text-[10px] text-green-600 mt-1">
+                                    Verify stock, ask details, or negotiate before ordering
+                                </p>
                             </div>
                         )}
 
