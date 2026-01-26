@@ -17,6 +17,8 @@ import { komerceService } from './services/komerceService';
 import * as midtransService from './services/midtransService';
 import { pool as dbPool } from './db';
 import passport from './auth';
+import sellerRoutes from './routes/sellerRoutes';
+import { neon } from '@neondatabase/serverless';
 
 dotenv.config();
 
@@ -182,6 +184,79 @@ const checkOfficer = async (req: any, res: any, next: any) => {
 
 app.get('/api/officer/check', checkOfficer, (req, res) => {
     res.json({ success: true, message: 'Authorized' });
+});
+
+// =============================================================================
+// Seller Routes (OAuth, Profile, etc.)
+// =============================================================================
+app.use('/api/seller', sellerRoutes);
+
+// =============================================================================
+// Seller Allowlist Management (Officer-only)
+// =============================================================================
+
+/**
+ * Get all emails in seller allowlist
+ */
+app.get('/api/officer/sellers/allowlist', checkOfficer, async (req, res) => {
+    try {
+        const sql = neon(process.env.DATABASE_URL!);
+        const allowlist = await sql`SELECT * FROM seller_allowlist ORDER BY added_at DESC`;
+        res.json({ success: true, allowlist });
+    } catch (error) {
+        console.error('[Allowlist] Error fetching allowlist:', error);
+        res.status(500).json({ error: 'Failed to fetch allowlist' });
+    }
+});
+
+/**
+ * Add email to seller allowlist
+ */
+app.post('/api/officer/sellers/allowlist', checkOfficer, async (req, res) => {
+    try {
+        const { email, notes } = req.body;
+
+        if (!email || !email.includes('@')) {
+            return res.status(400).json({ error: 'Valid email is required' });
+        }
+
+        const addedBy = (req.user as any).email;
+        const sql = neon(process.env.DATABASE_URL!);
+
+        // Check if email already exists
+        const existing = await sql`SELECT email FROM seller_allowlist WHERE email = ${email}`;
+        if (existing.length > 0) {
+            return res.status(400).json({ error: 'Email already in allowlist' });
+        }
+
+        // Add to allowlist
+        await sql`
+            INSERT INTO seller_allowlist (email, added_by, notes)
+            VALUES (${email}, ${addedBy}, ${notes || ''})
+        `;
+
+        res.json({ success: true, message: 'Email added to seller allowlist' });
+    } catch (error) {
+        console.error('[Allowlist] Error adding email:', error);
+        res.status(500).json({ error: 'Failed to add email to allowlist' });
+    }
+});
+
+/**
+ * Remove email from seller allowlist
+ */
+app.delete('/api/officer/sellers/allowlist/:email', checkOfficer, async (req, res) => {
+    try {
+        const { email } = req.params;
+        const sql = neon(process.env.DATABASE_URL!);
+
+        await sql`DELETE FROM seller_allowlist WHERE email = ${email}`;
+
+        res.json({ success: true, message: 'Email removed from allowlist' });
+    } catch (error) {
+        console.error('[Allowlist] Error removing email:', error);
+        res.status(500).json({ error: 'Failed to remove email from allowlist' });
+    }
 });
 
 // API Routes

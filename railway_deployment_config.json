@@ -1,0 +1,22 @@
+{
+    "railway_env_variables": {
+        "server": {
+            "JWT_SECRET": "2OVFWRVxKbOjCg5YzP8rzMWQXRqm6OqjQmGCprFbGFM=",
+            "SELLER_JWT_EXPIRY": "7d",
+            "note": "Add these to your Railway server deployment environment variables"
+        },
+        "callback_url_verification": {
+            "google_oauth_setting": "https://kkm1-production.up.railway.app/api/seller/auth/google/callback",
+            "note": "Verify this is added to Google Cloud Console OAuth authorized redirect URIs"
+        }
+    },
+    "deployment_checklist": [
+        "✅ Database tables created (sellers, seller_allowlist)",
+        "✅ Email added to allowlist (Showoff482025@gmail.com)",
+        "✅ JWT_SECRET generated and added to .env",
+        "✅ Google OAuth callback URL added",
+        "⏳ Add JWT_SECRET to Railway environment variables",
+        "⏳ Git commit and push changes",
+        "⏳ Railway will auto-deploy"
+    ]
+}
