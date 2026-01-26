@@ -820,7 +820,8 @@ export const OrganizerDashboard: React.FC = () => {
                                     {marketError ? <span className="text-red-500 font-bold">{marketError}</span> : 'No orders found.'}
                                 </div>
                             ) : (
-                                marketOrders.map((order, idx) => (
+                                // SORTED: Newest First
+                                [...marketOrders].reverse().filter(o => !o.status?.includes('Archived')).map((order, idx) => (
                                     <div key={idx} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-3">
                                         <div className="flex justify-between items-start">
                                             <div>
@@ -905,7 +906,8 @@ export const OrganizerDashboard: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {marketOrders.map((order, idx) => (
+                                    {/* SORTED: Newest First */}
+                                    {[...marketOrders].reverse().filter(o => !o.status?.includes('Archived')).map((order, idx) => (
                                         <tr key={idx} className="hover:bg-gray-50 transition">
                                             <td className="p-4">
                                                 <div className="font-bold text-gray-900">#{order.order_id || order['Order ID']}</div>
@@ -969,11 +971,18 @@ export const OrganizerDashboard: React.FC = () => {
                                                     }
                                                     if (isReceived) {
                                                         return (
-                                                            <button
-                                                                onClick={() => handleMarkSettled(order.order_id || order['Order ID'])}
-                                                                className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-700 transition">
-                                                                Settle
-                                                            </button>
+                                                            <div className="flex flex-col gap-1">
+                                                                <button
+                                                                    onClick={() => handleMarkSettled(order.order_id || order['Order ID'])}
+                                                                    className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-700 transition">
+                                                                    Settle
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleArchiveOrder(order.order_id || order['Order ID'])}
+                                                                    className="text-gray-400 hover:text-gray-600 text-[10px] font-bold uppercase tracking-wider">
+                                                                    Archive
+                                                                </button>
+                                                            </div>
                                                         );
                                                     }
                                                     return null;
