@@ -373,6 +373,21 @@ export const OrganizerDashboard: React.FC = () => {
         }
     };
 
+    const handleArchiveOrder = async (orderId: string) => {
+        if (!confirm('Archive this order? It will be hidden from the main view.')) return;
+        setProcessingId(orderId);
+        try {
+            await axios.post(`${API_BASE_URL}/api/officer/marketplace/archive-order`, { orderId }, { withCredentials: true });
+            alert('Order Archived!');
+            const res = await axios.get(`${API_BASE_URL}/api/marketplace/orders`, { withCredentials: true });
+            setMarketOrders(res.data);
+        } catch (error) {
+            alert('Failed to archive order');
+        } finally {
+            setProcessingId(null);
+        }
+    };
+
     if (loading) return <div className="p-10 text-center">Loading Dashboard...</div>;
     if (!isOfficer) return (
         <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
