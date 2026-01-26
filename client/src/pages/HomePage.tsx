@@ -104,9 +104,10 @@ export const HomePage: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="flex flex-col md:flex-row gap-4 justify-center">\n                        <button onClick={() => document.getElementById('featured-section')?.scrollIntoView({ behavior: 'smooth' })} className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-full font-bold text-lg transition-all shadow-lg hover:shadow-orange-500/30 hover:-translate-y-1 flex items-center justify-center gap-2">
-                        {t('home.explore_events')} <ArrowRight size={20} />
-                    </button>
+                    <div className="flex flex-col md:flex-row gap-4 justify-center">
+                        <button onClick={() => document.getElementById('featured-section')?.scrollIntoView({ behavior: 'smooth' })} className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-full font-bold text-lg transition-all shadow-lg hover:shadow-orange-500/30 hover:-translate-y-1 flex items-center justify-center gap-2">
+                            {t('home.explore_events')} <ArrowRight size={20} />
+                        </button>
                     </div>
                 </div>
             </div>
