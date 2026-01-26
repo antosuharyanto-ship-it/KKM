@@ -7,17 +7,26 @@ export const createPayment = async (req: Request, res: Response): Promise<void> 
     try {
         const { orderId, amount, customerDetails, itemDetails } = req.body;
 
+        console.log('[PaymentController] Creating payment for order:', orderId);
+        console.log('[PaymentController] Amount:', amount);
+
         if (!orderId || !amount) {
             res.status(400).json({ error: 'orderId and amount are required' });
             return;
         }
 
         const midtransResponse = await midtransService.createTransactionToken(orderId, amount, customerDetails, itemDetails);
+        console.log('[PaymentController] Token generated successfully');
 
         res.json(midtransResponse);
     } catch (error: any) {
         console.error('[PaymentController] Error:', error);
-        res.status(500).json({ error: 'Payment creation failed', details: error.message });
+        console.error('[PaymentController] Stack:', error.stack);
+        res.status(500).json({
+            error: 'Payment creation failed',
+            message: error.message,
+            details: error.ApiResponse?.error_messages || []
+        });
     }
 };
 
