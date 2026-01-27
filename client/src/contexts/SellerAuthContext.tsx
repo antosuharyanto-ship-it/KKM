@@ -40,11 +40,25 @@ export const SellerAuthProvider: React.FC<SellerAuthProviderProps> = ({ children
 
     // Fetch seller profile on mount if token exists
     useEffect(() => {
-        const token = localStorage.getItem('seller_token');
-        if (token) {
-            fetchSellerProfile(token);
+        // Check for token in URL (from OAuth redirect)
+        const params = new URLSearchParams(window.location.search);
+        const urlToken = params.get('token');
+
+        if (urlToken) {
+            // Save to local storage
+            localStorage.setItem('seller_token', urlToken);
+
+            // Clear URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+
+            fetchSellerProfile(urlToken);
         } else {
-            setLoading(false);
+            const token = localStorage.getItem('seller_token');
+            if (token) {
+                fetchSellerProfile(token);
+            } else {
+                setLoading(false);
+            }
         }
     }, []);
 
