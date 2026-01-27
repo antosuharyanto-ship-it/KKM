@@ -60,6 +60,7 @@ const sellerGoogleStrategy = new GoogleStrategy(
             const seller = await createOrUpdateSeller(sellerProfile);
             return done(null, seller);
         } catch (err: any) {
+            console.error('[SellerAuth] Strategy Verification Error:', err);
             return done(err, undefined);
         }
     }
