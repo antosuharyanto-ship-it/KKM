@@ -3,9 +3,18 @@ import { useSellerAuth } from '../contexts/SellerAuthContext';
 import { FaStore, FaBox, FaShippingFast, FaUser, FaSignOutAlt, FaBars, FaTimes } from 'react-icons/fa';
 
 const SellerDashboard: React.FC = () => {
-    const { seller, logout } = useSellerAuth();
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'items' | 'orders' | 'profile'>('dashboard');
+    const { seller, logout, updateProfile } = useSellerAuth();
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'items' | 'orders' | 'profile' | 'add-item' | 'edit-profile'>('dashboard');
     const [sidebarOpen, setSidebarOpen] = useState(false);
+
+    // Profile Edit State
+    const [editForm, setEditForm] = useState({
+        full_name: '',
+        phone: '',
+        whatsapp: '',
+        address: '',
+        bank_account: ''
+    });
 
     const menuItems = [
         { id: 'dashboard' as const, label: 'Dashboard', icon: FaStore },
@@ -13,6 +22,30 @@ const SellerDashboard: React.FC = () => {
         { id: 'orders' as const, label: 'Orders', icon: FaShippingFast },
         { id: 'profile' as const, label: 'Profile', icon: FaUser },
     ];
+
+    const handleEditProfile = () => {
+        if (seller) {
+            setEditForm({
+                full_name: seller.full_name || '',
+                phone: seller.phone || '',
+                whatsapp: seller.whatsapp || '',
+                address: seller.address || '',
+                bank_account: seller.bank_account || ''
+            });
+            setActiveTab('edit-profile');
+        }
+    };
+
+    const handleSaveProfile = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await updateProfile(editForm);
+            setActiveTab('profile');
+        } catch (error) {
+            console.error('Failed to update profile', error);
+            // In a real app, show error notification
+        }
+    };
 
     const renderContent = () => {
         switch (activeTab) {
@@ -57,13 +90,35 @@ const SellerDashboard: React.FC = () => {
                     <div>
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-2xl font-bold text-gray-900">My Items</h2>
-                            <button className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                            <button
+                                onClick={() => setActiveTab('add-item')}
+                                className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                            >
                                 Add New Item
                             </button>
                         </div>
                         <div className="bg-white p-8 rounded-lg shadow border border-gray-200 text-center">
                             <FaBox className="text-6xl text-gray-300 mx-auto mb-4" />
                             <p className="text-gray-600">No items yet. Click "Add New Item" to get started.</p>
+                        </div>
+                    </div>
+                );
+
+            case 'add-item':
+                return (
+                    <div>
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-bold text-gray-900">Add New Item</h2>
+                            <button
+                                onClick={() => setActiveTab('items')}
+                                className="text-gray-600 hover:text-gray-900 font-medium"
+                            >
+                                Back to Items
+                            </button>
+                        </div>
+                        <div className="bg-white p-8 rounded-lg shadow border border-gray-200 text-center">
+                            <p className="text-gray-600 mb-4">Product Management Module Coming Soon!</p>
+                            <p className="text-sm text-gray-500">This feature is part of the implementation plan.</p>
                         </div>
                     </div>
                 );
@@ -83,7 +138,7 @@ const SellerDashboard: React.FC = () => {
                 return (
                     <div>
                         <h2 className="text-2xl font-bold text-gray-900 mb-6">Profile</h2>
-                        <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+                        <div className="bg-white p-6 rounded-lg shadow border border-gray-200 max-w-2xl">
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
@@ -102,18 +157,101 @@ const SellerDashboard: React.FC = () => {
                                     <p className="text-gray-900">{seller?.whatsapp || 'Not set'}</p>
                                 </div>
                                 <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                                    <p className="text-gray-900">{seller?.address || 'Not set'}</p>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Bank Account</label>
+                                    <p className="text-gray-900">{seller?.bank_account || 'Not set'}</p>
+                                </div>
+                                <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                                     <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${seller?.status === 'active'
-                                            ? 'bg-green-100 text-green-800'
-                                            : 'bg-red-100 text-red-800'
+                                        ? 'bg-green-100 text-green-800'
+                                        : 'bg-red-100 text-red-800'
                                         }`}>
                                         {seller?.status || 'Unknown'}
                                     </span>
                                 </div>
                             </div>
-                            <button className="mt-6 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                            <button
+                                onClick={handleEditProfile}
+                                className="mt-6 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                            >
                                 Edit Profile
                             </button>
+                        </div>
+                    </div>
+                );
+
+            case 'edit-profile':
+                return (
+                    <div>
+                        <h2 className="text-2xl font-bold text-gray-900 mb-6">Edit Profile</h2>
+                        <div className="bg-white p-6 rounded-lg shadow border border-gray-200 max-w-2xl">
+                            <form onSubmit={handleSaveProfile} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.full_name}
+                                        onChange={e => setEditForm({ ...editForm, full_name: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                    <input
+                                        type="tel"
+                                        value={editForm.phone}
+                                        onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
+                                    <input
+                                        type="tel"
+                                        value={editForm.whatsapp}
+                                        onChange={e => setEditForm({ ...editForm, whatsapp: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                                    <textarea
+                                        value={editForm.address}
+                                        onChange={e => setEditForm({ ...editForm, address: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                                        rows={3}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Bank Account</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.bank_account}
+                                        onChange={e => setEditForm({ ...editForm, bank_account: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                                        placeholder="Bank Name - Account Number - Holder Name"
+                                    />
+                                </div>
+                                <div className="flex gap-4 pt-4">
+                                    <button
+                                        type="submit"
+                                        className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                                    >
+                                        Save Changes
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab('profile')}
+                                        className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 );
@@ -137,7 +275,7 @@ const SellerDashboard: React.FC = () => {
                 {/* Sidebar */}
                 <aside
                     className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-                        } lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transition-transform duration-300`}
+                        } lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transition-transform duration-300 flex flex-col h-screen lg:h-auto`}
                 >
                     <div className="p-6 border-b border-gray-200">
                         <div className="flex items-center gap-3">
@@ -151,7 +289,7 @@ const SellerDashboard: React.FC = () => {
                         </div>
                     </div>
 
-                    <nav className="p-4">
+                    <nav className="p-4 flex-1 overflow-y-auto">
                         {menuItems.map((item) => (
                             <button
                                 key={item.id}
@@ -160,8 +298,8 @@ const SellerDashboard: React.FC = () => {
                                     setSidebarOpen(false);
                                 }}
                                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-colors ${activeTab === item.id
-                                        ? 'bg-green-50 text-green-700 font-medium'
-                                        : 'text-gray-700 hover:bg-gray-100'
+                                    ? 'bg-green-50 text-green-700 font-medium'
+                                    : 'text-gray-700 hover:bg-gray-100'
                                     }`}
                             >
                                 <item.icon className="text-xl" />
@@ -170,7 +308,7 @@ const SellerDashboard: React.FC = () => {
                         ))}
                     </nav>
 
-                    <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
+                    <div className="p-4 border-t border-gray-200">
                         <button
                             onClick={logout}
                             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
@@ -190,7 +328,7 @@ const SellerDashboard: React.FC = () => {
                 )}
 
                 {/* Main Content */}
-                <main className="flex-1 p-6 lg:p-8">
+                <main className="flex-1 p-6 lg:p-8 min-h-screen">
                     {/* Welcome Header */}
                     <div className="mb-8">
                         <h1 className="text-3xl font-bold text-gray-900 mb-2">
