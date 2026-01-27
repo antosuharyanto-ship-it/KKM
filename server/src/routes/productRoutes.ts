@@ -38,7 +38,7 @@ router.get('/', async (req: Request, res: Response) => {
 router.get('/:id', async (req: Request, res: Response) => {
     try {
         if (!req.seller) return res.status(401).json({ error: 'Unauthorized' });
-        const { id } = req.params;
+        const { id } = req.params as { id: string };
 
         const product = await db
             .select()
@@ -177,7 +177,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 router.delete('/:id', async (req: Request, res: Response) => {
     try {
         if (!req.seller) return res.status(401).json({ error: 'Unauthorized' });
-        const { id } = req.params;
+        const { id } = req.params as { id: string };
 
         const result = await db
             .delete(products)
