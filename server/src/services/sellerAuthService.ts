@@ -30,7 +30,7 @@ export interface GoogleProfile {
 export async function checkAllowlist(email: string): Promise<boolean> {
     try {
         const result = await sql`
-      SELECT email FROM seller_allowlist WHERE email = ${email}
+      SELECT email FROM seller_allowlist WHERE LOWER(email) = LOWER(${email})
     `;
         return result.length > 0;
     } catch (error) {
