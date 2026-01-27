@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSellerAuth } from '../contexts/SellerAuthContext';
 import { FaStore, FaBox, FaShippingFast, FaUser, FaSignOutAlt, FaBars, FaTimes } from 'react-icons/fa';
+import ProductList from '../components/seller/ProductList';
+import ProductForm from '../components/seller/ProductForm';
 
 const SellerDashboard: React.FC = () => {
     const { seller, logout, updateProfile } = useSellerAuth();
@@ -13,8 +15,23 @@ const SellerDashboard: React.FC = () => {
         phone: '',
         whatsapp: '',
         address: '',
-        bank_account: ''
+        bank_account: '',
+        // Shipping Config
+        address_province: '',
+        address_city: '',
+        address_subdistrict: '',
+        address_postal_code: '',
+        shipping_origin_id: ''
     });
+
+    // Location Search State
+    const [locationQuery, setLocationQuery] = useState('');
+    const [locationResults, setLocationResults] = useState<any[]>([]);
+    const [showLocationResults, setShowLocationResults] = useState(false);
+    const [searchingLocation, setSearchingLocation] = useState(false);
+
+    // Product Management State
+    const [editingProduct, setEditingProduct] = useState<any>(null);
 
     const menuItems = [
         { id: 'dashboard' as const, label: 'Dashboard', icon: FaStore },
@@ -30,10 +47,65 @@ const SellerDashboard: React.FC = () => {
                 phone: seller.phone || '',
                 whatsapp: seller.whatsapp || '',
                 address: seller.address || '',
-                bank_account: seller.bank_account || ''
+                bank_account: seller.bank_account || '',
+                address_province: seller.address_province || '',
+                address_city: seller.address_city || '',
+                address_subdistrict: seller.address_subdistrict || '',
+                address_postal_code: seller.address_postal_code || '',
+                shipping_origin_id: seller.shipping_origin_id || ''
             });
+            // Pre-fill search query if data exists
+            if (seller.address_city || seller.address_subdistrict) {
+                setLocationQuery(`${seller.address_subdistrict || ''} ${seller.address_city || ''}`.trim());
+            } else {
+                setLocationQuery('');
+            }
             setActiveTab('edit-profile');
         }
+    };
+
+    // Location Search Handler
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+            if (locationQuery.length >= 3 && showLocationResults) {
+                setSearchingLocation(true);
+                try {
+                    // Use axios directly or context if available, assuming axios is imported
+                    // We need the token here. best to use a specialized hook or just axios with local token
+                    const token = localStorage.getItem('seller_token');
+                    if (!token) return;
+
+                    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/seller/location-search?q=${locationQuery}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    const data = await res.json();
+                    if (data.results) {
+                        setLocationResults(data.results);
+                    }
+                } catch (err) {
+                    console.error('Location search failed', err);
+                } finally {
+                    setSearchingLocation(false);
+                }
+            } else {
+                setLocationResults([]);
+            }
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [locationQuery, showLocationResults]);
+
+    const selectLocation = (loc: any) => {
+        setEditForm(prev => ({
+            ...prev,
+            address_province: loc.province_name || '',
+            address_city: loc.city_name || '',
+            address_subdistrict: loc.subdistrict_name || '',
+            address_postal_code: loc.zip_code || '',
+            shipping_origin_id: String(loc.id) // Komerce Subdistrict ID
+        }));
+        setLocationQuery(`${loc.subdistrict_name}, ${loc.city_name}, ${loc.province_name}`);
+        setShowLocationResults(false);
     };
 
     const handleSaveProfile = async (e: React.FormEvent) => {
@@ -87,39 +159,34 @@ const SellerDashboard: React.FC = () => {
 
             case 'items':
                 return (
-                    <div>
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-2xl font-bold text-gray-900">My Items</h2>
-                            <button
-                                onClick={() => setActiveTab('add-item')}
-                                className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-                            >
-                                Add New Item
-                            </button>
-                        </div>
-                        <div className="bg-white p-8 rounded-lg shadow border border-gray-200 text-center">
-                            <FaBox className="text-6xl text-gray-300 mx-auto mb-4" />
-                            <p className="text-gray-600">No items yet. Click "Add New Item" to get started.</p>
-                        </div>
-                    </div>
+                    <ProductList
+                        onAddProduct={() => {
+                            setEditingProduct(null);
+                            setActiveTab('add-item');
+                        }}
+                        onEditProduct={(product) => {
+                            setEditingProduct(product);
+                            setActiveTab('add-item');
+                        }}
+                    />
                 );
 
             case 'add-item':
                 return (
                     <div>
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-2xl font-bold text-gray-900">Add New Item</h2>
+                        <div className="flex items-center justify-between mb-2">
                             <button
                                 onClick={() => setActiveTab('items')}
-                                className="text-gray-600 hover:text-gray-900 font-medium"
+                                className="text-gray-600 hover:text-gray-900 font-medium flex items-center gap-2"
                             >
-                                Back to Items
+                                &larr; Back to Items
                             </button>
                         </div>
-                        <div className="bg-white p-8 rounded-lg shadow border border-gray-200 text-center">
-                            <p className="text-gray-600 mb-4">Product Management Module Coming Soon!</p>
-                            <p className="text-sm text-gray-500">This feature is part of the implementation plan.</p>
-                        </div>
+                        <ProductForm
+                            initialData={editingProduct}
+                            onSuccess={() => setActiveTab('items')}
+                            onCancel={() => setActiveTab('items')}
+                        />
                     </div>
                 );
 
@@ -163,6 +230,16 @@ const SellerDashboard: React.FC = () => {
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Bank Account</label>
                                     <p className="text-gray-900">{seller?.bank_account || 'Not set'}</p>
+                                </div>
+                                <div className="border-t pt-4 mt-4">
+                                    <h3 className="font-bold text-gray-800 mb-2">Shipping Origin</h3>
+                                    <p className="text-gray-600 text-sm mb-1">{seller?.shipping_origin_id ? 'Location Set' : 'Not configured'}</p>
+                                    <p className="text-gray-900">
+                                        {[seller?.address_subdistrict, seller?.address_city, seller?.address_province]
+                                            .filter(Boolean)
+                                            .join(', ') || '-'}
+                                    </p>
+                                    {seller?.address_postal_code && <p className="text-gray-500 text-sm">Postal Code: {seller?.address_postal_code}</p>}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
@@ -235,6 +312,45 @@ const SellerDashboard: React.FC = () => {
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                                         placeholder="Bank Name - Account Number - Holder Name"
                                     />
+                                </div>
+
+                                {/* Shipping Origin Input */}
+                                <div className="border-t pt-4 mt-4">
+                                    <h3 className="font-bold text-gray-800 mb-2">Shipping Origin (Required for Shipping Calculation)</h3>
+                                    <div className="relative">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Search District / City</label>
+                                        <input
+                                            type="text"
+                                            value={locationQuery}
+                                            onChange={e => {
+                                                setLocationQuery(e.target.value);
+                                                setShowLocationResults(true);
+                                            }}
+                                            onFocus={() => setShowLocationResults(true)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                                            placeholder="Type district name (e.g. Gambir, Jakarta Pusat)..."
+                                        />
+                                        {searchingLocation && <div className="absolute right-3 top-9 text-xs text-gray-400">Searching...</div>}
+
+                                        {showLocationResults && locationResults.length > 0 && (
+                                            <div className="absolute z-10 w-full bg-white border border-gray-200 mt-1 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                                {locationResults.map((loc, idx) => (
+                                                    <button
+                                                        key={idx}
+                                                        type="button"
+                                                        onClick={() => selectLocation(loc)}
+                                                        className="w-full text-left px-4 py-2 hover:bg-green-50 text-sm border-b border-gray-100 last:border-0"
+                                                    >
+                                                        <span className="font-bold text-gray-800">{loc.subdistrict_name}</span>
+                                                        <span className="text-gray-500 block text-xs">{loc.type} {loc.city_name}, {loc.province_name}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="mt-2 text-xs text-gray-500">
+                                        Selected: {[editForm.address_subdistrict, editForm.address_city, editForm.address_province].filter(Boolean).join(', ') || 'None'}
+                                    </div>
                                 </div>
                                 <div className="flex gap-4 pt-4">
                                     <button

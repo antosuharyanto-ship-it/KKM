@@ -14,6 +14,12 @@ export interface Seller {
     address?: string;
     bank_account?: string;
     status: string;
+    // New Shipping Origin Fields
+    address_province?: string;
+    address_city?: string;
+    address_subdistrict?: string;
+    address_postal_code?: string;
+    shipping_origin_id?: string;
     created_at: Date;
     last_login?: Date;
 }
@@ -116,7 +122,7 @@ export async function createOrUpdateSeller(profile: GoogleProfile): Promise<Sell
  */
 export async function updateSellerProfile(
     email: string,
-    updates: Partial<Pick<Seller, 'full_name' | 'phone' | 'whatsapp' | 'address' | 'bank_account'>>
+    updates: Partial<Pick<Seller, 'full_name' | 'phone' | 'whatsapp' | 'address' | 'bank_account' | 'address_province' | 'address_city' | 'address_subdistrict' | 'address_postal_code' | 'shipping_origin_id'>>
 ): Promise<Seller | null> {
     try {
         if (Object.keys(updates).length === 0) {
@@ -129,21 +135,18 @@ export async function updateSellerProfile(
         if (!seller) return null;
 
         // Update fields one by one to avoid dynamic SQL issues with neon
-        if (updates.full_name !== undefined) {
-            await sql`UPDATE sellers SET full_name = ${updates.full_name} WHERE email = ${email}`;
-        }
-        if (updates.phone !== undefined) {
-            await sql`UPDATE sellers SET phone = ${updates.phone} WHERE email = ${email}`;
-        }
-        if (updates.whatsapp !== undefined) {
-            await sql`UPDATE sellers SET whatsapp = ${updates.whatsapp} WHERE email = ${email}`;
-        }
-        if (updates.address !== undefined) {
-            await sql`UPDATE sellers SET address = ${updates.address} WHERE email = ${email}`;
-        }
-        if (updates.bank_account !== undefined) {
-            await sql`UPDATE sellers SET bank_account = ${updates.bank_account} WHERE email = ${email}`;
-        }
+        if (updates.full_name !== undefined) await sql`UPDATE sellers SET full_name = ${updates.full_name} WHERE email = ${email}`;
+        if (updates.phone !== undefined) await sql`UPDATE sellers SET phone = ${updates.phone} WHERE email = ${email}`;
+        if (updates.whatsapp !== undefined) await sql`UPDATE sellers SET whatsapp = ${updates.whatsapp} WHERE email = ${email}`;
+        if (updates.address !== undefined) await sql`UPDATE sellers SET address = ${updates.address} WHERE email = ${email}`;
+        if (updates.bank_account !== undefined) await sql`UPDATE sellers SET bank_account = ${updates.bank_account} WHERE email = ${email}`;
+
+        // New Shipping Origin Fields
+        if (updates.address_province !== undefined) await sql`UPDATE sellers SET address_province = ${updates.address_province} WHERE email = ${email}`;
+        if (updates.address_city !== undefined) await sql`UPDATE sellers SET address_city = ${updates.address_city} WHERE email = ${email}`;
+        if (updates.address_subdistrict !== undefined) await sql`UPDATE sellers SET address_subdistrict = ${updates.address_subdistrict} WHERE email = ${email}`;
+        if (updates.address_postal_code !== undefined) await sql`UPDATE sellers SET address_postal_code = ${updates.address_postal_code} WHERE email = ${email}`;
+        if (updates.shipping_origin_id !== undefined) await sql`UPDATE sellers SET shipping_origin_id = ${updates.shipping_origin_id} WHERE email = ${email}`;
 
         // Fetch and return updated seller
         return await getSellerByEmail(email);

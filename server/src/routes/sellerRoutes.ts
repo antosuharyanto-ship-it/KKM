@@ -146,9 +146,12 @@ router.post('/auth/logout', (req: Request, res: Response) => {
     res.json({ success: true, message: 'Logged out successfully' });
 });
 
+// ... imports ...
+import { komerceService } from '../services/komerceService';
+
 /**
- * Update seller profile
- */
+* Update seller profile information
+*/
 router.put(
     '/profile',
     authenticateSellerToken,
@@ -159,10 +162,13 @@ router.put(
                 return res.status(401).json({ error: 'Not authenticated' });
             }
 
-            const { full_name, phone, whatsapp, address, bank_account } = req.body;
+            const {
+                full_name, phone, whatsapp, address, bank_account,
+                address_province, address_city, address_subdistrict, address_postal_code, shipping_origin_id
+            } = req.body;
 
             // Validate at least one field is provided
-            if (!full_name && !phone && !whatsapp && !address && !bank_account) {
+            if (!full_name && !phone && !whatsapp && !address && !bank_account && !shipping_origin_id) {
                 return res.status(400).json({ error: 'No fields to update' });
             }
 
@@ -173,6 +179,11 @@ router.put(
                 whatsapp,
                 address,
                 bank_account,
+                address_province,
+                address_city,
+                address_subdistrict,
+                address_postal_code,
+                shipping_origin_id
             });
 
             if (!updatedSeller) {
@@ -192,5 +203,23 @@ router.put(
         }
     }
 );
+
+/**
+ * Search location for Shipping Origin (Komerce)
+ */
+router.get('/location-search', authenticateSellerToken, ensureSellerAccess, async (req: Request, res: Response) => {
+    try {
+        const query = req.query.q as string;
+        if (!query || query.length < 3) {
+            return res.json({ results: [] });
+        }
+
+        const results = await komerceService.searchDestination(query);
+        res.json({ results });
+    } catch (error) {
+        console.error('[SellerRoutes] Location search error:', error);
+        res.status(500).json({ error: 'Failed to search location' });
+    }
+});
 
 export default router;

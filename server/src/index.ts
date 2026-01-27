@@ -18,6 +18,8 @@ import * as midtransService from './services/midtransService';
 import { pool as dbPool } from './db';
 import passport from './auth';
 import sellerRoutes from './routes/sellerRoutes';
+import productRoutes from './routes/productRoutes';
+import publicRoutes from './routes/publicRoutes';
 import { neon } from '@neondatabase/serverless';
 
 dotenv.config();
@@ -186,10 +188,20 @@ app.get('/api/officer/check', checkOfficer, (req, res) => {
     res.json({ success: true, message: 'Authorized' });
 });
 
+app.get('/api/officer/check', checkOfficer, (req, res) => {
+    res.json({ success: true, message: 'Authorized' });
+});
+
+// =============================================================================
+// Public Routes (Marketplace, etc.)
+// =============================================================================
+app.use('/api', publicRoutes);
+
 // =============================================================================
 // Seller Routes (OAuth, Profile, etc.)
 // =============================================================================
 app.use('/api/seller', sellerRoutes);
+app.use('/api/seller/products', productRoutes);
 
 // =============================================================================
 // Seller Allowlist Management (Officer-only)
@@ -306,16 +318,7 @@ app.put('/api/events/:id', checkOfficer, async (req, res) => {
     }
 });
 
-app.get('/api/marketplace', async (req, res) => {
-    try {
-        console.log('[API] Fetching marketplace items...');
-        const items = await googleSheetService.getMarketplaceItems();
-        console.log(`[API] Found ${items.length} items`);
-        res.json(items);
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch items' });
-    }
-});
+// [REMOVED] Old /api/marketplace endpoint - moved to publicRoutes.ts
 
 // --- VISITOR TRACKING APIs ---
 const SHEET_VISITOR_STATS = 'Visitor Stats';

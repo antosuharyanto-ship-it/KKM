@@ -59,3 +59,48 @@ export const shippingCache = pgTable('shipping_cache', {
     result: json('result').notNull(),
     createdAt: timestamp('created_at').defaultNow(),
 });
+
+import { decimal, integer, text } from 'drizzle-orm/pg-core';
+
+export const sellers = pgTable('sellers', {
+    id: uuid('seller_id').defaultRandom().primaryKey(),
+    email: varchar('email').unique().notNull(),
+    fullName: varchar('full_name').notNull(),
+    phone: varchar('phone'),
+    whatsapp: varchar('whatsapp'),
+    address: text('address'),
+    bankAccount: varchar('bank_account'),
+    status: varchar('status', { enum: ['active', 'suspended'] }).default('active'),
+    // New Shipping Origin Fields
+    addressProvince: varchar('address_province'),
+    addressCity: varchar('address_city'),
+    addressSubdistrict: varchar('address_subdistrict'),
+    addressPostalCode: varchar('address_postal_code'),
+    shippingOriginId: varchar('shipping_origin_id'), // Komerce Subdistrict ID
+    lastLogin: timestamp('last_login'),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const products = pgTable('products', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
+    name: varchar('name').notNull(),
+    slug: varchar('slug').unique().notNull(),
+    description: text('description'),
+    price: decimal('price', { precision: 12, scale: 2 }).notNull(),
+    stock: integer('stock').notNull().default(0),
+    weight: integer('weight').notNull(), // in grams
+    category: varchar('category').notNull(),
+    // Promo / Discount
+    discountPrice: decimal('discount_price', { precision: 12, scale: 2 }), // Optional sale price
+    isDiscountActive: boolean('is_discount_active').default(false),
+    // Availability
+    availabilityStatus: varchar('availability_status', { enum: ['ready', 'preorder'] }).default('ready'),
+    preorderDays: integer('preorder_days'), // Days required if preorder
+
+    images: json('images').$type<string[]>().default([]), // Storing array of URLs as JSON
+    status: varchar('status', { enum: ['active', 'draft', 'archived'] }).default('active'),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+});

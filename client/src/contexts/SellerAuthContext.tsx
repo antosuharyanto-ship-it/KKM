@@ -4,13 +4,21 @@ import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
-interface Seller {
+export interface Seller {
     seller_id: string;
     email: string;
     full_name: string;
     phone: string;
     whatsapp?: string;
     address?: string;
+    bank_account?: string;
+    // Shipping Origin
+    address_province?: string;
+    address_city?: string;
+    address_subdistrict?: string;
+    address_postal_code?: string;
+    shipping_origin_id?: string;
+
     status: string;
     created_at: string;
     last_login?: string;
