@@ -128,7 +128,7 @@ router.post('/', async (req: Request, res: Response) => {
 router.put('/:id', async (req: Request, res: Response) => {
     try {
         if (!req.seller) return res.status(401).json({ error: 'Unauthorized' });
-        const { id } = req.params;
+        const { id } = req.params as { id: string };
         const updates = req.body;
 
         // Check ownership
