@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useSellerAuth } from '../../contexts/SellerAuthContext';
+// import { useSellerAuth } from '../../contexts/SellerAuthContext';
 
 interface Product {
     id?: string;

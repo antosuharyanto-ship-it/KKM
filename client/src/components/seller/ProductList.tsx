@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { FaEdit, FaTrash, FaPlus, FaBoxOpen } from 'react-icons/fa';
-import { useSellerAuth } from '../../contexts/SellerAuthContext';
+// import { useSellerAuth } from '../../contexts/SellerAuthContext';
 
 interface Product {
     id: string;
