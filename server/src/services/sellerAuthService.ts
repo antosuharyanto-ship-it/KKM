@@ -29,28 +29,11 @@ export interface GoogleProfile {
  */
 export async function checkAllowlist(email: string): Promise<boolean> {
     try {
-        const normalizedInput = email.trim().toLowerCase();
-        console.log(`[SellerAuth] Verifying access for: '${normalizedInput}'`);
-
-        // Debug: Fetch ALL emails to see what the server actually sees
-        const allRecords = await sql`SELECT email FROM seller_allowlist`;
-
-        console.log(`[SellerAuth] Server found ${allRecords.length} entries in allowlist:`);
-
-        const match = allRecords.find(record => {
-            const dbEmail = record.email.trim().toLowerCase();
-            console.log(` - Comparing with DB record: '${record.email}' (norm: '${dbEmail}')`);
-            return dbEmail === normalizedInput;
-        });
-
-        if (match) {
-            console.log('✅ Match found!');
-            return true;
-        } else {
-            console.log('❌ No match found.');
-            return false;
-        }
-
+        const result = await sql`
+            SELECT email FROM seller_allowlist 
+            WHERE LOWER(TRIM(email)) = LOWER(TRIM(${email}))
+        `;
+        return result.length > 0;
     } catch (error) {
         console.error('[SellerAuth] Error checking allowlist:', error);
         return false;
