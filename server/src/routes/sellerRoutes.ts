@@ -16,16 +16,19 @@ import {
 
 const router = express.Router();
 
+const callbackURL = process.env.GOOGLE_SELLER_CALLBACK_URL ||
+    (process.env.GOOGLE_CALLBACK_URL
+        ? process.env.GOOGLE_CALLBACK_URL.replace('/auth/google/callback', '/api/seller/auth/google/callback')
+        : 'http://localhost:5000/api/seller/auth/google/callback');
+
+console.log('[SellerAuth] Configured Callback URL:', callbackURL);
+
 // Configure Passport strategy for sellers
 const sellerGoogleStrategy = new GoogleStrategy(
     {
         clientID: process.env.GOOGLE_CLIENT_ID || '',
         clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-        callbackURL:
-            process.env.GOOGLE_SELLER_CALLBACK_URL ||
-            (process.env.GOOGLE_CALLBACK_URL
-                ? process.env.GOOGLE_CALLBACK_URL.replace('/auth/google/callback', '/api/seller/auth/google/callback')
-                : 'http://localhost:5000/api/seller/auth/google/callback'),
+        callbackURL: callbackURL,
         passReqToCallback: true,
     },
     async (req: Request, accessToken: string, refreshToken: string, profile: any, done: any) => {
