@@ -24,7 +24,7 @@ interface ProductFormProps {
 }
 
 const ProductForm: React.FC<ProductFormProps> = ({ initialData, onSuccess, onCancel }) => {
-    const { seller } = useSellerAuth();
+    // const { seller } = useSellerAuth(); // Not used directly here
     const [formData, setFormData] = useState<Product>({
         name: '',
         price: '',
@@ -79,21 +79,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, onSuccess, onCan
         setSubmitting(true);
         try {
             const token = localStorage.getItem('seller_token');
-            const payload = {
-                ...formData,
-                price: parseFloat(formData.price),
-                discount_price: formData.discountPrice ? parseFloat(formData.discountPrice) : null,
-                is_discount_active: formData.isDiscountActive,
-                availability_status: formData.availabilityStatus,
-                preorder_days: formData.preorderDays,
-                // Ensure field names match backend expectation if needed (backend matches strict camelCase usually unless mapped)
-                // Wait, existing route uses: const { name, price, stock, weight, category, ... } = req.body
-                // And backend route uses: discountPrice: discount_price ? String(discount_price) : null
-                // The backend route (productRoutes.ts) expects:
-                // name, price, stock, weight, category, description,
-                // discount_price, is_discount_active, availability_status, preorder_days, images
-                // So I need to map camelCase state to snake_case payload for optional fields
-            };
 
             // Mapping for backend
             const backendPayload = {

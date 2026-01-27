@@ -21,7 +21,7 @@ interface ProductListProps {
 }
 
 const ProductList: React.FC<ProductListProps> = ({ onAddProduct, onEditProduct }) => {
-    const { seller } = useSellerAuth();
+    // const { seller } = useSellerAuth(); // Not used
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
 
