@@ -29,9 +29,15 @@ export interface GoogleProfile {
  */
 export async function checkAllowlist(email: string): Promise<boolean> {
     try {
+        const normalizedEmail = email.trim().toLowerCase();
+        console.log(`[SellerAuth] Checking allowlist for: '${email}' (normalized: '${normalizedEmail}')`);
+
         const result = await sql`
-      SELECT email FROM seller_allowlist WHERE LOWER(email) = LOWER(${email})
-    `;
+            SELECT email FROM seller_allowlist 
+            WHERE LOWER(TRIM(email)) = ${normalizedEmail}
+        `;
+
+        console.log(`[SellerAuth] Allowlist check result count: ${result.length}`);
         return result.length > 0;
     } catch (error) {
         console.error('[SellerAuth] Error checking allowlist:', error);
