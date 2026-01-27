@@ -22,6 +22,7 @@ const callbackURL = process.env.GOOGLE_SELLER_CALLBACK_URL ||
         : 'http://localhost:5000/api/seller/auth/google/callback');
 
 console.log('[SellerAuth] Configured Callback URL:', callbackURL);
+console.log('[SellerAuth] Client ID (Prefix):', (process.env.GOOGLE_CLIENT_ID || '').substring(0, 20) + '...');
 
 // Configure Passport strategy for sellers
 const sellerGoogleStrategy = new GoogleStrategy(
