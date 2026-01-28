@@ -22,6 +22,8 @@ export interface Seller {
     shipping_origin_id?: string;
     created_at: Date;
     last_login?: Date;
+    buyerFeePercent?: string;
+    sellerFeePercent?: string;
 }
 
 export interface GoogleProfile {

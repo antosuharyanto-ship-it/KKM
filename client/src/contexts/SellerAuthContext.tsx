@@ -22,6 +22,8 @@ export interface Seller {
     status: string;
     created_at: string;
     last_login?: string;
+    buyerFeePercent?: string;
+    sellerFeePercent?: string;
 }
 
 interface SellerAuthContextType {

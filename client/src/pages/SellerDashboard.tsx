@@ -341,6 +341,7 @@ const SellerDashboard: React.FC = () => {
                                                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Item</th>
                                                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Customer</th>
                                                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Amount</th>
+                                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Est. Net Income</th>
                                                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                                                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
                                             </tr>
@@ -375,6 +376,27 @@ const SellerDashboard: React.FC = () => {
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-green-600 font-bold">
                                                         {order.total_price}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        {(() => {
+                                                            const feePercent = parseFloat(seller?.sellerFeePercent || '0');
+                                                            const unitPrice = parseInt(order.unit_price.replace(/[^0-9]/g, '') || '0');
+                                                            const gross = unitPrice * parseInt(order.quantity || '0');
+                                                            const fee = Math.ceil(gross * (feePercent / 100));
+                                                            const net = gross - fee;
+                                                            return (
+                                                                <div>
+                                                                    <div className="font-bold text-teal-700">
+                                                                        {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(net)}
+                                                                    </div>
+                                                                    {fee > 0 && (
+                                                                        <div className="text-xs text-red-400 mt-0.5" title={`Platform Fee (${feePercent}%)`}>
+                                                                            - {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(fee)} (Fee)
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })()}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${order.status?.toLowerCase() === 'paid' ? 'bg-yellow-100 text-yellow-800' :
