@@ -1565,6 +1565,15 @@ app.post('/api/user/addresses', async (req, res) => {
         const userId = (req.user as any).id;
         const { label, recipientName, phone, addressStreet, addressCityId, addressCityName, addressProvinceId, addressProvinceName, postalCode, isDefault } = req.body;
 
+        // SANITIZE PHONE: Ensure robust format (62 prefix)
+        let cleanPhone = (phone || '').toString().replace(/[^0-9]/g, '');
+        if (cleanPhone.startsWith('0')) {
+            cleanPhone = '62' + cleanPhone.substring(1);
+        } else if (cleanPhone.startsWith('8')) {
+            cleanPhone = '62' + cleanPhone;
+        }
+        // If it already starts with 62, it stays.
+
         await client.query('BEGIN');
 
         if (isDefault) {
@@ -1577,7 +1586,7 @@ app.post('/api/user/addresses', async (req, res) => {
                 address_city_id, address_city_name, address_province_id, address_province_name,
                 postal_code, is_default
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-        `, [userId, label, recipientName, phone, addressStreet, addressCityId, addressCityName, addressProvinceId, addressProvinceName, postalCode, isDefault || false]);
+        `, [userId, label, recipientName, cleanPhone, addressStreet, addressCityId, addressCityName, addressProvinceId, addressProvinceName, postalCode, isDefault || false]);
 
         await client.query('COMMIT');
         res.json({ success: true });

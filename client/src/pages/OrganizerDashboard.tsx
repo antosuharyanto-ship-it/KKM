@@ -1067,7 +1067,7 @@ export const OrganizerDashboard: React.FC = () => {
                                             <div className="col-span-2 flex flex-col border-t border-gray-100 pt-2 mt-1">
                                                 <span className="text-gray-400 uppercase text-[10px] font-bold">Customer</span>
                                                 <span className="font-semibold text-gray-800">{order.user_name || order['User Name']}</span>
-                                                <a href={`https://wa.me/${(order.phone || order['Phone'] || '').replace(/^0/, '62')}`} target="_blank" className="text-teal-600 hover:underline flex items-center gap-1 mt-1">
+                                                <a href={`https://wa.me/${(order.phone || order['Phone'] || '').toString().replace(/[^0-9]/g, '').replace(/^0/, '62').replace(/^8/, '628')}`} target="_blank" className="text-teal-600 hover:underline flex items-center gap-1 mt-1">
                                                     {order.phone || order['Phone']}
                                                 </a>
                                             </div>
@@ -1140,7 +1140,7 @@ export const OrganizerDashboard: React.FC = () => {
                                                 <div className="font-medium text-gray-900">{order.supplier_name || order.supplier_email || order['Supplier Email'] || 'Unknown'}</div>
                                                 {order.supplier_phone && (
                                                     <a
-                                                        href={`https://wa.me/${order.supplier_phone.replace(/^0/, '62')}`}
+                                                        href={`https://wa.me/${order.supplier_phone.replace(/[^0-9]/g, '').replace(/^0/, '62').replace(/^8/, '628')}`}
                                                         target="_blank"
                                                         rel="noreferrer"
                                                         className="text-xs text-teal-600 hover:underline flex items-center gap-1 mt-1"
@@ -1414,6 +1414,10 @@ export const OrganizerDashboard: React.FC = () => {
                                 <div>
                                     <span className="block text-gray-500 text-xs font-bold uppercase">Customer</span>
                                     <span className="font-semibold text-gray-900">{selectedOrder.user_name || selectedOrder['User Name']}</span>
+                                    <a href={`https://wa.me/${(selectedOrder.phone || selectedOrder['Phone'] || '').toString().replace(/[^0-9]/g, '').replace(/^0/, '62').replace(/^8/, '628')}`} target="_blank" className="text-teal-600 hover:underline flex items-center gap-1 text-xs mt-0.5">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                                        {selectedOrder.phone || selectedOrder['Phone']}
+                                    </a>
                                 </div>
                                 <div>
                                     <span className="block text-gray-500 text-xs font-bold uppercase">Amount</span>

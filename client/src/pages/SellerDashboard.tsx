@@ -364,7 +364,7 @@ const SellerDashboard: React.FC = () => {
                                                             {/* WhatsApp Link if phone exists */}
                                                             {order.phone && (
                                                                 <a
-                                                                    href={`https://wa.me/${order.phone.replace(/[^0-9]/g, '')}`}
+                                                                    href={`https://wa.me/${order.phone.replace(/[^0-9]/g, '').replace(/^0/, '62').replace(/^8/, '628')}`}
                                                                     target="_blank"
                                                                     rel="noreferrer"
                                                                     className="text-green-500 hover:text-green-600"
