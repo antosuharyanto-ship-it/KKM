@@ -30,6 +30,14 @@ router.get('/marketplace', async (req: Request, res: Response) => {
             .where(eq(products.status, 'active'))
             .orderBy(desc(products.createdAt));
 
+        // Fetch ALL Active Sellers for Legacy Fee Mapping
+        const allSellers = await db.select({
+            email: sellers.email,
+            buyerFeePercent: sellers.buyerFeePercent
+        }).from(sellers).where(eq(sellers.status, 'active'));
+
+        const sellerFeeMap = new Map(allSellers.map(s => [s.email.toLowerCase(), Number(s.buyerFeePercent || 0)]));
+
         // 2. Map DB items to Frontend Interface (Snake Case)
         const mappedDbItems = dbProducts.map(({ product, seller }) => {
             const images = product.images as string[];
@@ -83,6 +91,15 @@ router.get('/marketplace', async (req: Request, res: Response) => {
         let sheetItems: any[] = [];
         try {
             sheetItems = await googleSheetService.getMarketplaceItems();
+            // Attach Fees to Sheet Items
+            sheetItems = sheetItems.map(item => {
+                const email = (item.supplier_email || '').toLowerCase().trim();
+                const feeParams = sellerFeeMap.get(email) || 0;
+                return {
+                    ...item,
+                    buyer_fee_percent: feeParams
+                };
+            });
         } catch (error) {
             console.warn('[PublicRoutes] Failed to fetch sheet items, continuing with DB only.', error);
         }
