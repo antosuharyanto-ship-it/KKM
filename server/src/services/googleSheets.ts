@@ -418,6 +418,9 @@ export class GoogleSheetService {
         mapVal('Supplier Name', orderData.supplierName || '');
         mapVal('Supplier Phone', orderData.supplierPhone || '');
         mapVal('Supplier Email', orderData.supplierEmail || '');
+        mapVal('Shipping Cost', orderData.shippingCost || '');
+        mapVal('Shipping Courier', orderData.shippingCourier || '');
+        mapVal('Shipping Service', orderData.shippingService || '');
         mapVal('Status', 'Pending');
         const now = new Date();
         const formattedDate = now.toISOString().replace('T', ' ').split('.')[0]; // YYYY-MM-DD HH:mm:ss
