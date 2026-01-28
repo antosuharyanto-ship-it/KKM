@@ -1455,9 +1455,9 @@ app.get('/api/marketplace/orders', checkOfficer, async (req, res) => {
             const item = items.find((i: any) => normalize(i.product_name || i['Product Name']) === orderItemName);
             return {
                 ...order,
-                supplier_phone: item?.phone_number || '',
-                supplier_email: item?.supplier_email || '',
-                supplier_name: item?.contact_person || item?.supplier_name || 'Unknown'
+                supplier_phone: order.supplier_phone || order['Supplier Phone'] || item?.phone_number || '',
+                supplier_email: order.supplier_email || order['Supplier Email'] || item?.supplier_email || '',
+                supplier_name: order.supplier_name || order['Supplier Name'] || item?.contact_person || item?.supplier_name || ''
             };
         });
 
