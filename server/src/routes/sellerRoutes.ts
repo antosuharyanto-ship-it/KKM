@@ -13,6 +13,7 @@ import {
     ensureSellerAccess,
     generateSellerToken
 } from '../middleware/sellerAuth';
+import { googleSheetService } from '../services/googleSheets';
 
 const router = express.Router();
 
@@ -219,6 +220,46 @@ router.get('/location-search', authenticateSellerToken, ensureSellerAccess, asyn
     } catch (error) {
         console.error('[SellerRoutes] Location search error:', error);
         res.status(500).json({ error: 'Failed to search location' });
+    }
+});
+
+/**
+ * Get orders for the authenticated seller
+ * Matches orders based on Item Name -> Product -> Seller Email
+ */
+router.get('/orders', authenticateSellerToken, ensureSellerAccess, async (req: Request, res: Response) => {
+    try {
+        if (!req.seller) return res.status(401).json({ error: 'Not authenticated' });
+
+        // 1. Get all orders
+        const allOrders = await googleSheetService.getMarketplaceOrders();
+
+        // 2. Get all items to map ownership
+        const allItems = await googleSheetService.getMarketplaceItems();
+
+        // 3. Filter orders belonging to this seller
+        const sellerEmail = req.seller.email.toLowerCase();
+        const sellerName = req.seller.full_name?.toLowerCase();
+
+        const myOrders = allOrders.filter((order: any) => {
+            // Find corresponding product
+            const item = allItems.find((i: any) => i.product_name?.toLowerCase().trim() === order.item_name?.toLowerCase().trim());
+
+            if (!item) return false;
+
+            // Check if item's supplier email matches seller
+            const itemSupplierEmail = (item.supplier_email || '').toLowerCase().trim();
+            const itemContactPerson = (item.contact_person || '').toLowerCase().trim();
+
+            // Match by Email (Strong) or Name (Weak)
+            return itemSupplierEmail === sellerEmail || (sellerName && itemContactPerson === sellerName);
+        });
+
+        res.json({ success: true, data: myOrders.reverse() });
+
+    } catch (error) {
+        console.error('[SellerRoutes] Error fetching orders:', error);
+        res.status(500).json({ error: 'Failed to fetch orders' });
     }
 });
 

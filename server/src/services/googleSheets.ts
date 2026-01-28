@@ -512,13 +512,24 @@ export class GoogleSheetService {
         // If status header not found, check standard 'Status'
         const statusIndex = headers.findIndex(h => h.trim().toLowerCase() === 'status');
 
+        console.log(`[SheetUpdate] ID Index: ${idIndex}, Status Index: ${statusIndex}`);
+        console.log(`[SheetUpdate] Headers: ${headers.join(', ')}`);
+
         // Dynamic "Payment Proof" column index
         let proofIndex = headers.findIndex(h => h.trim().toLowerCase() === 'payment proof');
 
         if (idIndex === -1) throw new Error('Order ID column not found');
 
-        const rowIndex = rows.findIndex(row => row[idIndex] === orderId);
-        if (rowIndex === -1) throw new Error('Order not found');
+        const rowIndex = rows.findIndex(row => {
+            const val = row[idIndex] || '';
+            // Loose comparison for IDs (trim spaces, maybe ignore #)
+            return String(val).trim() === String(orderId).trim();
+        });
+
+        if (rowIndex === -1) {
+            console.log(`[SheetUpdate] Order ${orderId} NOT FOUND. First 5 IDs:`, rows.slice(1, 6).map((r: any) => r[idIndex]));
+            throw new Error('Order not found');
+        }
 
         // Update Status
         if (updates.status && statusIndex !== -1) {

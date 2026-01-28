@@ -1401,7 +1401,8 @@ app.get('/api/marketplace/orders', checkOfficer, async (req, res) => {
             return {
                 ...order,
                 supplier_phone: item?.phone_number || '',
-                supplier_email: item?.supplier_email || ''
+                supplier_email: item?.supplier_email || '',
+                supplier_name: item?.contact_person || item?.supplier_name || 'Unknown'
             };
         });
 

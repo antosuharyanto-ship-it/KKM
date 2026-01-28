@@ -1045,6 +1045,7 @@ export const OrganizerDashboard: React.FC = () => {
                                     <tr>
                                         <th className="p-4">ID / Date</th>
                                         <th className="p-4">Item</th>
+                                        <th className="p-4">Seller</th>
                                         <th className="p-4">Customer</th>
                                         <th className="p-4">Amount</th>
                                         <th className="p-4">Status</th>
@@ -1062,6 +1063,20 @@ export const OrganizerDashboard: React.FC = () => {
                                             <td className="p-4">
                                                 <div className="font-medium text-gray-900">{order.item_name || order['Item Name']}</div>
                                                 <div className="text-xs text-gray-500">{order.quantity || order['Quantity']} x {order.unit_price || order['Unit Price']}</div>
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="font-medium text-gray-900">{order.supplier_name || 'Unknown'}</div>
+                                                {order.supplier_phone && (
+                                                    <a
+                                                        href={`https://wa.me/${order.supplier_phone.replace(/^0/, '62')}`}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="text-xs text-teal-600 hover:underline flex items-center gap-1 mt-1"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21" /></svg>
+                                                        Chat Seller
+                                                    </a>
+                                                )}
                                             </td>
                                             <td className="p-4">
                                                 <div className="font-medium text-gray-900">{order.user_name || order['User Name']}</div>
