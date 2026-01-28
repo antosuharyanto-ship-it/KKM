@@ -241,9 +241,12 @@ router.get('/orders', authenticateSellerToken, ensureSellerAccess, async (req: R
         const sellerEmail = req.seller.email.toLowerCase();
         const sellerName = req.seller.full_name?.toLowerCase();
 
+        const normalize = (str: string) => str?.toLowerCase().replace(/[^a-z0-9]/g, '') || '';
+
         const myOrders = allOrders.filter((order: any) => {
-            // Find corresponding product
-            const item = allItems.find((i: any) => i.product_name?.toLowerCase().trim() === order.item_name?.toLowerCase().trim());
+            // Find corresponding product with normalized matching
+            const orderItemName = normalize(order.item_name || order['Item Name']);
+            const item = allItems.find((i: any) => normalize(i.product_name || i['Product Name']) === orderItemName);
 
             if (!item) return false;
 
@@ -260,6 +263,55 @@ router.get('/orders', authenticateSellerToken, ensureSellerAccess, async (req: R
     } catch (error) {
         console.error('[SellerRoutes] Error fetching orders:', error);
         res.status(500).json({ error: 'Failed to fetch orders' });
+    }
+});
+
+/**
+ * Ship an order (Update Resi and Status)
+ */
+router.post('/ship', authenticateSellerToken, ensureSellerAccess, async (req: Request, res: Response) => {
+    try {
+        const { orderId, resi } = req.body;
+        if (!orderId || !resi) return res.status(400).json({ error: 'Order ID and Resi are required' });
+
+        if (!req.seller) return res.status(401).json({ error: 'Not authenticated' });
+
+        // 1. Verify Ownership
+        const allOrders = await googleSheetService.getMarketplaceOrders();
+        const allItems = await googleSheetService.getMarketplaceItems();
+        const sellerEmail = req.seller.email.toLowerCase();
+        const sellerName = req.seller.full_name?.toLowerCase();
+        const normalize = (str: string) => str?.toLowerCase().replace(/[^a-z0-9]/g, '') || '';
+
+        const order = allOrders.find((o: any) => (o.order_id || o['Order ID']) === orderId);
+        if (!order) return res.status(404).json({ error: 'Order not found' });
+
+        const orderItemName = normalize(order.item_name || order['Item Name']);
+        const item = allItems.find((i: any) => normalize(i.product_name || i['Product Name']) === orderItemName);
+
+        if (!item) return res.status(403).json({ error: 'Item not found or access denied' });
+
+        const itemSupplierEmail = (item.supplier_email || '').toLowerCase().trim();
+        const itemContactPerson = (item.contact_person || '').toLowerCase().trim();
+
+        const isOwner = itemSupplierEmail === sellerEmail || (sellerName && itemContactPerson === sellerName);
+
+        if (!isOwner) {
+            return res.status(403).json({ error: 'You do not own this order' });
+        }
+
+        // 2. Update Status and Resi
+        await googleSheetService.updateMarketplaceOrder(orderId, {
+            'status': 'On Shipment',
+            'Resi': resi, // 'Resi' column exists
+            'Tracking Number': resi // 'Tracking Number' column exists
+        });
+
+        res.json({ success: true, message: 'Order shipped successfully' });
+
+    } catch (error) {
+        console.error('[SellerRoutes] Error shipping order:', error);
+        res.status(500).json({ error: 'Failed to ship order' });
     }
 });
 

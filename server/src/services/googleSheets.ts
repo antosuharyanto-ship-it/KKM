@@ -485,19 +485,7 @@ export class GoogleSheetService {
         });
     }
 
-    async updateMarketplaceOrder(orderId: string, updates: {
-        status?: string,
-        proofUrl?: string,
-        cancellation_reason?: string,
-        cancelled_by?: string,
-        cancelled_date?: string,
-        refund_amount?: number,
-        refund_method?: string,
-        refund_date?: string,
-        refund_proof?: string,
-        refund_notes?: string,
-        refunded_by?: string
-    }) {
+    async updateMarketplaceOrder(orderId: string, updates: any) {
         const sheetName = process.env.GOOGLE_SHEET_NAME_MARKETPLACE_ORDERS || 'Market OB';
         const response = await this.sheets.spreadsheets.values.get({
             spreadsheetId: this.spreadsheetId,
@@ -576,7 +564,9 @@ export class GoogleSheetService {
             'refund_date': 'Refund Date',
             'refund_proof': 'Refund Proof',
             'refund_notes': 'Refund Notes',
-            'refunded_by': 'Refunded By'
+            'refunded_by': 'Refunded By',
+            'Resi': 'Resi',
+            'Tracking Number': 'Tracking Number'
         };
 
         for (const [fieldKey, fieldHeader] of Object.entries(fieldMappings)) {

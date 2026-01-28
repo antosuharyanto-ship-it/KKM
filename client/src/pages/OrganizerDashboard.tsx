@@ -1099,8 +1099,9 @@ export const OrganizerDashboard: React.FC = () => {
                                             <td className="p-4">
                                                 <span className={`px-2 py-1 rounded-full text-xs font-bold ${(order.status || '').includes('Settled') ? 'bg-gray-100 text-gray-600' :
                                                     (order.status || '').includes('Ready') ? 'bg-purple-100 text-purple-700' :
-                                                        (order.status || '').includes('Received') ? 'bg-green-100 text-green-700' :
-                                                            'bg-yellow-100 text-yellow-800'
+                                                        (order.status || '').includes('Shipment') ? 'bg-blue-100 text-blue-700' :
+                                                            (order.status || '').includes('Received') ? 'bg-green-100 text-green-700' :
+                                                                'bg-yellow-100 text-yellow-800'
                                                     }`}>
                                                     {order.status || order['Status']}
                                                 </span>

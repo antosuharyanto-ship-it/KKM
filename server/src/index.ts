@@ -1396,8 +1396,10 @@ app.get('/api/marketplace/orders', checkOfficer, async (req, res) => {
         const items = await googleSheetService.getMarketplaceItems();
 
         // Join Orders with Items to get Supplier Details (Phone/Email) for Officer
+        const normalize = (str: string) => str?.toLowerCase().replace(/[^a-z0-9]/g, '') || '';
         const enrichedOrders = orders.map((order: any) => {
-            const item = items.find((i: any) => i.product_name?.toLowerCase().trim() === order.item_name?.toLowerCase().trim());
+            const orderItemName = normalize(order.item_name || order['Item Name']);
+            const item = items.find((i: any) => normalize(i.product_name || i['Product Name']) === orderItemName);
             return {
                 ...order,
                 supplier_phone: item?.phone_number || '',

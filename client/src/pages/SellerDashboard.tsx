@@ -63,6 +63,12 @@ const SellerDashboard: React.FC = () => {
     // Product Management State
     const [editingProduct, setEditingProduct] = useState<any>(null);
 
+    // Shipping State
+    const [shipModalOpen, setShipModalOpen] = useState(false);
+    const [selectedOrder, setSelectedOrder] = useState<any>(null);
+    const [resiInput, setResiInput] = useState('');
+    const [shippingLoading, setShippingLoading] = useState(false);
+
     const menuItems = [
         { id: 'dashboard' as const, label: 'Dashboard', icon: FaStore },
         { id: 'items' as const, label: 'My Items', icon: FaBox },
@@ -146,6 +152,52 @@ const SellerDashboard: React.FC = () => {
         } catch (error) {
             console.error('Failed to update profile', error);
             // In a real app, show error notification
+        }
+    };
+
+    const handleOpenShipModal = (order: any) => {
+        setSelectedOrder(order);
+        setResiInput(order['Resi'] || order['Tracking Number'] || '');
+        setShipModalOpen(true);
+    };
+
+    const handleShipOrder = async () => {
+        if (!selectedOrder || !resiInput) return;
+        setShippingLoading(true);
+        try {
+            const token = localStorage.getItem('seller_token');
+            if (!token) return;
+
+            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/seller/ship`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    orderId: selectedOrder.order_id || selectedOrder['Order ID'],
+                    resi: resiInput
+                })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                setShipModalOpen(false);
+                setResiInput('');
+                setSelectedOrder(null);
+                // Refresh orders
+                const fetchOrders = async () => { /* ... reuse logic? or just trigger effect */ };
+                // Creating a simplified refresh trigger by toggling activeTab briefly or just modifying state
+                // Use functional state update to update local listing
+                setOrders(prev => prev.map(o => o.order_id === selectedOrder.order_id ? { ...o, status: 'On Shipment', resi: resiInput } : o));
+            } else {
+                alert('Failed to ship: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Ship error:', error);
+            alert('Failed to ship order');
+        } finally {
+            setShippingLoading(false);
         }
     };
 
@@ -303,9 +355,12 @@ const SellerDashboard: React.FC = () => {
                                                         )}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                        {order.status?.toLowerCase() === 'paid' ? (
-                                                            <button className="bg-purple-600 hover:bg-purple-700 text-white text-xs px-3 py-1.5 rounded uppercase font-bold tracking-wider">
-                                                                Notify Seller
+                                                        {order.status?.toLowerCase() === 'ready to ship' ? (
+                                                            <button
+                                                                onClick={() => handleOpenShipModal(order)}
+                                                                className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded uppercase font-bold tracking-wider flex items-center gap-1"
+                                                            >
+                                                                <FaShippingFast /> Ship
                                                             </button>
                                                         ) : (
                                                             <span className="text-gray-400">-</span>
@@ -577,6 +632,39 @@ const SellerDashboard: React.FC = () => {
                     {renderContent()}
                 </main>
             </div>
+            {/* Ship Modal */}
+            {shipModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                        <h3 className="text-lg font-bold text-gray-900 mb-4">Ship Order #{selectedOrder?.order_id}</h3>
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Tracking Number (Resi)</label>
+                            <input
+                                type="text"
+                                value={resiInput}
+                                onChange={(e) => setResiInput(e.target.value)}
+                                placeholder="Enter receipt number..."
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                            />
+                        </div>
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => setShipModalOpen(false)}
+                                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleShipOrder}
+                                disabled={!resiInput || shippingLoading}
+                                className={`px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2`}
+                            >
+                                {shippingLoading ? 'Processing...' : 'Confirm Shipment'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
