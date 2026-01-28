@@ -385,33 +385,41 @@ export class GoogleSheetService {
 
     async createMarketplaceOrder(orderData: any) {
         const sheetName = process.env.GOOGLE_SHEET_NAME_MARKETPLACE_ORDERS || 'Market OB';
-        const headers = ['Order ID', 'Item Name', 'Unit Price', 'Quantity', 'Total Price', 'User Name', 'User Email', 'Phone', 'Supplier Name', 'Supplier Phone', 'Status', 'Date'];
+        const requiredHeaders = ['Order ID', 'Item Name', 'Unit Price', 'Quantity', 'Total Price', 'User Name', 'User Email', 'Phone', 'Supplier Name', 'Supplier Phone', 'Status', 'Date'];
 
-        // await this.ensureHeaders(sheetName, headers);
+        // 1. Ensure Headers exist and get their indices
+        await this.ensureHeaders(sheetName, requiredHeaders);
 
-        // Check for duplicate order ID to prevent double submission
-        const existingOrders = await this.readSheet(sheetName);
-        const isDuplicate = existingOrders.some((row: any) => row.order_id === orderData.orderId);
+        // Read headers to map correctly
+        const response = await this.sheets.spreadsheets.values.get({
+            spreadsheetId: this.spreadsheetId,
+            range: `${sheetName}!A1:Z1`,
+        });
+        const headers = response.data.values?.[0] || [];
 
-        if (isDuplicate) {
-            console.warn(`Duplicate order ignored: ${orderData.orderId}`);
-            return;
-        }
+        // 2. Map data to correct columns
+        const rowData = new Array(headers.length).fill('');
 
-        await this.appendRow(sheetName, [
-            orderData.orderId,
-            orderData.itemName,
-            orderData.unitPrice,
-            String(orderData.quantity),
-            orderData.totalPrice,
-            orderData.userName,
-            orderData.userEmail,
-            orderData.phone,
-            orderData.supplierName || '',
-            orderData.supplierPhone || '',
-            'Pending',
-            new Date().toISOString()
-        ]);
+        const mapVal = (headerName: string, value: string) => {
+            const index = headers.findIndex(h => h.toLowerCase().trim() === headerName.toLowerCase().trim());
+            if (index !== -1) rowData[index] = value;
+        };
+
+        mapVal('Order ID', orderData.orderId);
+        mapVal('Item Name', orderData.itemName);
+        mapVal('Unit Price', orderData.unitPrice);
+        mapVal('Quantity', String(orderData.quantity));
+        mapVal('Total Price', orderData.totalPrice);
+        mapVal('User Name', orderData.userName);
+        mapVal('User Email', orderData.userEmail);
+        mapVal('Phone', orderData.phone);
+        mapVal('Supplier Name', orderData.supplierName || '');
+        mapVal('Supplier Phone', orderData.supplierPhone || '');
+        mapVal('Status', 'Pending');
+        mapVal('Date', new Date().toISOString());
+
+        // 3. Append the correctly mapped row
+        await this.appendRow(sheetName, rowData);
 
         // Decrement Stock
         await this.updateMarketplaceStock(orderData.itemName, orderData.quantity);

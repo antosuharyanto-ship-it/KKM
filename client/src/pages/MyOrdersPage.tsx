@@ -249,8 +249,24 @@ export const MyOrdersPage: React.FC = () => {
                 {loading && <div className="text-center py-10"><div className="animate-spin w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full mx-auto"></div></div>}
 
                 {!loading && error && (
-                    <div className="p-4 bg-red-50 text-red-600 rounded-xl text-center border border-red-100">
+                    <div className="p-4 bg-red-50 text-red-600 rounded-xl text-center border border-red-100 flex flex-col items-center gap-2">
                         <p>{error}</p>
+                        <button
+                            onClick={() => {
+                                const width = 500;
+                                const height = 600;
+                                const left = (window.screen.width / 2) - (width / 2);
+                                const top = (window.screen.height / 2) - (height / 2);
+                                window.open(
+                                    `${API_BASE_URL}/auth/google`,
+                                    'Login',
+                                    `width=${width},height=${height},left=${left},top=${top}`
+                                );
+                            }}
+                            className="px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-lg hover:bg-red-700 transition shadow-sm"
+                        >
+                            Login Now
+                        </button>
                     </div>
                 )}
 
