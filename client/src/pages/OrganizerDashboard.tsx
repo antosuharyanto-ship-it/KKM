@@ -1137,7 +1137,7 @@ export const OrganizerDashboard: React.FC = () => {
                                                 <div className="text-xs text-gray-500">{order.quantity || order['Quantity']} x {order.unit_price || order['Unit Price']}</div>
                                             </td>
                                             <td className="p-4">
-                                                <div className="font-medium text-gray-900">{order.supplier_name || 'Unknown'}</div>
+                                                <div className="font-medium text-gray-900">{order.supplier_name || order.supplier_email || order['Supplier Email'] || 'Unknown'}</div>
                                                 {order.supplier_phone && (
                                                     <a
                                                         href={`https://wa.me/${order.supplier_phone.replace(/^0/, '62')}`}
