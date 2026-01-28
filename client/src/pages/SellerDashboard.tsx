@@ -414,7 +414,7 @@ const SellerDashboard: React.FC = () => {
                                                         )}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                        {order.status?.toLowerCase() === 'ready to ship' ? (
+                                                        {['paid', 'ready to ship'].includes(order.status?.toLowerCase()) ? (
                                                             <button
                                                                 onClick={() => handleOpenShipModal(order)}
                                                                 className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded uppercase font-bold tracking-wider flex items-center gap-1"
