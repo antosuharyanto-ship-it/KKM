@@ -35,6 +35,9 @@ export const MyOrdersPage: React.FC = () => {
     // Notification State
     const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
 
+    // Config State
+    const [adminPhone, setAdminPhone] = useState('6281382364484'); // Default fallback
+
     const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
         setNotification({ message, type });
         setTimeout(() => setNotification(null), 5000);
@@ -56,7 +59,19 @@ export const MyOrdersPage: React.FC = () => {
 
     useEffect(() => {
         fetchAll();
+        fetchConfig();
     }, []);
+
+    const fetchConfig = async () => {
+        try {
+            const res = await axios.get(`${API_BASE_URL}/api/public/config`);
+            if (res.data.adminPhone) {
+                setAdminPhone(res.data.adminPhone);
+            }
+        } catch (error) {
+            console.error('Failed to fetch config', error);
+        }
+    };
 
     const fetchAll = async () => {
         setLoading(true);
@@ -411,7 +426,7 @@ export const MyOrdersPage: React.FC = () => {
             <div className="max-w-4xl mx-auto px-6 md:px-10 mt-8 text-center pb-10">
                 <p className="text-gray-500 text-sm mb-3">Haven't received your item yet? Or need help?</p>
                 <a
-                    href="https://wa.me/6281382364484"
+                    href={`https://wa.me/${adminPhone}`}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition shadow-sm"

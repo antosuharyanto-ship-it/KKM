@@ -1502,6 +1502,13 @@ app.get('/api/locations/cities', async (req, res) => {
     res.json([]);
 });
 
+// Configuration Endpoint (Dynamic Admin Contact)
+app.get('/api/public/config', (req, res) => {
+    res.json({
+        adminPhone: process.env.ADMIN_PHONE_NUMBER || '6281382364484'
+    });
+});
+
 // Calculate Cost
 app.post('/api/shipping/cost', async (req, res) => {
     try {
