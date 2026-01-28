@@ -248,18 +248,26 @@ router.get('/orders', authenticateSellerToken, ensureSellerAccess, async (req: R
         const normalize = (str: string) => str?.toLowerCase().replace(/[^a-z0-9]/g, '') || '';
 
         const myOrders = allOrders.filter((order: any) => {
+            // Priority 1: Check Order's direct Supplier Email (New System)
+            // 'readSheet' normalizes "Supplier Email" -> "supplier_email"
+            const orderSupplierEmail = (order.supplier_email || order['supplier_email'] || '').toLowerCase().trim();
+            if (orderSupplierEmail) {
+                // Return true only if it matches. If it exists but doesn't match, it's definitely not theirs.
+                return orderSupplierEmail === sellerEmail;
+            }
+
+            // Priority 2: Fallback to Item Lookup (Old System)
             // Find corresponding product with normalized matching
-            const orderItemName = normalize(order.item_name || order['Item Name']);
-            const item = allItems.find((i: any) => normalize(i.product_name || i['Product Name']) === orderItemName);
+            const orderItemName = normalize(order.item_name || order['item_name']);
+            const item = allItems.find((i: any) => normalize(i.product_name || i['product_name']) === orderItemName);
 
             if (!item) return false;
 
             // Check if item's supplier email matches seller
             const itemSupplierEmail = (item.supplier_email || '').toLowerCase().trim();
-            const itemContactPerson = (item.contact_person || '').toLowerCase().trim();
 
-            // Match by Email (Strong) or Name (Weak)
-            return itemSupplierEmail === sellerEmail || (sellerName && itemContactPerson === sellerName);
+            // STRICT: Only allow Email match. Names are too ambiguous.
+            return itemSupplierEmail === sellerEmail;
         });
 
         res.json({ success: true, data: myOrders.reverse() });
