@@ -417,6 +417,7 @@ export class GoogleSheetService {
         mapVal('Phone', orderData.phone);
         mapVal('Supplier Name', orderData.supplierName || '');
         mapVal('Supplier Phone', orderData.supplierPhone || '');
+        mapVal('Supplier Email', orderData.supplierEmail || '');
         mapVal('Status', 'Pending');
         mapVal('Date', new Date().toISOString());
 

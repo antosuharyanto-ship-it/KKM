@@ -661,6 +661,7 @@ app.post('/api/marketplace/order', async (req, res) => {
         // Add supplier contact to order data
         safeOrderData.supplierName = supplierName;
         safeOrderData.supplierPhone = supplierPhone;
+        safeOrderData.supplierEmail = supplierEmail;
 
 
 
