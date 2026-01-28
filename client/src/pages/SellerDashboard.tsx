@@ -184,10 +184,9 @@ const SellerDashboard: React.FC = () => {
             if (data.success) {
                 setShipModalOpen(false);
                 setResiInput('');
+                setResiInput('');
                 setSelectedOrder(null);
-                // Refresh orders
-                const fetchOrders = async () => { /* ... reuse logic? or just trigger effect */ };
-                // Creating a simplified refresh trigger by toggling activeTab briefly or just modifying state
+
                 // Use functional state update to update local listing
                 setOrders(prev => prev.map(o => o.order_id === selectedOrder.order_id ? { ...o, status: 'On Shipment', resi: resiInput } : o));
             } else {
