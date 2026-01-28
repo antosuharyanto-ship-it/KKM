@@ -161,7 +161,6 @@ export const OrganizerDashboard: React.FC = () => {
         }
     };
 
-    // @ts-ignore
     const handleUpdateFees = async () => {
         if (!editingSeller) return;
         try {
@@ -1636,6 +1635,41 @@ export const OrganizerDashboard: React.FC = () => {
                                 className="flex-1 py-2.5 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition">
                                 {processingId === (refundModal.order_id || refundModal['Order ID']) ? 'Processing...' : 'Process Refund'}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Fees Modal */}
+            {editingSeller && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in">
+                    <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
+                        <h3 className="font-bold text-lg mb-4 text-gray-900">Edit Fees: {editingSeller.fullName}</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Buyer Fee %</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    className="w-full border border-gray-300 rounded-lg p-2"
+                                    value={feeForm.buyerFee}
+                                    onChange={e => setFeeForm({ ...feeForm, buyerFee: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Seller Fee %</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    className="w-full border border-gray-300 rounded-lg p-2"
+                                    value={feeForm.sellerFee}
+                                    onChange={e => setFeeForm({ ...feeForm, sellerFee: e.target.value })}
+                                />
+                            </div>
+                            <div className="flex gap-2 justify-end mt-6">
+                                <button onClick={() => setEditingSeller(null)} className="px-4 py-2 text-gray-500 font-bold hover:bg-gray-50 rounded-lg">Cancel</button>
+                                <button onClick={handleUpdateFees} className="px-4 py-2 bg-teal-600 text-white rounded-lg font-bold hover:bg-teal-700 shadow-md">Save Changes</button>
+                            </div>
                         </div>
                     </div>
                 </div>
