@@ -137,12 +137,16 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, onSuccess, onCan
                         onChange={handleChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                     >
+                        <option value="">Select Category</option>
+                        <option value="Tents">Tents</option>
+                        <option value="Sleeping Bags">Sleeping Bags</option>
+                        <option value="Cooking Gear">Cooking Gear</option>
+                        <option value="Trekking Gear">Trekking Gear</option>
+                        <option value="Apparel">Apparel</option>
+                        <option value="Backpacks">Backpacks</option>
+                        <option value="Lighting">Lighting</option>
+                        <option value="Accessories">Accessories</option>
                         <option value="General">General</option>
-                        <option value="Food">Food & Beverage</option>
-                        <option value="Clothing">Clothing</option>
-                        <option value="Electronics">Electronics</option>
-                        <option value="Books">Books</option>
-                        <option value="Services">Services</option>
                     </select>
                 </div>
             </div>

@@ -28,6 +28,28 @@ export const MyOrdersPage: React.FC = () => {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [isUploading, setIsUploading] = useState(false);
 
+    // Notification State
+    const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+
+    const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
+        setNotification({ message, type });
+        setTimeout(() => setNotification(null), 5000);
+    };
+
+    // Helper: Safe Date Formatting
+    const formatDate = (dateStr: string) => {
+        if (!dateStr) return '-';
+        try {
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) {
+                return dateStr; // Return original string if valid
+            }
+            return date.toLocaleDateString();
+        } catch (e) {
+            return dateStr;
+        }
+    };
+
     useEffect(() => {
         fetchAll();
     }, []);
@@ -100,15 +122,15 @@ export const MyOrdersPage: React.FC = () => {
                 // @ts-ignore
                 window.snap.pay(res.data.token, {
                     onSuccess: function () {
-                        alert('Payment Successful!');
+                        showNotification('Payment Successful! Thank you for your order.');
                         fetchAll();
                     },
                     onPending: function () {
-                        alert('Waiting for payment...');
+                        showNotification('Payment pending... Please check your email/app.');
                         fetchAll();
                     },
                     onError: function () {
-                        alert('Payment failed!');
+                        showNotification('Payment failed. Please try again.', 'error');
                     },
                     onClose: function () {
                         // User closed modal
@@ -199,6 +221,14 @@ export const MyOrdersPage: React.FC = () => {
                 <p className="text-teal-100 text-sm">Track your purchases and bookings</p>
             </div>
 
+            {/* Mobile Notification Banner */}
+            {notification && (
+                <div className={`fixed top-0 left-0 right-0 p-4 z-50 shadow-lg flex justify-between items-center ${notification.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+                    <span className="font-bold text-sm">{notification.message}</span>
+                    <button onClick={() => setNotification(null)} className="text-white/80 hover:text-white">&times;</button>
+                </div>
+            )}
+
             <div className="px-6 md:px-10 max-w-4xl mx-auto space-y-6">
                 {/* TABS */}
                 <div className="flex p-1 bg-white rounded-xl shadow-sm border border-gray-100 max-w-md">
@@ -245,11 +275,11 @@ export const MyOrdersPage: React.FC = () => {
                                     <h3 className="font-bold text-gray-800">{order.item_name}</h3>
                                     <p className="text-sm text-gray-500">{order.quantity} x {order.unit_price}</p>
                                     <p className="text-orange-600 font-bold mt-1">{order.total_price}</p>
-                                    <p className="text-xs text-gray-400 mt-2">{new Date(order.date).toLocaleDateString()}</p>
+                                    <p className="text-xs text-gray-400 mt-2">{formatDate(order.date)}</p>
                                 </div>
 
                                 <div className="flex flex-col justify-center items-end gap-2">
-                                    {(order.status === 'Pending' || order.status === 'Pending Payment') && (
+                                    {['pending', 'pending payment', 'unpaid'].includes((order.status || '').toLowerCase()) && (
                                         <div className="flex gap-2">
                                             <button onClick={() => handlePayNow(order)} className="px-4 py-2 bg-teal-600 text-white text-sm font-bold rounded-lg hover:bg-teal-700 flex items-center gap-2">
                                                 <Tag size={16} /> Pay Now
