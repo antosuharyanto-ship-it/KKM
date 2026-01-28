@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
-import { Tag, Search, ShoppingCart, MessageCircle } from 'lucide-react';
+import { Tag, Search, ShoppingCart, MessageCircle, Info } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 import { getDisplayImageUrl } from '../utils/imageHelper';
 import { useNavigate } from 'react-router-dom';
@@ -24,6 +24,7 @@ interface Product {
     description?: string;
     origin_city_id?: string;
     origin_city?: string;
+    buyer_fee_percent?: number;
 }
 
 // --- Delivery Integration Interfaces ---
@@ -232,7 +233,11 @@ export const MarketplacePage: React.FC = () => {
         const priceString = selectedItem.unit_price.replace(/[^0-9]/g, '');
         const unitPrice = parseInt(priceString) || 0;
         const shippingCost = selectedService.cost;
-        const totalPrice = (unitPrice * orderQty) + shippingCost;
+        const itemTotal = unitPrice * orderQty;
+        const feePercent = selectedItem.buyer_fee_percent || 0;
+        const platformFee = Math.ceil(itemTotal * (feePercent / 100));
+
+        const totalPrice = itemTotal + shippingCost + platformFee;
 
         try {
             // 1. Create Order in Backend (Pending Status)
@@ -265,17 +270,23 @@ export const MarketplacePage: React.FC = () => {
                 },
                 itemDetails: [
                     {
-                        id: selectedItem.product_name.substring(0, 40), // Midtrans ID max length
+                        id: selectedItem.product_name.substring(0, 40),
                         price: unitPrice,
                         quantity: orderQty,
-                        name: selectedItem.product_name.substring(0, 45) // Midtrans Name max length
+                        name: selectedItem.product_name.substring(0, 45)
                     },
                     {
                         id: 'SHIPPING',
                         price: shippingCost,
                         quantity: 1,
                         name: `Shipping: ${selectedCourier.toUpperCase()} ${selectedService.service}`
-                    }
+                    },
+                    ...(platformFee > 0 ? [{
+                        id: 'PLATFORM_FEE',
+                        price: platformFee,
+                        quantity: 1,
+                        name: 'Platform Service Fee'
+                    }] : [])
                 ]
             }, { withCredentials: true });
 
@@ -344,13 +355,7 @@ export const MarketplacePage: React.FC = () => {
         }
     };
 
-    // --- Helpers / Derived State for Render ---
-    const getEstimatedTotal = () => {
-        if (!selectedItem) return "Rp 0";
-        const cleanPrice = parseInt(selectedItem.unit_price.replace(/[^0-9]/g, '')) || 0;
-        const shipping = selectedService?.cost || 0;
-        return `Rp ${(cleanPrice * orderQty + shipping).toLocaleString('id-ID')}`;
-    };
+
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20 md:pb-10 relative">
@@ -729,13 +734,41 @@ export const MarketplacePage: React.FC = () => {
                             </div>
 
                             {/* Total Price Estimation */}
-                            <div className="bg-teal-50 p-4 rounded-xl flex justify-between items-center">
-                                <span className="text-teal-800 font-medium">Estimated Total</span>
-                                <div className="text-right">
+                            <div className="bg-teal-50 p-4 rounded-xl space-y-2">
+                                <div className="flex justify-between text-sm text-teal-800">
+                                    <span>Items ({orderQty}x)</span>
+                                    <span>{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format((parseInt(selectedItem.unit_price.replace(/[^0-9]/g, '')) || 0) * orderQty)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm text-teal-800">
+                                    <span>Shipping</span>
+                                    <span>{selectedService ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(selectedService.cost) : '-'}</span>
+                                </div>
+                                {(selectedItem.buyer_fee_percent || 0) > 0 && (
+                                    <div className="flex justify-between text-xs text-gray-500 italic relative group">
+                                        <span className="flex items-center gap-1 cursor-help border-b border-dotted border-gray-400">
+                                            Platform Fee <Info size={12} />
+                                        </span>
+                                        {/* Tooltip */}
+                                        <div className="absolute bottom-full left-0 mb-2 w-48 bg-gray-800 text-white text-[10px] p-2 rounded hidden group-hover:block z-50 shadow-lg">
+                                            Biaya layanan platform untuk pengembangan dan pemeliharaan sistem.
+                                        </div>
+                                        <span>
+                                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(
+                                                Math.ceil(((parseInt(selectedItem.unit_price.replace(/[^0-9]/g, '')) || 0) * orderQty) * ((selectedItem.buyer_fee_percent || 0) / 100))
+                                            )}
+                                        </span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between items-center border-t border-teal-200 pt-2 mt-2">
+                                    <span className="text-teal-900 font-bold">Total</span>
                                     <span className="text-xl font-bold text-teal-900">
-                                        {getEstimatedTotal()}
+                                        {(() => {
+                                            const itemCost = (parseInt(selectedItem.unit_price.replace(/[^0-9]/g, '')) || 0) * orderQty;
+                                            const shipCost = selectedService?.cost || 0;
+                                            const fee = Math.ceil(itemCost * ((selectedItem.buyer_fee_percent || 0) / 100));
+                                            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(itemCost + shipCost + fee);
+                                        })()}
                                     </span>
-                                    {selectedService && <div className="text-xs text-teal-600">(Inc. Shipping)</div>}
                                 </div>
                             </div>
 

@@ -274,6 +274,58 @@ app.delete('/api/officer/sellers/allowlist/:email', checkOfficer, async (req, re
     }
 });
 
+/**
+ * GET /api/officer/sellers
+ * List all registered sellers
+ */
+app.get('/api/officer/sellers', checkOfficer, async (req, res) => {
+    try {
+        const result = await db
+            .select({
+                id: sellers.id,
+                email: sellers.email,
+                fullName: sellers.fullName,
+                phone: sellers.phone,
+                status: sellers.status,
+                buyerFeePercent: sellers.buyerFeePercent,
+                sellerFeePercent: sellers.sellerFeePercent,
+                createdAt: sellers.createdAt
+            })
+            .from(sellers)
+            .orderBy(desc(sellers.createdAt));
+        res.json({ success: true, sellers: result });
+    } catch (error) {
+        console.error('[Officer] Fetch Sellers Error:', error);
+        res.status(500).json({ error: 'Failed to fetch sellers' });
+    }
+});
+
+/**
+ * PUT /api/officer/sellers/:id
+ * Update seller status/fees
+ */
+app.put('/api/officer/sellers/:id', checkOfficer, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status, buyerFeePercent, sellerFeePercent } = req.body;
+
+        const updates: any = {};
+        if (status) updates.status = status;
+        if (buyerFeePercent !== undefined) updates.buyerFeePercent = String(buyerFeePercent);
+        if (sellerFeePercent !== undefined) updates.sellerFeePercent = String(sellerFeePercent);
+
+        await db
+            .update(sellers)
+            .set(updates)
+            .where(eq(sellers.id, id));
+
+        res.json({ success: true, message: 'Seller updated successfully' });
+    } catch (error) {
+        console.error('[Officer] Update Seller Error:', error);
+        res.status(500).json({ error: 'Failed to update seller' });
+    }
+});
+
 // API Routes
 // --- API Routes ---
 

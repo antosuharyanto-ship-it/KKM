@@ -72,7 +72,10 @@ router.get('/marketplace', async (req: Request, res: Response) => {
                 // Meta
                 source: 'db',
                 original_price: product.isDiscountActive ? formatRupiah(Number(product.price)) : undefined,
-                is_promo: product.isDiscountActive
+                is_promo: product.isDiscountActive,
+
+                // Fees
+                buyer_fee_percent: Number(seller.buyerFeePercent || 0)
             };
         });
 

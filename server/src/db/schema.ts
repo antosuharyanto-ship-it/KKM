@@ -77,9 +77,20 @@ export const sellers = pgTable('sellers', {
     addressSubdistrict: varchar('address_subdistrict'),
     addressPostalCode: varchar('address_postal_code'),
     shippingOriginId: varchar('shipping_origin_id'), // Komerce Subdistrict ID
+    // Platform Fees
+    buyerFeePercent: decimal('buyer_fee_percent', { precision: 5, scale: 2 }).default('0'), // e.g. 1.00 for 1%
+    sellerFeePercent: decimal('seller_fee_percent', { precision: 5, scale: 2 }).default('0'), // e.g. 2.00 for 2%
     lastLogin: timestamp('last_login'),
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const sellerAllowlist = pgTable('seller_allowlist', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    email: varchar('email').unique().notNull(),
+    notes: text('notes'),
+    addedBy: varchar('added_by'),
+    addedAt: timestamp('added_at').defaultNow(),
 });
 
 export const products = pgTable('products', {
