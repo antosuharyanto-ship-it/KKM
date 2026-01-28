@@ -10,6 +10,9 @@ import { Readable } from 'stream';
 import { v4 as uuidv4 } from 'uuid';
 
 import { ticketService } from './services/ticketService';
+import { db } from './db';
+import { products, sellers } from './db/schema';
+import { eq, desc, ilike } from 'drizzle-orm';
 import { googleSheetService } from './services/googleSheets';
 import { emailService } from './services/emailService';
 import { rajaOngkirService } from './services/rajaOngkirService';
@@ -498,12 +501,49 @@ app.post('/api/marketplace/order', async (req, res) => {
 
         const orderId = uuidv4().slice(0, 8).toUpperCase();
 
-        // 1. Fetch Item to get Supplier Email
-        console.log('[OrderDebug] Fetching marketplace items...');
-        const items = await googleSheetService.getMarketplaceItems();
-        console.log(`[OrderDebug] Fetched ${items.length} items. Finding product: ${orderData.itemName}`);
+        // 1. Fetch Item (Try DB first, then Sheets)
+        console.log('[OrderDebug] Finding product:', orderData.itemName);
+        let item: any = null;
 
-        const item = items.find((i: any) => i.product_name?.toLowerCase().trim() === orderData.itemName?.toLowerCase().trim());
+        // A. Check Postgres (DB)
+        try {
+            const dbProduct = await db
+                .select({
+                    product: products,
+                    seller: sellers
+                })
+                .from(products)
+                .innerJoin(sellers, eq(products.sellerId, sellers.id))
+                .where(ilike(products.name, orderData.itemName?.trim() || ''))
+                .limit(1);
+
+            if (dbProduct.length > 0) {
+                const { product, seller } = dbProduct[0];
+                console.log('[OrderDebug] Found item in DB:', product.name);
+
+                // Map to legacy format expected by downstream logic
+                item = {
+                    product_name: product.name,
+                    stok: product.stock, // maps to stockStr parsing
+                    discontinued: product.status === 'archived' ? 'yes' : 'no',
+                    contact_person: seller.fullName,
+                    phone_number: seller.phone,
+                    supplier_email: seller.email,
+                    // Additional fields if needed
+                    unit_price: product.price,
+                    weight_gram: product.weight
+                };
+            }
+        } catch (dbError) {
+            console.error('[OrderDebug] DB lookup failed:', dbError);
+        }
+
+        // B. Fallback to Sheets if not found in DB
+        if (!item) {
+            console.log('[OrderDebug] Not found in DB, checking Sheets...');
+            const items = await googleSheetService.getMarketplaceItems();
+            item = items.find((i: any) => i.product_name?.toLowerCase().trim() === orderData.itemName?.toLowerCase().trim());
+        }
 
         // STOCK VALIDATION
         if (!item) {
