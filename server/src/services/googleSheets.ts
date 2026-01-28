@@ -419,7 +419,9 @@ export class GoogleSheetService {
         mapVal('Supplier Phone', orderData.supplierPhone || '');
         mapVal('Supplier Email', orderData.supplierEmail || '');
         mapVal('Status', 'Pending');
-        mapVal('Date', new Date().toISOString());
+        const now = new Date();
+        const formattedDate = now.toISOString().replace('T', ' ').split('.')[0]; // YYYY-MM-DD HH:mm:ss
+        mapVal('Date', formattedDate);
 
         // 3. Append the correctly mapped row
         await this.appendRow(sheetName, rowData);
