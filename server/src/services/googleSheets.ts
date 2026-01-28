@@ -388,7 +388,9 @@ export class GoogleSheetService {
         const requiredHeaders = ['Order ID', 'Item Name', 'Unit Price', 'Quantity', 'Total Price', 'User Name', 'User Email', 'Phone', 'Supplier Name', 'Supplier Phone', 'Status', 'Date'];
 
         // 1. Ensure Headers exist and get their indices
-        await this.ensureHeaders(sheetName, requiredHeaders);
+        // WARNING: ensureHeaders blindly unshifts new headers, which corrupts existing data alignment.
+        // We rely on dynamic mapping below to adapt to whatever headers currently exist.
+        // await this.ensureHeaders(sheetName, requiredHeaders);
 
         // Read headers to map correctly
         const response = await this.sheets.spreadsheets.values.get({
