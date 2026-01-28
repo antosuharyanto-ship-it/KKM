@@ -11,9 +11,11 @@ const SellerDashboard: React.FC = () => {
 
     // Profile Edit State
     const [orders, setOrders] = useState<any[]>([]);
+    const [products, setProducts] = useState<any[]>([]);
     const [loadingOrders, setLoadingOrders] = useState(false);
+    const [loadingProducts, setLoadingProducts] = useState(false);
 
-    // Fetch Orders
+    // Fetch Data
     useEffect(() => {
         const fetchOrders = async () => {
             const token = localStorage.getItem('seller_token');
@@ -35,8 +37,31 @@ const SellerDashboard: React.FC = () => {
             }
         };
 
+        const fetchProducts = async () => {
+            const token = localStorage.getItem('seller_token');
+            if (!token) return;
+
+            setLoadingProducts(true);
+            try {
+                const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/seller/products`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    setProducts(data.data || []);
+                }
+            } catch (error) {
+                console.error('Failed to fetch products', error);
+            } finally {
+                setLoadingProducts(false);
+            }
+        };
+
         if (activeTab === 'orders' || activeTab === 'dashboard') {
             fetchOrders();
+        }
+        if (activeTab === 'items' || activeTab === 'dashboard') {
+            fetchProducts();
         }
     }, [activeTab]);
 
@@ -63,10 +88,10 @@ const SellerDashboard: React.FC = () => {
     // Product Management State
     const [editingProduct, setEditingProduct] = useState<any>(null);
 
-    // Shipping State
     const [shipModalOpen, setShipModalOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<any>(null);
     const [resiInput, setResiInput] = useState('');
+    const [shipmentProof, setShipmentProof] = useState<File | null>(null);
     const [shippingLoading, setShippingLoading] = useState(false);
 
     const menuItems = [
@@ -158,6 +183,7 @@ const SellerDashboard: React.FC = () => {
     const handleOpenShipModal = (order: any) => {
         setSelectedOrder(order);
         setResiInput(order['Resi'] || order['Tracking Number'] || '');
+        setShipmentProof(null);
         setShipModalOpen(true);
     };
 
@@ -168,23 +194,26 @@ const SellerDashboard: React.FC = () => {
             const token = localStorage.getItem('seller_token');
             if (!token) return;
 
+            const formData = new FormData();
+            formData.append('orderId', selectedOrder.order_id || selectedOrder['Order ID']);
+            formData.append('resi', resiInput);
+            if (shipmentProof) {
+                formData.append('proof', shipmentProof);
+            }
+
             const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/seller/ship`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({
-                    orderId: selectedOrder.order_id || selectedOrder['Order ID'],
-                    resi: resiInput
-                })
+                body: formData
             });
 
             const data = await res.json();
             if (data.success) {
                 setShipModalOpen(false);
                 setResiInput('');
-                setResiInput('');
+                setShipmentProof(null);
                 setSelectedOrder(null);
 
                 // Use functional state update to update local listing
@@ -205,11 +234,11 @@ const SellerDashboard: React.FC = () => {
             case 'dashboard':
                 // Derived Stats
                 const pendingCount = orders.filter(o =>
-                    ['paid', 'ready to ship', 'processed'].includes((o.status || '').toLowerCase())
+                    ['pending', 'paid', 'ready to ship', 'processed'].includes((o.status || '').toLowerCase())
                 ).length;
 
                 const completedCount = orders.filter(o =>
-                    (o.status || '').toLowerCase() === 'completed' || (o.status || '').toLowerCase() === 'sent'
+                    ['completed', 'sent', 'shipped', 'on shipment', 'item received'].includes((o.status || '').toLowerCase())
                 ).length;
 
                 return (
@@ -220,7 +249,7 @@ const SellerDashboard: React.FC = () => {
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="text-gray-600 text-sm">Total Items</p>
-                                        <p className="text-3xl font-bold text-gray-900 mt-2">-</p>
+                                        <p className="text-3xl font-bold text-gray-900 mt-2">{loadingProducts ? '...' : products.length}</p>
                                     </div>
                                     <FaBox className="text-3xl text-green-600" />
                                 </div>
@@ -237,7 +266,7 @@ const SellerDashboard: React.FC = () => {
                             <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-gray-600 text-sm">Completed</p>
+                                        <p className="text-gray-600 text-sm">Active / Shipped</p>
                                         <p className="text-3xl font-bold text-gray-900 mt-2">{loadingOrders ? '...' : completedCount}</p>
                                     </div>
                                     <FaStore className="text-3xl text-purple-600" />
@@ -250,6 +279,15 @@ const SellerDashboard: React.FC = () => {
             case 'items':
                 return (
                     <ProductList
+                        products={products}
+                        loading={loadingProducts}
+                        refreshProducts={() => {
+                            // Trigger re-fetch logic
+                            // For simplicity, we can reuse fetchProducts if we move it out, or activeTab toggle hack
+                            // Actually, let's just use the ProductList's own fetcher or pass down the fetcher?
+                            // Since we lifted state, ProductList should receive products as props.
+                            // I will update ProductList interface first.
+                        }}
                         onAddProduct={() => {
                             setEditingProduct(null);
                             setActiveTab('add-item');
@@ -644,6 +682,19 @@ const SellerDashboard: React.FC = () => {
                                 onChange={(e) => setResiInput(e.target.value)}
                                 placeholder="Enter receipt number..."
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                            />
+                        </div>
+                        <div className="mb-6">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Evidence / Struk (Optional)</label>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                    if (e.target.files && e.target.files[0]) {
+                                        setShipmentProof(e.target.files[0]);
+                                    }
+                                }}
+                                className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                             />
                         </div>
                         <div className="flex justify-end gap-3">

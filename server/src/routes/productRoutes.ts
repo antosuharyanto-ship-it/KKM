@@ -6,9 +6,122 @@ import { authenticateSellerToken, ensureSellerAccess } from '../middleware/selle
 import { v4 as uuidv4 } from 'uuid';
 
 const router = express.Router();
+import multer from 'multer';
+
+const upload = multer({ storage: multer.memoryStorage() });
+
+// CSV Parser Helper
+const parseCSV = (buffer: Buffer) => {
+    const text = buffer.toString('utf-8');
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
+
+    // Rough CSV regex to handle commas inside quotes: /,(?=(?:(?:[^"]*"){2})*[^"]*$)/
+    const parseLine = (line: string) => {
+        const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+        // fallback to split if simple
+        if (line.includes('"')) {
+            // Basic regex split for "val,ue", value
+            const res = [];
+            let inQuote = false;
+            let current = '';
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') { inQuote = !inQuote; continue; }
+                if (char === ',' && !inQuote) {
+                    res.push(current);
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            res.push(current);
+            return res;
+        }
+        return line.split(',');
+    };
+
+    return lines.slice(1).map(line => {
+        const values = parseLine(line);
+        const obj: any = {};
+        headers.forEach((h, i) => {
+            let val = values[i] ? values[i].trim() : '';
+            // Remove quotes if present
+            if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1);
+            obj[h] = val;
+        });
+        return obj;
+    });
+};
 
 // Middleware to ensure seller is authenticated
 router.use(authenticateSellerToken, ensureSellerAccess);
+
+/**
+ * POST /api/seller/products/bulk
+ * Bulk upload products via CSV
+ */
+router.post('/bulk', upload.single('file'), async (req: Request, res: Response) => {
+    try {
+        if (!req.seller) return res.status(401).json({ error: 'Unauthorized' });
+        if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+        const rows = parseCSV(req.file.buffer);
+        console.log(`[BulkUpload] Parsed ${rows.length} rows`);
+
+        const results = [];
+        const errors = [];
+
+        for (const row of rows) {
+            // Map CSV Headers to DB Fields
+            // Expected headers: product name, price (idr), stock, category, weight (grams), description, unit, image url 1
+
+            // Loose mapping
+            const name = row['product name'] || row['name'] || row['item name'];
+            const priceRaw = row['price (idr)'] || row['price'] || row['harga'];
+            const stockRaw = row['stock'] || row['stok'] || row['qty'];
+            const category = row['category'] || row['kategori'];
+            const weightRaw = row['weight (grams)'] || row['weight'] || row['berat'];
+            const description = row['description'] || row['desc'];
+            const image1 = row['image url 1'] || row['image'] || row['gambar'];
+
+            if (!name || !priceRaw) {
+                errors.push(`Skipped ${name || 'Unknown'}: Missing Name or Price`);
+                continue;
+            }
+
+            try {
+                const baseSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+                const uniqueSlug = `${baseSlug}-${uuidv4().slice(0, 8)}`;
+                const images = image1 ? [image1] : [];
+
+                const newProduct = await db.insert(products).values({
+                    sellerId: req.seller.seller_id,
+                    name,
+                    slug: uniqueSlug,
+                    description: description || '',
+                    price: String(priceRaw).replace(/[^0-9]/g, ''),
+                    stock: Number(String(stockRaw).replace(/[^0-9]/g, '')) || 0,
+                    weight: Number(String(weightRaw).replace(/[^0-9]/g, '')) || 0,
+                    category: category || 'General',
+                    images: images,
+                    status: 'active',
+                    availabilityStatus: 'ready'
+                }).returning();
+                results.push(newProduct[0]);
+            } catch (err: any) {
+                console.error(`Failed to insert ${name}`, err);
+                errors.push(`Failed to insert ${name}: ${err.message}`);
+            }
+        }
+
+        res.json({ success: true, count: results.length, total: rows.length, errors });
+
+    } catch (error) {
+        console.error('[BulkUpload] Error:', error);
+        res.status(500).json({ error: 'Failed to process bulk upload' });
+    }
+});
 
 /**
  * GET /api/seller/products
