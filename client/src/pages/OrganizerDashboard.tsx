@@ -1105,6 +1105,11 @@ export const OrganizerDashboard: React.FC = () => {
                                                     }`}>
                                                     {order.status || order['Status']}
                                                 </span>
+                                                {(order.resi || order['Resi'] || order['Tracking Number']) && (
+                                                    <div className="text-xs text-blue-600 font-bold mt-1 bg-blue-50 px-1 py-0.5 rounded border border-blue-100 inline-block">
+                                                        🚚 {order.resi || order['Resi'] || order['Tracking Number']}
+                                                    </div>
+                                                )}
                                                 {/* Proof Link Desktop */}
                                                 {(order.payment_proof || order.proofUrl) && (
                                                     (order.payment_proof || order.proofUrl).toString().startsWith('Midtrans:') ? (

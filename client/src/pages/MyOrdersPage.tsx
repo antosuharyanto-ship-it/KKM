@@ -13,6 +13,8 @@ interface MarketOrder {
     status: string;
     date: string;
     payment_proof?: string;
+    resi?: string;
+    tracking_number?: string;
 }
 
 export const MyOrdersPage: React.FC = () => {
@@ -292,6 +294,14 @@ export const MyOrdersPage: React.FC = () => {
                                     <p className="text-sm text-gray-500">{order.quantity} x {order.unit_price}</p>
                                     <p className="text-orange-600 font-bold mt-1">{order.total_price}</p>
                                     <p className="text-xs text-gray-400 mt-2">{formatDate(order.date)}</p>
+
+                                    {/* Resi Display */}
+                                    {(order.resi || order.tracking_number) && (
+                                        <div className="mt-3 bg-blue-50 p-2 rounded-lg border border-blue-100">
+                                            <p className="text-xs text-blue-600 font-bold uppercase">Tracking Number (Resi)</p>
+                                            <p className="text-sm font-mono text-gray-800 select-all">{order.resi || order.tracking_number}</p>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="flex flex-col justify-center items-end gap-2">
