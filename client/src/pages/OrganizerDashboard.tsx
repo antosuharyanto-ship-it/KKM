@@ -1106,8 +1106,13 @@ export const OrganizerDashboard: React.FC = () => {
                                                     {order.status || order['Status']}
                                                 </span>
                                                 {(order.resi || order['Resi'] || order['Tracking Number']) && (
-                                                    <div className="text-xs text-blue-600 font-bold mt-1 bg-blue-50 px-1 py-0.5 rounded border border-blue-100 inline-block">
-                                                        🚚 {order.resi || order['Resi'] || order['Tracking Number']}
+                                                    <div className="flex flex-col gap-1 items-start mt-1">
+                                                        <div className="text-xs text-blue-600 font-bold bg-blue-50 px-1 py-0.5 rounded border border-blue-100 inline-block">
+                                                            🚚 {order.resi || order['Resi'] || order['Tracking Number']}
+                                                        </div>
+                                                        {(order.shipment_proof || order['Shipment Proof']) && (
+                                                            <a href={order.shipment_proof || order['Shipment Proof']} target="_blank" rel="noreferrer" className="text-[10px] text-blue-600 underline">View Proof</a>
+                                                        )}
                                                     </div>
                                                 )}
                                                 {/* Proof Link Desktop */}

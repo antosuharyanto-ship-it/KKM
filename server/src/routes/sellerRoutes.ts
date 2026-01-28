@@ -14,6 +14,10 @@ import {
     generateSellerToken
 } from '../middleware/sellerAuth';
 import { googleSheetService } from '../services/googleSheets';
+import multer from 'multer';
+import { pool } from '../db';
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 const router = express.Router();
 
@@ -267,11 +271,34 @@ router.get('/orders', authenticateSellerToken, ensureSellerAccess, async (req: R
 });
 
 /**
- * Ship an order (Update Resi and Status)
+ * Serve Shipment Proof Image
  */
-router.post('/ship', authenticateSellerToken, ensureSellerAccess, async (req: Request, res: Response) => {
+router.get('/proof-shipment/:id', async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query('SELECT file_data, mime_type FROM shipment_proofs WHERE id = $1', [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).send('Image not found');
+        }
+
+        const { file_data, mime_type } = result.rows[0];
+        res.setHeader('Content-Type', mime_type);
+        res.send(file_data);
+    } catch (error) {
+        console.error('Error fetching proof:', error);
+        res.status(500).send('Error fetching image');
+    }
+});
+
+/**
+ * Ship an order (Update Resi, Status, and Upload Proof)
+ */
+router.post('/ship', authenticateSellerToken, ensureSellerAccess, upload.single('proof'), async (req: Request, res: Response) => {
     try {
         const { orderId, resi } = req.body;
+        const file = req.file;
+
         if (!orderId || !resi) return res.status(400).json({ error: 'Order ID and Resi are required' });
 
         if (!req.seller) return res.status(401).json({ error: 'Not authenticated' });
@@ -300,14 +327,35 @@ router.post('/ship', authenticateSellerToken, ensureSellerAccess, async (req: Re
             return res.status(403).json({ error: 'You do not own this order' });
         }
 
-        // 2. Update Status and Resi
-        await googleSheetService.updateMarketplaceOrder(orderId, {
-            'status': 'On Shipment',
-            'Resi': resi, // 'Resi' column exists
-            'Tracking Number': resi // 'Tracking Number' column exists
-        });
+        let proofUrl = '';
+        if (file) {
+            // Upload Proof
+            const insertQuery = `
+                INSERT INTO shipment_proofs (order_id, file_data, mime_type) 
+                VALUES ($1, $2, $3) 
+                RETURNING id;
+            `;
+            const result = await pool.query(insertQuery, [orderId, file.buffer, file.mimetype]);
+            const proofId = result.rows[0].id;
+            const protocol = req.protocol;
+            const host = req.get('host');
+            proofUrl = `${protocol}://${host}/api/seller/proof-shipment/${proofId}`;
+        }
 
-        res.json({ success: true, message: 'Order shipped successfully' });
+        // 2. Update Status and Resi
+        const updates: any = {
+            'status': 'On Shipment',
+            'Resi': resi,
+            'Tracking Number': resi
+        };
+
+        if (proofUrl) {
+            updates['Shipment Proof'] = proofUrl;
+        }
+
+        await googleSheetService.updateMarketplaceOrder(orderId, updates);
+
+        res.json({ success: true, message: 'Order shipped successfully', proofUrl });
 
     } catch (error) {
         console.error('[SellerRoutes] Error shipping order:', error);

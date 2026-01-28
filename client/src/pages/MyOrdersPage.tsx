@@ -15,6 +15,8 @@ interface MarketOrder {
     payment_proof?: string;
     resi?: string;
     tracking_number?: string;
+    shipment_proof?: string;
+    [key: string]: any;
 }
 
 export const MyOrdersPage: React.FC = () => {
@@ -299,7 +301,12 @@ export const MyOrdersPage: React.FC = () => {
                                     {(order.resi || order.tracking_number) && (
                                         <div className="mt-3 bg-blue-50 p-2 rounded-lg border border-blue-100">
                                             <p className="text-xs text-blue-600 font-bold uppercase">Tracking Number (Resi)</p>
-                                            <p className="text-sm font-mono text-gray-800 select-all">{order.resi || order.tracking_number}</p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-sm font-mono text-gray-800 select-all">{order.resi || order.tracking_number}</p>
+                                                {(order.shipment_proof || order['Shipment Proof']) && (
+                                                    <a href={order.shipment_proof || order['Shipment Proof']} target="_blank" rel="noreferrer" className="text-xs text-blue-600 underline">View Proof</a>
+                                                )}
+                                            </div>
                                         </div>
                                     )}
                                 </div>

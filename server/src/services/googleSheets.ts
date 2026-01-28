@@ -566,7 +566,8 @@ export class GoogleSheetService {
             'refund_notes': 'Refund Notes',
             'refunded_by': 'Refunded By',
             'Resi': 'Resi',
-            'Tracking Number': 'Tracking Number'
+            'Tracking Number': 'Tracking Number',
+            'Shipment Proof': 'Shipment Proof'
         };
 
         for (const [fieldKey, fieldHeader] of Object.entries(fieldMappings)) {
