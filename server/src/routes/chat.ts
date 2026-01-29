@@ -16,8 +16,7 @@ router.post('/chat', async (req, res) => {
         res.json(response);
     } catch (error: any) {
         console.error("Chat Error:", error);
-        // Debugging: Send actual error to UI
-        res.status(500).json({ error: "Internal Server Error", text: `Error: ${error.message || String(error)}` });
+        res.status(500).json({ error: "Internal Server Error" });
     }
 });
 
