@@ -42,7 +42,7 @@ echo "✅ Key received. Running tests with gemini-1.5-flash..."
 echo "------------------------------------------"
 
 export GOOGLE_GEN_AI_API_KEY=$API_KEY
-# Run the actual chat test now that we know the model
+# Run the actual chat test (now using gemini-2.0-flash-lite)
 npx -y tsx scripts/test_chat.ts
 
 echo "------------------------------------------"
