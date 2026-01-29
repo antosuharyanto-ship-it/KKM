@@ -15,7 +15,9 @@ import {
 } from '../middleware/sellerAuth';
 import { googleSheetService } from '../services/googleSheets';
 import multer from 'multer';
-import { pool } from '../db';
+import { pool, db } from '../db';
+import { products, sellers } from '../db/schema';
+import { eq } from 'drizzle-orm';
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -239,7 +241,19 @@ router.get('/orders', authenticateSellerToken, ensureSellerAccess, async (req: R
         const allOrders = await googleSheetService.getMarketplaceOrders();
 
         // 2. Get all items to map ownership
-        const allItems = await googleSheetService.getMarketplaceItems();
+        // 2. Get all items from DB to map ownership (Replaces Sheet Fetch)
+        const dbProducts = await db
+            .select({
+                name: products.name,
+                supplier_email: sellers.email
+            })
+            .from(products)
+            .innerJoin(sellers, eq(products.sellerId, sellers.id));
+
+        const allItems = dbProducts.map(p => ({
+            product_name: p.name,
+            supplier_email: p.supplier_email
+        }));
 
         // 3. Filter orders belonging to this seller
         const sellerEmail = req.seller.email.toLowerCase();
@@ -313,7 +327,22 @@ router.post('/ship', authenticateSellerToken, ensureSellerAccess, upload.single(
 
         // 1. Verify Ownership
         const allOrders = await googleSheetService.getMarketplaceOrders();
-        const allItems = await googleSheetService.getMarketplaceItems();
+
+        // Fetch DB products for verification
+        const dbProducts = await db
+            .select({
+                name: products.name,
+                supplier_email: sellers.email,
+                contact_person: sellers.fullName
+            })
+            .from(products)
+            .innerJoin(sellers, eq(products.sellerId, sellers.id));
+
+        const allItems = dbProducts.map(p => ({
+            product_name: p.name,
+            supplier_email: p.supplier_email,
+            contact_person: p.contact_person
+        }));
         const sellerEmail = req.seller.email.toLowerCase();
         const sellerName = req.seller.full_name?.toLowerCase();
         const normalize = (str: string) => str?.toLowerCase().replace(/[^a-z0-9]/g, '') || '';

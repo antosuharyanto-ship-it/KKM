@@ -87,27 +87,8 @@ router.get('/marketplace', async (req: Request, res: Response) => {
             };
         });
 
-        // 3. Fetch from Google Sheets (Legacy System)
-        let sheetItems: any[] = [];
-        try {
-            sheetItems = await googleSheetService.getMarketplaceItems();
-            // Attach Fees to Sheet Items
-            sheetItems = sheetItems.map(item => {
-                const email = (item.supplier_email || '').toLowerCase().trim();
-                const feeParams = sellerFeeMap.get(email) || 0;
-                return {
-                    ...item,
-                    buyer_fee_percent: feeParams
-                };
-            });
-        } catch (error) {
-            console.warn('[PublicRoutes] Failed to fetch sheet items, continuing with DB only.', error);
-        }
-
-        // 4. Merge (DB First, then Sheet)
-        const allItems = [...mappedDbItems, ...sheetItems];
-
-        res.json(allItems);
+        // 3. Return DB items only
+        res.json(mappedDbItems);
 
     } catch (error) {
         console.error('[PublicRoutes] Error fetching marketplace items:', error);

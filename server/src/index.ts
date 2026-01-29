@@ -592,12 +592,8 @@ app.post('/api/marketplace/order', async (req, res) => {
             console.error('[OrderDebug] DB lookup failed:', dbError);
         }
 
-        // B. Fallback to Sheets if not found in DB
-        if (!item) {
-            console.log('[OrderDebug] Not found in DB, checking Sheets...');
-            const items = await googleSheetService.getMarketplaceItems();
-            item = items.find((i: any) => i.product_name?.toLowerCase().trim() === orderData.itemName?.toLowerCase().trim());
-        }
+        // B. Fallback to Sheets if not found in DB - REMOVED (Migrated to DB Only)
+        // if (!item) { ... }
 
         // STOCK VALIDATION
         if (!item) {
