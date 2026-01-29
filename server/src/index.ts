@@ -965,651 +965,656 @@ app.get('/api/my-market-orders', async (req, res) => {
             }));
 
         res.json(myOrders);
+    } catch (error) {
+        console.error('Failed to fetch market orders', error);
+        res.status(500).json({ error: 'Failed to fetch market orders' });
+    }
+});
 
-        app.get('/api/officer/scan/:code', checkOfficer, async (req, res) => {
-            try {
-                const { code } = req.params;
-                const booking = await googleSheetService.getBookingByCode(code);
+app.get('/api/officer/scan/:code', checkOfficer, async (req, res) => {
+    try {
+        const { code } = req.params;
+        const booking = await googleSheetService.getBookingByCode(code);
 
-                if (!booking) {
-                    return res.status(404).json({ message: 'Ticket not found' });
-                }
-                res.json(booking);
-            } catch (error) {
-                console.error('Scan failed', error);
-                res.status(500).json({ message: 'Scan failed' });
-            }
+        if (!booking) {
+            return res.status(404).json({ message: 'Ticket not found' });
+        }
+        res.json(booking);
+    } catch (error) {
+        console.error('Scan failed', error);
+        res.status(500).json({ message: 'Scan failed' });
+    }
+});
+
+app.post('/api/officer/checkin', checkOfficer, async (req, res) => {
+    try {
+        const { ticketCode } = req.body;
+        if (!ticketCode) return res.status(400).json({ message: 'Ticket code required' });
+
+        // 1. Check if Kavling is assigned
+        const booking = await googleSheetService.getBookingByCode(ticketCode);
+        if (!booking) return res.status(404).json({ message: 'Ticket not found' });
+
+        const kavling = booking['kavling'] || '';
+        if (!kavling || kavling.trim() === '' || kavling.toLowerCase() === 'tba') {
+            return res.status(400).json({ message: 'Kavling not assigned. Please assign kavling first.' });
+        }
+
+        // 2. Proceed to Check-in
+        await googleSheetService.updateCheckInStatus(ticketCode);
+        res.json({ success: true, message: `Check-in confirmed! Welcome to ${kavling}` });
+    } catch (error: any) {
+        console.error('Check-in failed', error);
+        res.status(500).json({ message: error.message || 'Check-in failed' });
+    }
+});
+
+// --- DASHBOARD API ---
+
+app.get('/api/officer/bookings', checkOfficer, async (req, res) => {
+    try {
+        const sheetName = process.env.GOOGLE_SHEET_NAME_RESERVATIONS || 'Event Reservation';
+        const bookings = await googleSheetService.readSheet(sheetName);
+        res.json(bookings);
+    } catch (error) {
+        console.error('Failed to fetch bookings for dashboard', error);
+        res.status(500).json({ message: 'Failed to fetch bookings' });
+    }
+});
+
+app.post('/api/officer/assign-kavling', checkOfficer, async (req, res) => {
+    try {
+        const { ticketCode, kavling } = req.body;
+        if (!ticketCode || !kavling) return res.status(400).json({ message: 'Ticket code and Kavling are required' });
+
+        await googleSheetService.updateBookingStatus(ticketCode, 'Confirmed Payment', '', kavling);
+        res.json({ success: true });
+    } catch (error: any) {
+        console.error('Failed to assign kavling', error);
+        res.status(500).json({ message: error.message || 'Failed to assign kavling' });
+    }
+});
+
+app.post('/api/officer/confirm-payment', checkOfficer, async (req, res) => {
+    try {
+        const { ticketCode, kavling } = req.body;
+        // 1. Get current booking details
+        const booking = await googleSheetService.getBookingByCode(ticketCode);
+        if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+        // 2. Generate PDF Ticket
+        const ticketData = {
+            eventName: booking['event_name'],
+            userName: booking['proposed_by'],
+            ticketCode: ticketCode,
+            date: booking['date_submitted'] || 'TBA', // Ideally split date/time if available
+            location: 'Tiara Camp and Outdoor', // Could be dynamic if event ID allows lookup
+            seatAllocation: kavling || booking['kavling'] || 'Allocated on Arrival', // Use provided kavling or fallback
+            price: booking['jumlah_pembayaran'],
+            numberOfPeople: parseInt(booking['participant_count'] || '1'),
+            memberType: booking['jenis_anggota'],
+            tentType: booking['special_requests'], // or 'ukuran_tenda' depending on mapping
+            kavling: kavling || booking['kavling'] || 'TBA' // Pass explicitly or TBA
+        };
+
+        const ticketLink = await ticketService.generateTicket(ticketData);
+
+        // 3. Update Sheet (Status -> Confirmed, Ticket Link -> Drive URL, Kavling -> value)
+        await googleSheetService.updateBookingStatus(ticketCode, 'Confirmed Payment', ticketLink, kavling);
+
+        // 4. Send "Payment Received" Email
+        // Clean price string (e.g. "Rp 150.000" -> 150000) for number format
+        const cleanPrice = parseInt((booking['jumlah_pembayaran'] || '0').replace(/[^0-9]/g, '')) || 0;
+
+        // Calculate remaining balance (assuming full payment for now? user script implied 50% split logic but provided simplified email)
+        // User's GS script: const totalPaid = totalPayment / 2; ... Sisa pembayaran sejumlah ...
+        // However, our current simple flow might be Confirming FULL payment or 1st Installment.
+        // Let's assume the 'jumlah_pembayaran' recorded is what they paid.
+        // And we need to know the Total Cost to calculate remaining.
+        // For safely, let's just pass what we know. If the logic needs to matches exactly the GS script regarding "Angsuran 1" vs "Full", we might need more data.
+        // Replicating the user's GS logic structure loosely but safely:
+
+        await emailService.sendPaymentReceivedEmail({
+            eventName: booking['event_name'],
+            participantName: booking['proposed_by'], // OR contact person?
+            email: booking['email_address'],
+            phone: booking['phone_number'],
+            amountPaid: cleanPrice,
+            remainingBalance: cleanPrice, // Placeholder: In GS script it was total / 2. Here we might need adjustment if we track "Total Cost" vs "Paid".
+            paymentDateLimit: '31 Desember 2025' // Hardcoded as per user request/template for now.
         });
 
-        app.post('/api/officer/checkin', checkOfficer, async (req, res) => {
-            try {
-                const { ticketCode } = req.body;
-                if (!ticketCode) return res.status(400).json({ message: 'Ticket code required' });
+        res.json({ success: true, ticketLink });
+    } catch (error: any) {
+        console.error('Payment confirmation failed', error);
+        res.status(500).json({ message: error.message || 'Confirmation failed' });
+    }
+});
 
-                // 1. Check if Kavling is assigned
-                const booking = await googleSheetService.getBookingByCode(ticketCode);
-                if (!booking) return res.status(404).json({ message: 'Ticket not found' });
+app.post('/api/officer/regenerate-ticket', checkOfficer, async (req, res) => {
+    try {
+        const { ticketCode } = req.body;
 
-                const kavling = booking['kavling'] || '';
-                if (!kavling || kavling.trim() === '' || kavling.toLowerCase() === 'tba') {
-                    return res.status(400).json({ message: 'Kavling not assigned. Please assign kavling first.' });
-                }
+        // 1. Get current booking details
+        const booking = await googleSheetService.getBookingByCode(ticketCode);
+        if (!booking) return res.status(404).json({ message: 'Booking not found' });
 
-                // 2. Proceed to Check-in
-                await googleSheetService.updateCheckInStatus(ticketCode);
-                res.json({ success: true, message: `Check-in confirmed! Welcome to ${kavling}` });
-            } catch (error: any) {
-                console.error('Check-in failed', error);
-                res.status(500).json({ message: error.message || 'Check-in failed' });
-            }
-        });
+        const kavling = booking['kavling'] || 'TBA';
 
-        // --- DASHBOARD API ---
+        // 2. Generate PDF Ticket (Reuse logic)
+        const ticketData = {
+            eventName: booking['event_name'],
+            userName: booking['proposed_by'],
+            ticketCode: ticketCode,
+            date: booking['date_submitted'] || 'TBA',
+            location: 'Tiara Camp and Outdoor',
+            seatAllocation: kavling,
+            price: booking['jumlah_pembayaran'],
+            numberOfPeople: parseInt(booking['participant_count'] || '1'),
+            memberType: booking['jenis_anggota'],
+            tentType: booking['special_requests'],
+            kavling: kavling
+        };
 
-        app.get('/api/officer/bookings', checkOfficer, async (req, res) => {
-            try {
-                const sheetName = process.env.GOOGLE_SHEET_NAME_RESERVATIONS || 'Event Reservation';
-                const bookings = await googleSheetService.readSheet(sheetName);
-                res.json(bookings);
-            } catch (error) {
-                console.error('Failed to fetch bookings for dashboard', error);
-                res.status(500).json({ message: 'Failed to fetch bookings' });
-            }
-        });
+        const ticketLink = await ticketService.generateTicket(ticketData);
 
-        app.post('/api/officer/assign-kavling', checkOfficer, async (req, res) => {
-            try {
-                const { ticketCode, kavling } = req.body;
-                if (!ticketCode || !kavling) return res.status(400).json({ message: 'Ticket code and Kavling are required' });
+        // 3. Update Sheet (Ensure link is updated if it changed, though likely same filename)
+        await googleSheetService.updateBookingStatus(ticketCode, booking['reservation_status'], ticketLink, kavling);
 
-                await googleSheetService.updateBookingStatus(ticketCode, 'Confirmed Payment', '', kavling);
-                res.json({ success: true });
-            } catch (error: any) {
-                console.error('Failed to assign kavling', error);
-                res.status(500).json({ message: error.message || 'Failed to assign kavling' });
-            }
-        });
+        res.json({ success: true, ticketLink });
+    } catch (error: any) {
+        console.error('Regeneration failed', error);
+        res.status(500).json({ message: error.message || 'Regeneration failed' });
+    }
+});
 
-        app.post('/api/officer/confirm-payment', checkOfficer, async (req, res) => {
-            try {
-                const { ticketCode, kavling } = req.body;
-                // 1. Get current booking details
-                const booking = await googleSheetService.getBookingByCode(ticketCode);
-                if (!booking) return res.status(404).json({ message: 'Booking not found' });
+// --- NEWS APIs ---
+const SHEET_NEWS = 'News';
+const SHEET_COMMUNITY = 'Community';
 
-                // 2. Generate PDF Ticket
-                const ticketData = {
-                    eventName: booking['event_name'],
-                    userName: booking['proposed_by'],
-                    ticketCode: ticketCode,
-                    date: booking['date_submitted'] || 'TBA', // Ideally split date/time if available
-                    location: 'Tiara Camp and Outdoor', // Could be dynamic if event ID allows lookup
-                    seatAllocation: kavling || booking['kavling'] || 'Allocated on Arrival', // Use provided kavling or fallback
-                    price: booking['jumlah_pembayaran'],
-                    numberOfPeople: parseInt(booking['participant_count'] || '1'),
-                    memberType: booking['jenis_anggota'],
-                    tentType: booking['special_requests'], // or 'ukuran_tenda' depending on mapping
-                    kavling: kavling || booking['kavling'] || 'TBA' // Pass explicitly or TBA
-                };
+// Get News
+app.get('/api/news', async (req, res) => {
+    try {
+        const news = await googleSheetService.readSheet(SHEET_NEWS);
+        // Filter out empty/bad rows (e.g. from header mix-ups)
+        const validNews = news.filter((n: any) => n.title && n.content && n.date);
+        // Reverse to show newest first
+        res.json(validNews.reverse());
+    } catch (error) {
+        console.error('Error fetching news:', error);
+        res.status(500).json({ message: 'Failed to fetch news' });
+    }
+});
 
-                const ticketLink = await ticketService.generateTicket(ticketData);
+// Post News (Officer Only)
+app.post('/api/news', checkOfficer, async (req, res) => {
+    try {
+        const { title, content, type = 'General' } = req.body;
+        if (!title || !content) return res.status(400).json({ message: 'Title and content required' });
 
-                // 3. Update Sheet (Status -> Confirmed, Ticket Link -> Drive URL, Kavling -> value)
-                await googleSheetService.updateBookingStatus(ticketCode, 'Confirmed Payment', ticketLink, kavling);
+        const newNews = {
+            id: uuidv4(),
+            title,
+            content,
+            date: new Date().toISOString(),
+            type,
+            author: (req as any).user?.full_name || 'Organizer'
+        };
 
-                // 4. Send "Payment Received" Email
-                // Clean price string (e.g. "Rp 150.000" -> 150000) for number format
-                const cleanPrice = parseInt((booking['jumlah_pembayaran'] || '0').replace(/[^0-9]/g, '')) || 0;
+        // Enforce Headers first!
+        // This prevents "Data as Header" issue if sheet was wiped.
+        await googleSheetService.ensureHeaders(SHEET_NEWS, ['id', 'title', 'content', 'date', 'type', 'author']);
 
-                // Calculate remaining balance (assuming full payment for now? user script implied 50% split logic but provided simplified email)
-                // User's GS script: const totalPaid = totalPayment / 2; ... Sisa pembayaran sejumlah ...
-                // However, our current simple flow might be Confirming FULL payment or 1st Installment.
-                // Let's assume the 'jumlah_pembayaran' recorded is what they paid.
-                // And we need to know the Total Cost to calculate remaining.
-                // For safely, let's just pass what we know. If the logic needs to matches exactly the GS script regarding "Angsuran 1" vs "Full", we might need more data.
-                // Replicating the user's GS logic structure loosely but safely:
+        // Explicitly map values to header order: id, title, content, date, type, author
+        const rowData = [newNews.id, newNews.title, newNews.content, newNews.date, newNews.type, newNews.author];
+        await googleSheetService.appendRow(SHEET_NEWS, rowData);
+        res.json({ success: true, message: 'News posted', data: newNews });
+    } catch (error) {
+        console.error('Error posting news:', error);
+        res.status(500).json({ message: 'Failed to post news' });
+    }
+});
 
-                await emailService.sendPaymentReceivedEmail({
-                    eventName: booking['event_name'],
-                    participantName: booking['proposed_by'], // OR contact person?
-                    email: booking['email_address'],
-                    phone: booking['phone_number'],
-                    amountPaid: cleanPrice,
-                    remainingBalance: cleanPrice, // Placeholder: In GS script it was total / 2. Here we might need adjustment if we track "Total Cost" vs "Paid".
-                    paymentDateLimit: '31 Desember 2025' // Hardcoded as per user request/template for now.
-                });
+// --- COMMUNITY APIs ---
 
-                res.json({ success: true, ticketLink });
-            } catch (error: any) {
-                console.error('Payment confirmation failed', error);
-                res.status(500).json({ message: error.message || 'Confirmation failed' });
-            }
-        });
+// Get Community Posts
+app.get('/api/community', async (req, res) => {
+    try {
+        const posts = await googleSheetService.readSheet(SHEET_COMMUNITY);
+        console.log('[DEBUG] Raw Community Posts:', JSON.stringify(posts, null, 2));
+        const validPosts = posts.filter((p: any) => p.content && p.user_name);
+        res.json(validPosts.reverse());
+    } catch (error) {
+        console.error('Error fetching community posts:', error);
+        res.status(500).json({ message: 'Failed to fetch posts' });
+    }
+});
 
-        app.post('/api/officer/regenerate-ticket', checkOfficer, async (req, res) => {
-            try {
-                const { ticketCode } = req.body;
+// Post Community Message (User Auth Required)
+app.post('/api/community', checkAuth, async (req: any, res) => {
+    try {
+        const { content } = req.body;
+        if (!content) return res.status(400).json({ message: 'Content is required' });
 
-                // 1. Get current booking details
-                const booking = await googleSheetService.getBookingByCode(ticketCode);
-                if (!booking) return res.status(404).json({ message: 'Booking not found' });
-
-                const kavling = booking['kavling'] || 'TBA';
-
-                // 2. Generate PDF Ticket (Reuse logic)
-                const ticketData = {
-                    eventName: booking['event_name'],
-                    userName: booking['proposed_by'],
-                    ticketCode: ticketCode,
-                    date: booking['date_submitted'] || 'TBA',
-                    location: 'Tiara Camp and Outdoor',
-                    seatAllocation: kavling,
-                    price: booking['jumlah_pembayaran'],
-                    numberOfPeople: parseInt(booking['participant_count'] || '1'),
-                    memberType: booking['jenis_anggota'],
-                    tentType: booking['special_requests'],
-                    kavling: kavling
-                };
-
-                const ticketLink = await ticketService.generateTicket(ticketData);
-
-                // 3. Update Sheet (Ensure link is updated if it changed, though likely same filename)
-                await googleSheetService.updateBookingStatus(ticketCode, booking['reservation_status'], ticketLink, kavling);
-
-                res.json({ success: true, ticketLink });
-            } catch (error: any) {
-                console.error('Regeneration failed', error);
-                res.status(500).json({ message: error.message || 'Regeneration failed' });
-            }
-        });
-
-        // --- NEWS APIs ---
-        const SHEET_NEWS = 'News';
-        const SHEET_COMMUNITY = 'Community';
-
-        // Get News
-        app.get('/api/news', async (req, res) => {
-            try {
-                const news = await googleSheetService.readSheet(SHEET_NEWS);
-                // Filter out empty/bad rows (e.g. from header mix-ups)
-                const validNews = news.filter((n: any) => n.title && n.content && n.date);
-                // Reverse to show newest first
-                res.json(validNews.reverse());
-            } catch (error) {
-                console.error('Error fetching news:', error);
-                res.status(500).json({ message: 'Failed to fetch news' });
-            }
-        });
-
-        // Post News (Officer Only)
-        app.post('/api/news', checkOfficer, async (req, res) => {
-            try {
-                const { title, content, type = 'General' } = req.body;
-                if (!title || !content) return res.status(400).json({ message: 'Title and content required' });
-
-                const newNews = {
-                    id: uuidv4(),
-                    title,
-                    content,
-                    date: new Date().toISOString(),
-                    type,
-                    author: (req as any).user?.full_name || 'Organizer'
-                };
-
-                // Enforce Headers first!
-                // This prevents "Data as Header" issue if sheet was wiped.
-                await googleSheetService.ensureHeaders(SHEET_NEWS, ['id', 'title', 'content', 'date', 'type', 'author']);
-
-                // Explicitly map values to header order: id, title, content, date, type, author
-                const rowData = [newNews.id, newNews.title, newNews.content, newNews.date, newNews.type, newNews.author];
-                await googleSheetService.appendRow(SHEET_NEWS, rowData);
-                res.json({ success: true, message: 'News posted', data: newNews });
-            } catch (error) {
-                console.error('Error posting news:', error);
-                res.status(500).json({ message: 'Failed to post news' });
-            }
-        });
-
-        // --- COMMUNITY APIs ---
-
-        // Get Community Posts
-        app.get('/api/community', async (req, res) => {
-            try {
-                const posts = await googleSheetService.readSheet(SHEET_COMMUNITY);
-                console.log('[DEBUG] Raw Community Posts:', JSON.stringify(posts, null, 2));
-                const validPosts = posts.filter((p: any) => p.content && p.user_name);
-                res.json(validPosts.reverse());
-            } catch (error) {
-                console.error('Error fetching community posts:', error);
-                res.status(500).json({ message: 'Failed to fetch posts' });
-            }
-        });
-
-        // Post Community Message (User Auth Required)
-        app.post('/api/community', checkAuth, async (req: any, res) => {
-            try {
-                const { content } = req.body;
-                if (!content) return res.status(400).json({ message: 'Content is required' });
-
-                const user = req.user; // From passport session checkAuth
+        const user = req.user; // From passport session checkAuth
 
 
-                const newPost = {
-                    id: uuidv4(),
-                    user_name: user.full_name || user.displayName || 'Anonymous',
-                    user_email: user.email,
-                    content,
-                    date: new Date().toISOString(),
-                    likes: '0'
-                };
+        const newPost = {
+            id: uuidv4(),
+            user_name: user.full_name || user.displayName || 'Anonymous',
+            user_email: user.email,
+            content,
+            date: new Date().toISOString(),
+            likes: '0'
+        };
 
-                // Enforce Headers for Community as well
-                await googleSheetService.ensureHeaders(SHEET_COMMUNITY, ['id', 'user_name', 'user_email', 'content', 'date', 'likes']);
+        // Enforce Headers for Community as well
+        await googleSheetService.ensureHeaders(SHEET_COMMUNITY, ['id', 'user_name', 'user_email', 'content', 'date', 'likes']);
 
-                // Explicitly map values to header order to prevent mismatch
-                const rowData = [newPost.id, newPost.user_name, newPost.user_email, newPost.content, newPost.date, newPost.likes];
-                await googleSheetService.appendRow(SHEET_COMMUNITY, rowData);
-                res.json({ success: true, message: 'Posted to community', data: newPost });
-            } catch (error) {
-                console.error('Error posting to community:', error);
-                res.status(500).json({ message: 'Failed to post' });
-            }
-        });
+        // Explicitly map values to header order to prevent mismatch
+        const rowData = [newPost.id, newPost.user_name, newPost.user_email, newPost.content, newPost.date, newPost.likes];
+        await googleSheetService.appendRow(SHEET_COMMUNITY, rowData);
+        res.json({ success: true, message: 'Posted to community', data: newPost });
+    } catch (error) {
+        console.error('Error posting to community:', error);
+        res.status(500).json({ message: 'Failed to post' });
+    }
+});
 
-        // --- SPONSORSHIP APIs ---
+// --- SPONSORSHIP APIs ---
 
-        // --- MARKETPLACE ORDER API ---
-        // --- Market Order API ---
+// --- MARKETPLACE ORDER API ---
+// --- Market Order API ---
 
-        app.post('/api/marketplace/upload-proof', checkAuth, upload.single('proof'), async (req: any, res) => {
-            try {
-                const { orderId } = req.body;
-                const file = req.file;
+app.post('/api/marketplace/upload-proof', checkAuth, upload.single('proof'), async (req: any, res) => {
+    try {
+        const { orderId } = req.body;
+        const file = req.file;
 
-                if (!orderId || !file) {
-                    return res.status(400).json({ message: 'Order ID and Proof Image are required' });
-                }
+        if (!orderId || !file) {
+            return res.status(400).json({ message: 'Order ID and Proof Image are required' });
+        }
 
-                console.log(`[UploadProof] Received for Order ${orderId}, File: ${file.originalname}`);
+        console.log(`[UploadProof] Received for Order ${orderId}, File: ${file.originalname}`);
 
-                // 1. Insert into Database
-                const insertQuery = `
+        // 1. Insert into Database
+        const insertQuery = `
             INSERT INTO payment_proofs (order_id, file_data, mime_type)
             VALUES ($1, $2, $3)
             RETURNING id;
         `;
-                const result = await pool.query(insertQuery, [orderId, file.buffer, file.mimetype]);
-                const proofId = result.rows[0].id;
+        const result = await pool.query(insertQuery, [orderId, file.buffer, file.mimetype]);
+        const proofId = result.rows[0].id;
 
-                // 2. Construct Local URL
-                // req.get('host') gets 'host:port'
-                const protocol = req.protocol; // http or https
-                const host = req.get('host');
-                const proofUrl = `${protocol}://${host}/api/marketplace/proof/${proofId}`;
+        // 2. Construct Local URL
+        // req.get('host') gets 'host:port'
+        const protocol = req.protocol; // http or https
+        const host = req.get('host');
+        const proofUrl = `${protocol}://${host}/api/marketplace/proof/${proofId}`;
 
-                // 3. Update Sheet
-                await googleSheetService.updateMarketplaceOrder(orderId, {
-                    status: 'Verifying Payment',
-                    proofUrl: proofUrl
-                });
-
-                res.json({ success: true, message: 'Proof uploaded. Waiting for verification.' });
-            } catch (error: any) {
-                console.error('Upload proof failed:', error);
-                res.status(500).json({ message: `Failed to upload proof: ${error.message}` });
-            }
+        // 3. Update Sheet
+        await googleSheetService.updateMarketplaceOrder(orderId, {
+            status: 'Verifying Payment',
+            proofUrl: proofUrl
         });
 
-        // Serve Proof Image
-        app.get('/api/marketplace/proof/:id', async (req, res) => {
-            try {
-                const { id } = req.params;
-                const query = 'SELECT file_data, mime_type FROM payment_proofs WHERE id = $1';
-                const result = await pool.query(query, [id]);
+        res.json({ success: true, message: 'Proof uploaded. Waiting for verification.' });
+    } catch (error: any) {
+        console.error('Upload proof failed:', error);
+        res.status(500).json({ message: `Failed to upload proof: ${error.message}` });
+    }
+});
 
-                if (result.rows.length === 0) {
-                    return res.status(404).send('Proof not found');
+// Serve Proof Image
+app.get('/api/marketplace/proof/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const query = 'SELECT file_data, mime_type FROM payment_proofs WHERE id = $1';
+        const result = await pool.query(query, [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).send('Proof not found');
+        }
+
+        const { file_data, mime_type } = result.rows[0];
+
+        res.setHeader('Content-Type', mime_type);
+        res.send(file_data);
+    } catch (error) {
+        console.error('Error serving proof:', error);
+        res.status(500).send('Server Error');
+    }
+});
+
+app.post('/api/marketplace/confirm-receipt', checkAuth, async (req, res) => {
+    try {
+        const { orderId } = req.body;
+        // Verify ownership? Ideally we check if req.user.email matches order.user_email.
+        // But for MVP trust the checkAuth + ID for now or fetch to verify.
+
+        await googleSheetService.updateMarketplaceOrder(orderId, {
+            status: 'Item Received'
+        });
+
+        // Email Organizer to Release Funds?
+        // TODO: Implement email trigger here.
+
+        res.json({ success: true, message: 'Receipt confirmed. Funds will be released to seller.' });
+    } catch (error) {
+        console.error('Confirm receipt failed:', error);
+        res.status(500).json({ message: 'Failed to confirm receipt' });
+    }
+});
+
+// OFFICER ACTIONS
+// Settle Order
+app.post('/api/officer/marketplace/settle-order', checkOfficer, async (req, res) => {
+    try {
+        const { orderId } = req.body;
+        await googleSheetService.updateMarketplaceOrder(orderId, { status: 'Settled' });
+        res.json({ success: true });
+    } catch (error: any) {
+        console.error('Settle failed:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Archive Order
+app.post('/api/officer/marketplace/archive-order', checkOfficer, async (req, res) => {
+    try {
+        const { orderId } = req.body;
+        await googleSheetService.updateMarketplaceOrder(orderId, { status: 'Archived' });
+        res.json({ success: true });
+    } catch (error: any) {
+        console.error('Archive failed:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Cancel Order (NEW - Refund Flow)
+app.post('/api/officer/marketplace/cancel-order', checkOfficer, async (req, res) => {
+    try {
+        const { orderId, reason, notes } = req.body;
+
+        if (!orderId || !reason) {
+            return res.status(400).json({ error: 'Order ID and reason are required' });
+        }
+
+        // Fetch order details before updating for email
+        const order = await googleSheetService.getMarketplaceOrderById(orderId);
+        if (!order) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        const cancelReason = reason === 'seller_issue'
+            ? 'Cancelled (Seller Issue)'
+            : reason === 'buyer_request'
+                ? 'Cancelled (Buyer Request)'
+                : 'Cancelled (Admin Action)';
+
+        await googleSheetService.updateMarketplaceOrder(orderId, {
+            status: cancelReason,
+            cancellation_reason: notes || reason,
+            cancelled_by: req.user?.email || 'Unknown',
+            cancelled_date: new Date().toISOString()
+        });
+
+        // Send cancellation email to customer
+        await emailService.sendCancellationEmail(order, reason, notes);
+
+        res.json({ success: true, message: 'Order cancelled successfully' });
+    } catch (error: any) {
+        console.error('Cancel order failed:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Process Refund (NEW - Refund Flow)
+app.post('/api/officer/marketplace/process-refund', checkOfficer, async (req, res) => {
+    try {
+        const { orderId, amount, method, proofUrl, notes } = req.body;
+
+        if (!orderId || !amount || !method) {
+            return res.status(400).json({ error: 'Order ID, amount, and method are required' });
+        }
+
+        // Fetch order details before updating for email
+        const order = await googleSheetService.getMarketplaceOrderById(orderId);
+        if (!order) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        // Update order with refund information
+        await googleSheetService.updateMarketplaceOrder(orderId, {
+            status: 'Refunded',
+            refund_amount: amount,
+            refund_method: method,
+            refund_date: new Date().toISOString(),
+            refund_proof: proofUrl || '',
+            refund_notes: notes || '',
+            refunded_by: req.user?.email || 'Unknown'
+        });
+
+        // TODO: If method is 'midtrans_api', call Midtrans Refund API
+
+        // Send refund confirmation email to customer
+        await emailService.sendRefundEmail(order, amount, method, notes);
+
+        res.json({ success: true, message: 'Refund processed successfully' });
+    } catch (error: any) {
+        console.error('Process refund failed:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/officer/marketplace/verify-payment', checkOfficer, async (req, res) => {
+    try {
+        const { orderId } = req.body;
+
+        // Update Sheet
+        await googleSheetService.updateMarketplaceOrder(orderId, {
+            status: 'Ready to Ship'
+        });
+
+        // Fetch Order details
+        const orders = await googleSheetService.getMarketplaceOrders();
+        const order = orders.find((o: any) => o.order_id === orderId);
+
+        if (order) {
+            console.log(`[VerifyPayment] Payment verified for ${orderId}. Fetching supplier info...`);
+
+            // Fetch Items to find Supplier Email
+            const items = await googleSheetService.getMarketplaceItems();
+            // Fuzzy match item name
+            const item = items.find((i: any) => i.product_name?.toLowerCase().trim() === order.item_name?.toLowerCase().trim());
+
+            let supplierEmail = item?.supplier_email || process.env.SUPPLIER_EMAIL;
+
+            if (supplierEmail) {
+                // Sanitize email: Handle "Name <email>" or "email (Note)" formats if messy data exists
+                // Simple heuristic: If it has <>, take inside. If not, just trim.
+                if (supplierEmail.includes('<')) {
+                    const match = supplierEmail.match(/<([^>]+)>/);
+                    if (match) supplierEmail = match[1];
                 }
+                supplierEmail = supplierEmail.trim();
 
-                const { file_data, mime_type } = result.rows[0];
-
-                res.setHeader('Content-Type', mime_type);
-                res.send(file_data);
-            } catch (error) {
-                console.error('Error serving proof:', error);
-                res.status(500).send('Server Error');
+                // Background email (fire & forget) to prevent UI blocking
+                emailService.sendShippingInstruction(order, supplierEmail)
+                    .catch(e => console.error('Background Shipping Email Failed:', e));
+            } else {
+                console.warn(`[VerifyPayment] No supplier email found for item: ${order.item_name}`);
             }
+        }
+
+        res.json({ success: true, message: 'Payment verified. Seller notified to ship.' });
+    } catch (error) {
+        console.error('Verify payment failed:', error);
+        res.status(500).json({ message: 'Failed to verify payment' });
+    }
+});
+app.get('/api/my-market-orders', checkAuth, async (req, res) => {
+    try {
+        const userEmail = req.user?.email;
+        if (!userEmail) return res.status(401).json({ message: 'Unauthorized' });
+
+        const allOrders = await googleSheetService.getMarketplaceOrders();
+        // Filter by user email
+        const myOrders = allOrders.filter((o: any) => o.user_email === userEmail);
+
+        // Reverse to show newest first
+        res.json(myOrders.reverse());
+    } catch (error) {
+        console.error('Error fetching my orders:', error);
+        res.status(500).json({ message: 'Failed to fetch orders' });
+    }
+});
+
+app.get('/api/marketplace/orders', checkOfficer, async (req, res) => {
+    try {
+        const orders = await googleSheetService.getMarketplaceOrders();
+        const items = await googleSheetService.getMarketplaceItems();
+
+        // Join Orders with Items to get Supplier Details (Phone/Email) for Officer
+        const normalize = (str: string) => str?.toLowerCase().replace(/[^a-z0-9]/g, '') || '';
+        const enrichedOrders = orders.map((order: any) => {
+            const orderItemName = normalize(order.item_name || order['Item Name']);
+            const item = items.find((i: any) => normalize(i.product_name || i['Product Name']) === orderItemName);
+            return {
+                ...order,
+                supplier_phone: order.supplier_phone || order['Supplier Phone'] || item?.phone_number || '',
+                supplier_email: order.supplier_email || order['Supplier Email'] || item?.supplier_email || '',
+                supplier_name: order.supplier_name || order['Supplier Name'] || item?.contact_person || item?.supplier_name || ''
+            };
         });
 
-        app.post('/api/marketplace/confirm-receipt', checkAuth, async (req, res) => {
-            try {
-                const { orderId } = req.body;
-                // Verify ownership? Ideally we check if req.user.email matches order.user_email.
-                // But for MVP trust the checkAuth + ID for now or fetch to verify.
+        res.json(enrichedOrders);
+    } catch (error) {
+        console.error('Error fetching market orders:', error);
+        res.status(500).json({ message: 'Failed to fetch orders' });
+    }
+});
 
-                await googleSheetService.updateMarketplaceOrder(orderId, {
-                    status: 'Item Received'
-                });
 
-                // Email Organizer to Release Funds?
-                // TODO: Implement email trigger here.
+// --- Shipping & Address API (Migrated to Komerce) ---
 
-                res.json({ success: true, message: 'Receipt confirmed. Funds will be released to seller.' });
-            } catch (error) {
-                console.error('Confirm receipt failed:', error);
-                res.status(500).json({ message: 'Failed to confirm receipt' });
-            }
-        });
+// Destination Search (Komerce)
+app.get('/api/locations/search', async (req, res) => {
+    try {
+        const { query } = req.query;
+        if (!query || typeof query !== 'string') {
+            return res.status(400).json({ error: 'Query parameter required' });
+        }
+        const destinations = await komerceService.searchDestination(query);
+        res.json(destinations);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
-        // OFFICER ACTIONS
-        // Settle Order
-        app.post('/api/officer/marketplace/settle-order', checkOfficer, async (req, res) => {
-            try {
-                const { orderId } = req.body;
-                await googleSheetService.updateMarketplaceOrder(orderId, { status: 'Settled' });
-                res.json({ success: true });
-            } catch (error: any) {
-                console.error('Settle failed:', error);
-                res.status(500).json({ error: error.message });
-            }
-        });
+/**
+ * Adapter for Legacy "Get Cities" used in Dropdowns.
+ * Since Komerce doesn't list all cities for a province easily without ID context or massive dump,
+ * we might need to change Frontend to use "Search" instead of "Select Province -> Select City".
+ * FOR NOW: Return empty or handle gracefully to prevent crash, BUT
+ * User needs to know "Autocomplete" style is preferred.
+ */
+app.get('/api/locations/provinces', async (req, res) => {
+    // Komerce doesn't implement "List All Provinces" the same way.
+    // Return empty to stop UI freeze/loading, or ideally switch UI to Search.
+    res.json([]);
+});
 
-        // Archive Order
-        app.post('/api/officer/marketplace/archive-order', checkOfficer, async (req, res) => {
-            try {
-                const { orderId } = req.body;
-                await googleSheetService.updateMarketplaceOrder(orderId, { status: 'Archived' });
-                res.json({ success: true });
-            } catch (error: any) {
-                console.error('Archive failed:', error);
-                res.status(500).json({ error: error.message });
-            }
-        });
+app.get('/api/locations/cities', async (req, res) => {
+    res.json([]);
+});
 
-        // Cancel Order (NEW - Refund Flow)
-        app.post('/api/officer/marketplace/cancel-order', checkOfficer, async (req, res) => {
-            try {
-                const { orderId, reason, notes } = req.body;
+// Configuration Endpoint (Dynamic Admin Contact)
+app.get('/api/public/config', (req, res) => {
+    res.json({
+        adminPhone: process.env.ADMIN_PHONE_NUMBER || '6281382364484'
+    });
+});
 
-                if (!orderId || !reason) {
-                    return res.status(400).json({ error: 'Order ID and reason are required' });
+// Calculate Cost
+app.post('/api/shipping/cost', async (req, res) => {
+    try {
+        const { origin, destination, weight, courier } = req.body;
+        // Origin/Destination coming from Frontend might be ID (if from Search) or Name (if from Sheet).
+        // Since Frontend Address Form is "Dropdown" based on ID...
+        // IF we switch to Search, we get IDs.
+
+        if (!origin || !destination || !weight) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        // Ensure weight is number (grams in Sheet/App usually, Komerce might want KG? 
+        // Docs verified: Komship usually Grams? Or Kg?
+        // RajaOngkir was Grams. Komship 'calculate' endpoint often Grams.
+        // Let's pass as is (number).
+
+        console.log(`[API v1.7.2] Calculating Cost. Origin: ${origin}, Dest: ${destination}, W: ${weight}, Courier: ${courier}`);
+        let costs = await komerceService.calculateCost(origin, destination, Number(weight), courier || 'jne');
+
+        // FAILSAFE: If service returns empty array (should be impossible in v1.7+), force an error object
+        if (!costs || costs.length === 0) {
+            console.error('[API] CRITICAL: Service returned empty array despite v1.7 patch.');
+            costs = [{
+                code: courier || 'unknown',
+                name: (courier || 'unknown').toUpperCase(),
+                costs: [],
+                debug_metadata: {
+                    error: "CRITICAL: Service returned [] (Code Stale?)",
+                    server_timestamp: new Date().toISOString()
                 }
+            }] as any;
+        }
 
-                // Fetch order details before updating for email
-                const order = await googleSheetService.getMarketplaceOrderById(orderId);
-                if (!order) {
-                    return res.status(404).json({ error: 'Order not found' });
-                }
+        console.log(`[API] Cost Result:`, JSON.stringify(costs));
+        res.setHeader('X-Backend-Ver', 'v1.7.5-CACHE-BUST');
+        res.json(costs);
+    } catch (error: any) {
+        console.error('[API] Cost Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
 
-                const cancelReason = reason === 'seller_issue'
-                    ? 'Cancelled (Seller Issue)'
-                    : reason === 'buyer_request'
-                        ? 'Cancelled (Buyer Request)'
-                        : 'Cancelled (Admin Action)';
+// User Addresses
+app.get('/api/user/addresses', async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+        const userId = (req.user as any).id;
+        const result = await dbPool.query('SELECT * FROM user_addresses WHERE user_id = $1 ORDER BY is_default DESC, created_at DESC', [userId]);
+        res.json(result.rows);
+    } catch (error: any) {
+        console.error('Fetch Address Error:', error);
+        res.status(500).json({ error: 'Failed to fetch addresses' });
+    }
+});
 
-                await googleSheetService.updateMarketplaceOrder(orderId, {
-                    status: cancelReason,
-                    cancellation_reason: notes || reason,
-                    cancelled_by: req.user?.email || 'Unknown',
-                    cancelled_date: new Date().toISOString()
-                });
+app.post('/api/user/addresses', async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    const client = await dbPool.connect();
+    try {
+        const userId = (req.user as any).id;
+        const { label, recipientName, phone, addressStreet, addressCityId, addressCityName, addressProvinceId, addressProvinceName, postalCode, isDefault } = req.body;
 
-                // Send cancellation email to customer
-                await emailService.sendCancellationEmail(order, reason, notes);
+        // SANITIZE PHONE: Ensure robust format (62 prefix)
+        let cleanPhone = (phone || '').toString().replace(/[^0-9]/g, '');
+        if (cleanPhone.startsWith('0')) {
+            cleanPhone = '62' + cleanPhone.substring(1);
+        } else if (cleanPhone.startsWith('8')) {
+            cleanPhone = '62' + cleanPhone;
+        }
+        // If it already starts with 62, it stays.
 
-                res.json({ success: true, message: 'Order cancelled successfully' });
-            } catch (error: any) {
-                console.error('Cancel order failed:', error);
-                res.status(500).json({ error: error.message });
-            }
-        });
+        await client.query('BEGIN');
 
-        // Process Refund (NEW - Refund Flow)
-        app.post('/api/officer/marketplace/process-refund', checkOfficer, async (req, res) => {
-            try {
-                const { orderId, amount, method, proofUrl, notes } = req.body;
+        if (isDefault) {
+            await client.query('UPDATE user_addresses SET is_default = false WHERE user_id = $1', [userId]);
+        }
 
-                if (!orderId || !amount || !method) {
-                    return res.status(400).json({ error: 'Order ID, amount, and method are required' });
-                }
-
-                // Fetch order details before updating for email
-                const order = await googleSheetService.getMarketplaceOrderById(orderId);
-                if (!order) {
-                    return res.status(404).json({ error: 'Order not found' });
-                }
-
-                // Update order with refund information
-                await googleSheetService.updateMarketplaceOrder(orderId, {
-                    status: 'Refunded',
-                    refund_amount: amount,
-                    refund_method: method,
-                    refund_date: new Date().toISOString(),
-                    refund_proof: proofUrl || '',
-                    refund_notes: notes || '',
-                    refunded_by: req.user?.email || 'Unknown'
-                });
-
-                // TODO: If method is 'midtrans_api', call Midtrans Refund API
-
-                // Send refund confirmation email to customer
-                await emailService.sendRefundEmail(order, amount, method, notes);
-
-                res.json({ success: true, message: 'Refund processed successfully' });
-            } catch (error: any) {
-                console.error('Process refund failed:', error);
-                res.status(500).json({ error: error.message });
-            }
-        });
-
-        app.post('/api/officer/marketplace/verify-payment', checkOfficer, async (req, res) => {
-            try {
-                const { orderId } = req.body;
-
-                // Update Sheet
-                await googleSheetService.updateMarketplaceOrder(orderId, {
-                    status: 'Ready to Ship'
-                });
-
-                // Fetch Order details
-                const orders = await googleSheetService.getMarketplaceOrders();
-                const order = orders.find((o: any) => o.order_id === orderId);
-
-                if (order) {
-                    console.log(`[VerifyPayment] Payment verified for ${orderId}. Fetching supplier info...`);
-
-                    // Fetch Items to find Supplier Email
-                    const items = await googleSheetService.getMarketplaceItems();
-                    // Fuzzy match item name
-                    const item = items.find((i: any) => i.product_name?.toLowerCase().trim() === order.item_name?.toLowerCase().trim());
-
-                    let supplierEmail = item?.supplier_email || process.env.SUPPLIER_EMAIL;
-
-                    if (supplierEmail) {
-                        // Sanitize email: Handle "Name <email>" or "email (Note)" formats if messy data exists
-                        // Simple heuristic: If it has <>, take inside. If not, just trim.
-                        if (supplierEmail.includes('<')) {
-                            const match = supplierEmail.match(/<([^>]+)>/);
-                            if (match) supplierEmail = match[1];
-                        }
-                        supplierEmail = supplierEmail.trim();
-
-                        // Background email (fire & forget) to prevent UI blocking
-                        emailService.sendShippingInstruction(order, supplierEmail)
-                            .catch(e => console.error('Background Shipping Email Failed:', e));
-                    } else {
-                        console.warn(`[VerifyPayment] No supplier email found for item: ${order.item_name}`);
-                    }
-                }
-
-                res.json({ success: true, message: 'Payment verified. Seller notified to ship.' });
-            } catch (error) {
-                console.error('Verify payment failed:', error);
-                res.status(500).json({ message: 'Failed to verify payment' });
-            }
-        });
-        app.get('/api/my-market-orders', checkAuth, async (req, res) => {
-            try {
-                const userEmail = req.user?.email;
-                if (!userEmail) return res.status(401).json({ message: 'Unauthorized' });
-
-                const allOrders = await googleSheetService.getMarketplaceOrders();
-                // Filter by user email
-                const myOrders = allOrders.filter((o: any) => o.user_email === userEmail);
-
-                // Reverse to show newest first
-                res.json(myOrders.reverse());
-            } catch (error) {
-                console.error('Error fetching my orders:', error);
-                res.status(500).json({ message: 'Failed to fetch orders' });
-            }
-        });
-
-        app.get('/api/marketplace/orders', checkOfficer, async (req, res) => {
-            try {
-                const orders = await googleSheetService.getMarketplaceOrders();
-                const items = await googleSheetService.getMarketplaceItems();
-
-                // Join Orders with Items to get Supplier Details (Phone/Email) for Officer
-                const normalize = (str: string) => str?.toLowerCase().replace(/[^a-z0-9]/g, '') || '';
-                const enrichedOrders = orders.map((order: any) => {
-                    const orderItemName = normalize(order.item_name || order['Item Name']);
-                    const item = items.find((i: any) => normalize(i.product_name || i['Product Name']) === orderItemName);
-                    return {
-                        ...order,
-                        supplier_phone: order.supplier_phone || order['Supplier Phone'] || item?.phone_number || '',
-                        supplier_email: order.supplier_email || order['Supplier Email'] || item?.supplier_email || '',
-                        supplier_name: order.supplier_name || order['Supplier Name'] || item?.contact_person || item?.supplier_name || ''
-                    };
-                });
-
-                res.json(enrichedOrders);
-            } catch (error) {
-                console.error('Error fetching market orders:', error);
-                res.status(500).json({ message: 'Failed to fetch orders' });
-            }
-        });
-
-
-        // --- Shipping & Address API (Migrated to Komerce) ---
-
-        // Destination Search (Komerce)
-        app.get('/api/locations/search', async (req, res) => {
-            try {
-                const { query } = req.query;
-                if (!query || typeof query !== 'string') {
-                    return res.status(400).json({ error: 'Query parameter required' });
-                }
-                const destinations = await komerceService.searchDestination(query);
-                res.json(destinations);
-            } catch (error: any) {
-                res.status(500).json({ error: error.message });
-            }
-        });
-
-        /**
-         * Adapter for Legacy "Get Cities" used in Dropdowns.
-         * Since Komerce doesn't list all cities for a province easily without ID context or massive dump,
-         * we might need to change Frontend to use "Search" instead of "Select Province -> Select City".
-         * FOR NOW: Return empty or handle gracefully to prevent crash, BUT
-         * User needs to know "Autocomplete" style is preferred.
-         */
-        app.get('/api/locations/provinces', async (req, res) => {
-            // Komerce doesn't implement "List All Provinces" the same way.
-            // Return empty to stop UI freeze/loading, or ideally switch UI to Search.
-            res.json([]);
-        });
-
-        app.get('/api/locations/cities', async (req, res) => {
-            res.json([]);
-        });
-
-        // Configuration Endpoint (Dynamic Admin Contact)
-        app.get('/api/public/config', (req, res) => {
-            res.json({
-                adminPhone: process.env.ADMIN_PHONE_NUMBER || '6281382364484'
-            });
-        });
-
-        // Calculate Cost
-        app.post('/api/shipping/cost', async (req, res) => {
-            try {
-                const { origin, destination, weight, courier } = req.body;
-                // Origin/Destination coming from Frontend might be ID (if from Search) or Name (if from Sheet).
-                // Since Frontend Address Form is "Dropdown" based on ID...
-                // IF we switch to Search, we get IDs.
-
-                if (!origin || !destination || !weight) {
-                    return res.status(400).json({ error: 'Missing required fields' });
-                }
-
-                // Ensure weight is number (grams in Sheet/App usually, Komerce might want KG? 
-                // Docs verified: Komship usually Grams? Or Kg?
-                // RajaOngkir was Grams. Komship 'calculate' endpoint often Grams.
-                // Let's pass as is (number).
-
-                console.log(`[API v1.7.2] Calculating Cost. Origin: ${origin}, Dest: ${destination}, W: ${weight}, Courier: ${courier}`);
-                let costs = await komerceService.calculateCost(origin, destination, Number(weight), courier || 'jne');
-
-                // FAILSAFE: If service returns empty array (should be impossible in v1.7+), force an error object
-                if (!costs || costs.length === 0) {
-                    console.error('[API] CRITICAL: Service returned empty array despite v1.7 patch.');
-                    costs = [{
-                        code: courier || 'unknown',
-                        name: (courier || 'unknown').toUpperCase(),
-                        costs: [],
-                        debug_metadata: {
-                            error: "CRITICAL: Service returned [] (Code Stale?)",
-                            server_timestamp: new Date().toISOString()
-                        }
-                    }] as any;
-                }
-
-                console.log(`[API] Cost Result:`, JSON.stringify(costs));
-                res.setHeader('X-Backend-Ver', 'v1.7.5-CACHE-BUST');
-                res.json(costs);
-            } catch (error: any) {
-                console.error('[API] Cost Error:', error);
-                res.status(500).json({ error: error.message });
-            }
-        });
-
-        // User Addresses
-        app.get('/api/user/addresses', async (req, res) => {
-            if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-            try {
-                const userId = (req.user as any).id;
-                const result = await dbPool.query('SELECT * FROM user_addresses WHERE user_id = $1 ORDER BY is_default DESC, created_at DESC', [userId]);
-                res.json(result.rows);
-            } catch (error: any) {
-                console.error('Fetch Address Error:', error);
-                res.status(500).json({ error: 'Failed to fetch addresses' });
-            }
-        });
-
-        app.post('/api/user/addresses', async (req, res) => {
-            if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-            const client = await dbPool.connect();
-            try {
-                const userId = (req.user as any).id;
-                const { label, recipientName, phone, addressStreet, addressCityId, addressCityName, addressProvinceId, addressProvinceName, postalCode, isDefault } = req.body;
-
-                // SANITIZE PHONE: Ensure robust format (62 prefix)
-                let cleanPhone = (phone || '').toString().replace(/[^0-9]/g, '');
-                if (cleanPhone.startsWith('0')) {
-                    cleanPhone = '62' + cleanPhone.substring(1);
-                } else if (cleanPhone.startsWith('8')) {
-                    cleanPhone = '62' + cleanPhone;
-                }
-                // If it already starts with 62, it stays.
-
-                await client.query('BEGIN');
-
-                if (isDefault) {
-                    await client.query('UPDATE user_addresses SET is_default = false WHERE user_id = $1', [userId]);
-                }
-
-                await client.query(`
+        await client.query(`
             INSERT INTO user_addresses (
                 user_id, label, recipient_name, phone, address_street,
                 address_city_id, address_city_name, address_province_id, address_province_name,
@@ -1617,46 +1622,46 @@ app.get('/api/my-market-orders', async (req, res) => {
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         `, [userId, label, recipientName, cleanPhone, addressStreet, addressCityId, addressCityName, addressProvinceId, addressProvinceName, postalCode, isDefault || false]);
 
-                await client.query('COMMIT');
-                res.json({ success: true });
-            } catch (error: any) {
-                await client.query('ROLLBACK');
-                console.error('Save Address Error:', error);
-                res.status(500).json({ error: 'Failed to save address' });
-            } finally {
-                client.release();
-            }
-        });
+        await client.query('COMMIT');
+        res.json({ success: true });
+    } catch (error: any) {
+        await client.query('ROLLBACK');
+        console.error('Save Address Error:', error);
+        res.status(500).json({ error: 'Failed to save address' });
+    } finally {
+        client.release();
+    }
+});
 
-        app.delete('/api/user/addresses/:id', async (req, res) => {
-            if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-            try {
-                const userId = (req.user as any).id;
-                const addressId = req.params.id;
-                await dbPool.query('DELETE FROM user_addresses WHERE id = $1 AND user_id = $2', [addressId, userId]);
-                res.json({ success: true });
-            } catch (error: any) {
-                res.status(500).json({ error: 'Failed to delete address' });
-            }
-        });
+app.delete('/api/user/addresses/:id', async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+        const userId = (req.user as any).id;
+        const addressId = req.params.id;
+        await dbPool.query('DELETE FROM user_addresses WHERE id = $1 AND user_id = $2', [addressId, userId]);
+        res.json({ success: true });
+    } catch (error: any) {
+        res.status(500).json({ error: 'Failed to delete address' });
+    }
+});
 
-        // Start Server
-        app.listen(PORT, async () => {
-            console.log(`Server running on http://localhost:${PORT}`);
-            try {
-                // Ensure Sheets Exist
-                // await googleSheetService.ensureHeaders(process.env.GOOGLE_SHEET_NAME_EVENTS || 'Events',
-                //     ['id', 'title', 'date', 'location', 'description', 'status', 'type', 'price_new_member', 'price_alumni', 'price_general', 'event_images', 'gallery_images']
-                // );
-                // await googleSheetService.ensureHeaders('Registration Officer', ['Name', 'Email', 'Role']);
-                // await googleSheetService.ensureHeaders('News', ['id', 'title', 'content', 'date', 'type', 'author']);
-                // await googleSheetService.ensureHeaders('Community', ['id', 'user_name', 'user_email', 'content', 'date', 'likes']);
+// Start Server
+app.listen(PORT, async () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+    try {
+        // Ensure Sheets Exist
+        // await googleSheetService.ensureHeaders(process.env.GOOGLE_SHEET_NAME_EVENTS || 'Events',
+        //     ['id', 'title', 'date', 'location', 'description', 'status', 'type', 'price_new_member', 'price_alumni', 'price_general', 'event_images', 'gallery_images']
+        // );
+        // await googleSheetService.ensureHeaders('Registration Officer', ['Name', 'Email', 'Role']);
+        // await googleSheetService.ensureHeaders('News', ['id', 'title', 'content', 'date', 'type', 'author']);
+        // await googleSheetService.ensureHeaders('Community', ['id', 'user_name', 'user_email', 'content', 'date', 'likes']);
 
-                console.log('✅ Sheets initialized');
-            } catch (e) {
-                console.error('Failed to init sheets:', e);
-            }
-        });
+        console.log('✅ Sheets initialized');
+    } catch (e) {
+        console.error('Failed to init sheets:', e);
+    }
+});
 
-        // Keep process alive
-        setInterval(() => { console.log('Heartbeat'); }, 1000 * 60 * 60);
+// Keep process alive
+setInterval(() => { console.log('Heartbeat'); }, 1000 * 60 * 60);
