@@ -321,18 +321,25 @@ router.post('/ship', authenticateSellerToken, ensureSellerAccess, upload.single(
         const order = allOrders.find((o: any) => (o.order_id || o['Order ID']) === orderId);
         if (!order) return res.status(404).json({ error: 'Order not found' });
 
-        const orderItemName = normalize(order.item_name || order['Item Name']);
-        const item = allItems.find((i: any) => normalize(i.product_name || i['Product Name']) === orderItemName);
+        // 1. Check Direct Ownership via Order's Supplier Email
+        const orderSupplierEmail = (order.supplier_email || order['supplier_email'] || '').toLowerCase().trim();
+        if (orderSupplierEmail === sellerEmail) {
+            // Access Granted via Direct Email Match
+        } else {
+            // 2. Fallback to Item Lookup (Legacy)
+            const orderItemName = normalize(order.item_name || order['Item Name']);
+            const item = allItems.find((i: any) => normalize(i.product_name || i['Product Name']) === orderItemName);
 
-        if (!item) return res.status(403).json({ error: 'Item not found or access denied' });
+            if (!item) return res.status(403).json({ error: 'Item not found or access denied (No matching product)' });
 
-        const itemSupplierEmail = (item.supplier_email || '').toLowerCase().trim();
-        const itemContactPerson = (item.contact_person || '').toLowerCase().trim();
+            const itemSupplierEmail = (item.supplier_email || '').toLowerCase().trim();
+            const itemContactPerson = (item.contact_person || '').toLowerCase().trim();
 
-        const isOwner = itemSupplierEmail === sellerEmail || (sellerName && itemContactPerson === sellerName);
+            const isOwner = itemSupplierEmail === sellerEmail || (sellerName && itemContactPerson === sellerName);
 
-        if (!isOwner) {
-            return res.status(403).json({ error: 'You do not own this order' });
+            if (!isOwner) {
+                return res.status(403).json({ error: 'You do not own this order' });
+            }
         }
 
         let proofUrl = '';
