@@ -42,8 +42,8 @@ echo "✅ Key received. Running tests with gemini-1.5-flash..."
 echo "------------------------------------------"
 
 export GOOGLE_GEN_AI_API_KEY=$API_KEY
-# Run the model audit script to see what IS available
-npx -y tsx scripts/debug_models.ts
+# Run the actual chat test now that we know the model
+npx -y tsx scripts/test_chat.ts
 
 echo "------------------------------------------"
 echo "Done."
