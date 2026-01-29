@@ -1,38 +1,49 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import dotenv from 'dotenv';
-import path from 'path';
-
-// Load env
-dotenv.config({ path: path.join(__dirname, '../.env') });
-
-const CACHE_BUST = "v2_" + Date.now();
-
+// Uses native fetch (Node 18+)
 async function listModels() {
     const apiKey = process.env.GOOGLE_GEN_AI_API_KEY;
     if (!apiKey) {
-        console.error("❌ No API Key found in .env");
+        console.error("❌ No API Key found in env variable GOOGLE_GEN_AI_API_KEY");
         return;
     }
-    console.log(`🔑 Key found (length: ${apiKey.length})`);
+
+    console.log(`🔑 Key length: ${apiKey.length}`);
+    const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+    console.log(`🔍 Fetching available models for your key...`);
 
     try {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        // There isn't a direct listModels on genAI instance in some SDK versions, 
-        // but let's try to just Instantiate a few and run countTokens as a light check 
-        // OR use the model.name from a known list if supported.
-        // Actually, newer SDKs expose a ModelManager or we can just try to "chat" with a "hello" to test availability.
+        const response = await fetch(url);
+        const data = await response.json();
 
-        const modelsToTest = ["gemini-pro", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.0-pro"];
+        if (data.error) {
+            console.error("❌ API Error:", JSON.stringify(data.error, null, 2));
 
-        for (const modelName of modelsToTest) {
-            console.log(`\nTesting Model: ${modelName}...`);
-            try {
-                const model = genAI.getGenerativeModel({ model: modelName });
-                const result = await model.generateContent("Hello, are you there?");
-                console.log(`✅ ${modelName} is WORKING! Response: ${result.response.text().slice(0, 20)}...`);
-            } catch (e: any) {
-                console.error(`❌ ${modelName} FAILED: ${e.message}`);
+            if (data.error.message.includes("API key not valid")) {
+                console.error("\n👉 This means the key is wrong, deleted, or from a different Google Cloud project.");
             }
+            return;
+        }
+
+        if (!data.models) {
+            console.log("⚠️ No models found for this key. (Strange!)");
+            return;
+        }
+
+        console.log("\n✅ AVAILABLE MODELS FOR THIS KEY:");
+        console.log("---------------------------------");
+        let foundFlash = false;
+        data.models.forEach((m: any) => {
+            // filter for generateContent support
+            if (m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent")) {
+                console.log(`   - ${m.name} (${m.displayName})`);
+                if (m.name.includes("flash")) foundFlash = true;
+            }
+        });
+        console.log("---------------------------------");
+
+        if (foundFlash) {
+            console.log("\n🎉 GOOD NEWS: 'gemini-1.5-flash' is available! (Or a variant of it)");
+        } else {
+            console.log("\n⚠️ 'gemini-1.5-flash' is NOT in the list. Please use one of the models listed above.");
         }
 
     } catch (error: any) {
