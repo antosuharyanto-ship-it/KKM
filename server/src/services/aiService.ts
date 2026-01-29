@@ -39,7 +39,7 @@ const tools: Tool[] = [
 ];
 
 const model: GenerativeModel = genAI.getGenerativeModel({
-    model: "gemini-pro",
+    model: "gemini-1.5-flash",
     tools: tools,
 });
 
