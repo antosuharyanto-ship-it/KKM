@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import { db } from '../db';
-import { products, sellers } from '../db/schema';
-import { eq, desc, and } from 'drizzle-orm';
+import { products, sellers, productReviews } from '../db/schema';
+import { eq, desc, and, sql } from 'drizzle-orm';
 import { googleSheetService } from '../services/googleSheets';
 
 const router = express.Router();
@@ -23,7 +23,9 @@ router.get('/marketplace', async (req: Request, res: Response) => {
         const dbProducts = await db
             .select({
                 product: products,
-                seller: sellers
+                seller: sellers,
+                avgRating: sql<number>`(SELECT AVG(rating) FROM product_reviews WHERE product_id = ${products.id})`,
+                reviewCount: sql<number>`(SELECT COUNT(*) FROM product_reviews WHERE product_id = ${products.id})`
             })
             .from(products)
             .innerJoin(sellers, eq(products.sellerId, sellers.id))
@@ -39,9 +41,11 @@ router.get('/marketplace', async (req: Request, res: Response) => {
         const sellerFeeMap = new Map(allSellers.map(s => [s.email.toLowerCase(), Number(s.buyerFeePercent || 0)]));
 
         // 2. Map DB items to Frontend Interface (Snake Case)
-        const mappedDbItems = dbProducts.map(({ product, seller }) => {
+        const mappedDbItems = dbProducts.map(({ product, seller, avgRating, reviewCount }) => {
             const images = product.images as string[];
             const mainImage = images.length > 0 ? images[0] : '';
+            const ratingVal = avgRating ? Number(avgRating) : 0; // Avg
+            const countVal = reviewCount ? Number(reviewCount) : 0;
 
             // Availability Logic
             let stockStatus = 'Ready Stock';
@@ -62,6 +66,9 @@ router.get('/marketplace', async (req: Request, res: Response) => {
                 unit_price: formatRupiah(finalPrice),
                 category: product.category,
                 product_image: mainImage,
+                images: images, // [NEW] Array of images
+                rating: ratingVal, // [NEW] Average Rating
+                review_count: countVal, // [NEW] Count
                 supplier_email: seller.email,
                 stok: String(product.stock),
                 '# stok': String(product.stock), // Legacy compatibility

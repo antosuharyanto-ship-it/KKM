@@ -115,3 +115,13 @@ export const products = pgTable('products', {
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at').defaultNow(),
 });
+
+export const productReviews = pgTable('product_reviews', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    productId: uuid('product_id').references(() => products.id, { onDelete: 'cascade' }).notNull(),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(), // Reviewer
+    orderId: varchar('order_id'), // Optional: Link to specific order verification
+    rating: integer('rating').notNull(), // 1-5
+    comment: text('comment'),
+    createdAt: timestamp('created_at').defaultNow(),
+});

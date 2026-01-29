@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
-import { Tag, CheckCircle, Upload } from 'lucide-react';
+import { Tag, CheckCircle, Upload, Star } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 interface MarketOrder {
@@ -16,6 +16,7 @@ interface MarketOrder {
     resi?: string;
     tracking_number?: string;
     shipment_proof?: string;
+    product_id?: string; // Ensure we have this from backend
     [key: string]: any;
 }
 
@@ -31,6 +32,12 @@ export const MyOrdersPage: React.FC = () => {
     const [uploadingOrder, setUploadingOrder] = useState<MarketOrder | null>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [isUploading, setIsUploading] = useState(false);
+
+    // Review Modal State
+    const [reviewingOrder, setReviewingOrder] = useState<MarketOrder | null>(null);
+    const [rating, setRating] = useState(5);
+    const [reviewComment, setReviewComment] = useState('');
+    const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
     // Notification State
     const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
@@ -174,6 +181,34 @@ export const MyOrdersPage: React.FC = () => {
         } catch (err) {
             console.error(err);
             alert('Failed to confirm receipt.');
+        }
+    };
+
+    const handleReviewClick = (order: MarketOrder) => {
+        setReviewingOrder(order);
+        setRating(5);
+        setReviewComment('');
+    };
+
+    const submitReview = async () => {
+        if (!reviewingOrder) return;
+        setIsSubmittingReview(true);
+        try {
+            await axios.post(`${API_BASE_URL}/api/reviews`, {
+                productId: reviewingOrder.product_id, // Need to ensure backend returns this
+                orderId: reviewingOrder.order_id,
+                rating,
+                comment: reviewComment
+            }, { withCredentials: true });
+
+            showNotification('Review submitted! Thank you.', 'success');
+            setReviewingOrder(null);
+            fetchAll();
+        } catch (err: any) {
+            console.error(err);
+            showNotification(err.response?.data?.error || 'Failed to submit review', 'error');
+        } finally {
+            setIsSubmittingReview(false);
         }
     };
 
@@ -343,6 +378,11 @@ export const MyOrdersPage: React.FC = () => {
                                             <CheckCircle size={16} /> Confirm Receipt
                                         </button>
                                     )}
+                                    {['item received', 'completed'].includes((order.status || '').toLowerCase()) && (
+                                        <button onClick={() => handleReviewClick(order)} className="px-4 py-2 bg-yellow-500 text-white text-sm font-bold rounded-lg hover:bg-yellow-600 flex items-center gap-2">
+                                            <Star size={16} /> Rate Item
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -458,6 +498,46 @@ export const MyOrdersPage: React.FC = () => {
                                 disabled={!selectedFile || isUploading}
                                 className="flex-1 py-2 bg-blue-600 text-white rounded-xl font-bold disabled:opacity-50">
                                 {isUploading ? 'Uploading...' : 'Submit'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Review Modal */}
+            {reviewingOrder && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl">
+                        <h3 className="font-bold text-lg mb-2">Rate & Review</h3>
+                        <p className="text-sm text-gray-500 mb-4">{reviewingOrder.item_name}</p>
+
+                        <div className="flex justify-center gap-2 mb-6">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                    key={star}
+                                    onClick={() => setRating(star)}
+                                    className={`p-1 transition-transform hover:scale-110 ${rating >= star ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
+                                >
+                                    <Star size={32} fill={rating >= star ? "currentColor" : "none"} />
+                                </button>
+                            ))}
+                        </div>
+
+                        <textarea
+                            className="w-full p-3 border border-gray-200 rounded-xl mb-4 focus:ring-2 focus:ring-teal-500 outline-none resize-none"
+                            rows={3}
+                            placeholder="Write your review here..."
+                            value={reviewComment}
+                            onChange={(e) => setReviewComment(e.target.value)}
+                        />
+
+                        <div className="flex gap-2">
+                            <button onClick={() => setReviewingOrder(null)} className="flex-1 py-2 text-gray-500 font-bold">Cancel</button>
+                            <button
+                                onClick={submitReview}
+                                disabled={isSubmittingReview}
+                                className="flex-1 py-2 bg-yellow-500 text-white rounded-xl font-bold hover:bg-yellow-600 disabled:opacity-50">
+                                {isSubmittingReview ? 'Submitting...' : 'Submit Review'}
                             </button>
                         </div>
                     </div>

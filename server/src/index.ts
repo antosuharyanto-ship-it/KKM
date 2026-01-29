@@ -24,6 +24,8 @@ import sellerRoutes from './routes/sellerRoutes';
 import productRoutes from './routes/productRoutes';
 import publicRoutes from './routes/publicRoutes';
 import chatRoutes from './routes/chat';
+import { checkAuth } from './middleware/auth';
+import reviewRoutes from './routes/reviewRoutes';
 import { neon } from '@neondatabase/serverless';
 
 dotenv.config();
@@ -48,6 +50,8 @@ app.use((req, res, next) => {
     console.log(`[Request] ${req.method} ${req.path}`);
     next();
 });
+
+app.use('/api/reviews', reviewRoutes); // Verified: New Feature
 
 app.get('/', (req, res) => {
     res.send('Server is up and running!');
@@ -162,14 +166,7 @@ app.post('/auth/logout', (req, res, next) => {
 
 // --- MIDDLEWARE ---
 
-// middleware to check authentication
-const checkAuth = (req: any, res: any, next: any) => {
-    if (req.user) {
-        next();
-    } else {
-        res.status(401).json({ message: 'Unauthorized' });
-    }
-};
+// middleware to check officer status
 
 // middleware to check officer status
 const checkOfficer = async (req: any, res: any, next: any) => {

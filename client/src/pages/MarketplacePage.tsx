@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
-import { Tag, Search, ShoppingCart, MessageCircle, Info } from 'lucide-react';
+import { Tag, Search, ShoppingCart, MessageCircle, Info, Star, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 import { getDisplayImageUrl } from '../utils/imageHelper';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +11,9 @@ interface Product {
     unit_price: string;
     category: string;
     product_image?: string;
+    images?: string[]; // [NEW]
+    rating?: number; // [NEW]
+    review_count?: number; // [NEW]
     supplier_email?: string;
     stok?: string;
     '# stok'?: string; // Alternative stock field name from Google Sheets
@@ -68,6 +71,16 @@ export const MarketplacePage: React.FC = () => {
     const [orderQty, setOrderQty] = useState(1);
     const [userDetails, setUserDetails] = useState({ name: '', email: '', phone: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Gallery & Zoom State
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+
+    useEffect(() => {
+        if (selectedItem) {
+            setCurrentImageIndex(0);
+        }
+    }, [selectedItem]);
 
     // Delivery State
     const [addresses, setAddresses] = useState<UserAddress[]>([]);
@@ -475,6 +488,15 @@ export const MarketplacePage: React.FC = () => {
                                 {item.category || 'General'}
                             </span>
                             <h3 className="font-bold text-gray-900 text-sm md:text-base leading-tight mb-1 line-clamp-2">{item.product_name || 'Unnamed Item'}</h3>
+
+                            {/* Rating Display */}
+                            {item.rating && item.rating > 0 ? (
+                                <div className="flex items-center gap-1 mb-2">
+                                    <Star size={12} className="text-yellow-400 fill-yellow-400" />
+                                    <span className="text-xs font-bold text-gray-600">{item.rating.toFixed(1)}</span>
+                                    <span className="text-[10px] text-gray-400">({item.review_count})</span>
+                                </div>
+                            ) : null}
                         </div>
                         <div className="mt-4 flex items-center justify-between">
                             <p className="text-orange-600 font-bold">{item.unit_price || 'Free'}</p>
@@ -512,9 +534,46 @@ export const MarketplacePage: React.FC = () => {
                         <p className="text-sm text-gray-500 mb-6">Complete your purchase details below.</p>
 
                         <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl mb-6">
-                            <div className="w-16 h-16 bg-white rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-200">
-                                {selectedItem.product_image ? (
-                                    <img src={getDisplayImageUrl(selectedItem.product_image)} className="w-full h-full object-cover" />
+                            {/* GALLERY / CAROUSEL */}
+                            <div className="w-20 h-20 md:w-24 md:h-24 bg-white rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-200 relative group">
+                                {selectedItem.images && selectedItem.images.length > 0 ? (
+                                    <>
+                                        <img
+                                            src={getDisplayImageUrl(selectedItem.images[currentImageIndex])}
+                                            className="w-full h-full object-cover cursor-zoom-in"
+                                            onClick={() => setLightboxOpen(true)}
+                                            alt={selectedItem.product_name}
+                                        />
+                                        {selectedItem.images.length > 1 && (
+                                            <>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setCurrentImageIndex(prev => prev === 0 ? selectedItem.images!.length - 1 : prev - 1);
+                                                    }}
+                                                    className="absolute left-0 top-1/2 -translate-y-1/2 bg-black/30 text-white p-0.5 rounded-r hover:bg-black/50"
+                                                >
+                                                    <ChevronLeft size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setCurrentImageIndex(prev => prev === selectedItem.images!.length - 1 ? 0 : prev + 1);
+                                                    }}
+                                                    className="absolute right-0 top-1/2 -translate-y-1/2 bg-black/30 text-white p-0.5 rounded-l hover:bg-black/50"
+                                                >
+                                                    <ChevronRight size={16} />
+                                                </button>
+                                            </>
+                                        )}
+                                    </>
+                                ) : selectedItem.product_image ? (
+                                    <img
+                                        src={getDisplayImageUrl(selectedItem.product_image)}
+                                        className="w-full h-full object-cover cursor-zoom-in"
+                                        onClick={() => setLightboxOpen(true)}
+                                        alt={selectedItem.product_name}
+                                    />
                                 ) : (
                                     <Tag className="text-gray-300" />
                                 )}
@@ -799,6 +858,62 @@ export const MarketplacePage: React.FC = () => {
                                 </button>
                             )}
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Lightbox / Zoom Overlay */}
+            {lightboxOpen && selectedItem && (
+                <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4 backdrop-blur-md" onClick={() => setLightboxOpen(false)}>
+                    <button className="absolute top-4 right-4 text-white/70 hover:text-white" onClick={() => setLightboxOpen(false)}>
+                        <X size={32} />
+                    </button>
+
+                    <div className="relative max-w-4xl max-h-screen w-full flex items-center justify-center" onClick={e => e.stopPropagation()}>
+                        {/* Image */}
+                        <img
+                            src={getDisplayImageUrl(
+                                (selectedItem.images && selectedItem.images.length > 0)
+                                    ? selectedItem.images[currentImageIndex]
+                                    : selectedItem.product_image || ''
+                            )}
+                            className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+                            alt="Zoom View"
+                        />
+
+                        {/* Navigation for Lightbox */}
+                        {selectedItem.images && selectedItem.images.length > 1 && (
+                            <>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setCurrentImageIndex(prev => prev === 0 ? selectedItem.images!.length - 1 : prev - 1);
+                                    }}
+                                    className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 text-white p-2 rounded-full border border-white/20 transition backdrop-blur-sm"
+                                >
+                                    <ChevronLeft size={32} />
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setCurrentImageIndex(prev => prev === selectedItem.images!.length - 1 ? 0 : prev + 1);
+                                    }}
+                                    className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 text-white p-2 rounded-full border border-white/20 transition backdrop-blur-sm"
+                                >
+                                    <ChevronRight size={32} />
+                                </button>
+
+                                {/* Indicators */}
+                                <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 flex gap-2">
+                                    {selectedItem.images.map((_, idx) => (
+                                        <div
+                                            key={idx}
+                                            className={`w-2 h-2 rounded-full transition-all ${idx === currentImageIndex ? 'bg-white w-4' : 'bg-white/30'}`}
+                                        />
+                                    ))}
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             )}
