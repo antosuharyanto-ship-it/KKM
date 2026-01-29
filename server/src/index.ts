@@ -939,38 +939,6 @@ app.get('/api/my-bookings', async (req, res) => {
     }
 });
 
-app.get('/api/my-market-orders', async (req, res) => {
-    if (!req.user) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    try {
-        const email = req.user.email;
-        const sheetName = process.env.GOOGLE_SHEET_NAME_MARKETPLACE || 'Marketplace Orders';
-
-        let allOrders: any[] = [];
-        try {
-            allOrders = await googleSheetService.readSheet(sheetName);
-        } catch (error) {
-            console.warn('Marketplace Order sheet not found or empty', error);
-        }
-
-        // Filter by user email (case-insensitive)
-        // AND Map 'item_id' to 'product_id' for frontend
-        const myOrders = allOrders
-            .filter((row: any) => row['email_address']?.toLowerCase() === email.toLowerCase())
-            .map((row: any) => ({
-                ...row,
-                product_id: row['item_id'] || row['product_id'] || '' // Ensure product_id is available
-            }));
-
-        res.json(myOrders);
-    } catch (error) {
-        console.error('Failed to fetch market orders', error);
-        res.status(500).json({ error: 'Failed to fetch market orders' });
-    }
-});
-
 app.get('/api/officer/scan/:code', checkOfficer, async (req, res) => {
     try {
         const { code } = req.params;
@@ -1459,8 +1427,13 @@ app.get('/api/my-market-orders', checkAuth, async (req, res) => {
         if (!userEmail) return res.status(401).json({ message: 'Unauthorized' });
 
         const allOrders = await googleSheetService.getMarketplaceOrders();
-        // Filter by user email
-        const myOrders = allOrders.filter((o: any) => o.user_email === userEmail);
+        // Filter by user email & Map product_id
+        const myOrders = allOrders
+            .filter((o: any) => o.user_email?.toLowerCase() === userEmail.toLowerCase())
+            .map((o: any) => ({
+                ...o,
+                product_id: o.item_id || o.product_id || '' // Ensure product_id
+            }));
 
         // Reverse to show newest first
         res.json(myOrders.reverse());
