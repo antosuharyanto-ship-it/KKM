@@ -227,6 +227,7 @@ export const MyOrdersPage: React.FC = () => {
             case 'verifying payment': return 'bg-blue-100 text-blue-800';
             case 'ready to ship': return 'bg-purple-100 text-purple-800';
             case 'shipped': return 'bg-indigo-100 text-indigo-800';
+            case 'on shipment': return 'bg-indigo-100 text-indigo-800';
             case 'item received': return 'bg-green-100 text-green-800';
             case 'settled': return 'bg-gray-100 text-gray-800';
             default: return 'bg-gray-100 text-gray-600';
@@ -337,7 +338,7 @@ export const MyOrdersPage: React.FC = () => {
                                             </button>
                                         </div>
                                     )}
-                                    {(order.status === 'Ready to Ship' || order.status === 'Shipped') && (
+                                    {['ready to ship', 'shipped', 'on shipment'].includes((order.status || '').toLowerCase()) && (
                                         <button onClick={() => confirmReceipt(order.order_id)} className="px-4 py-2 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-700 flex items-center gap-2">
                                             <CheckCircle size={16} /> Confirm Receipt
                                         </button>
