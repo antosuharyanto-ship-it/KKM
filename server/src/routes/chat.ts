@@ -14,9 +14,10 @@ router.post('/chat', async (req, res) => {
 
         const response = await chatWithAI(message);
         res.json(response);
-    } catch (error) {
+    } catch (error: any) {
         console.error("Chat Error:", error);
-        res.status(500).json({ error: "Internal Server Error" });
+        // Debugging: Send actual error to UI
+        res.status(500).json({ error: "Internal Server Error", text: `Error: ${error.message || String(error)}` });
     }
 });
 
