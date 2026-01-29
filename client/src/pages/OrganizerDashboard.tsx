@@ -1329,8 +1329,8 @@ export const OrganizerDashboard: React.FC = () => {
                                         {allowlist.map(item => (
                                             <tr key={item.id} className="hover:bg-gray-50">
                                                 <td className="p-3 font-medium text-gray-900">{item.email}</td>
-                                                <td className="p-3 text-gray-500">{item.addedBy || '-'}</td>
-                                                <td className="p-3 text-gray-500">{new Date(item.addedAt).toLocaleDateString()}</td>
+                                                <td className="p-3 text-gray-500">{item.added_by || item.addedBy || '-'}</td>
+                                                <td className="p-3 text-gray-500">{new Date(item.added_at || item.addedAt).toLocaleDateString()}</td>
                                                 <td className="p-3 text-right"><button onClick={() => handleDeleteAllowlist(item.email)} className="text-red-500 font-bold hover:text-red-700 text-xs uppercase">Delete</button></td>
                                             </tr>
                                         ))}
