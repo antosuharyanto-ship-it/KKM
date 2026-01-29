@@ -116,17 +116,15 @@ export const handleNotification = async (req: Request, res: Response): Promise<v
 
                             // 2. Update Postgres Stock
                             // We match by Name because Order Sheet doesn't strictly store UUID
-                            // Normalize name for matching just in case, but usually strict match is best first
                             const { db } = require('../db');
                             const { products } = require('../db/schema');
-                            const { eq, sql } = require('drizzle-orm');
+                            const { eq, sql, ilike } = require('drizzle-orm');
 
                             // Find product by name (case-insensitive try)
-                            // Note: In real app, storing ProductID in Order is safer.
                             const product = await db
                                 .select()
                                 .from(products)
-                                .where(eq(products.name, itemName))
+                                .where(ilike(products.name, itemName.trim()))
                                 .limit(1);
 
                             if (product.length > 0) {

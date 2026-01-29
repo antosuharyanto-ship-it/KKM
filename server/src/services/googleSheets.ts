@@ -462,8 +462,11 @@ export class GoogleSheetService {
             return;
         }
 
-        // Find the item row
-        const rowIndex = rows.findIndex(row => row[nameIndex] === itemName);
+        // Find the item row (Case Insensitive & Trimmed)
+        const rowIndex = rows.findIndex(row => {
+            const val = row[nameIndex];
+            return val && String(val).trim().toLowerCase() === String(itemName).trim().toLowerCase();
+        });
         if (rowIndex === -1) {
             console.warn(`Item not found for stock update: ${itemName}`);
             return;
