@@ -430,6 +430,184 @@ export class GoogleSheetService {
         await this.updateMarketplaceStock(orderData.itemName, orderData.quantity);
     }
 
+    // --- Marketplace Item Sync (App -> Sheet) ---
+
+    async addMarketplaceItem(item: any) {
+        const sheetName = process.env.GOOGLE_SHEET_NAME_MARKETPLACE || 'Market Place';
+
+        // 1. Get Headers
+        const response = await this.sheets.spreadsheets.values.get({
+            spreadsheetId: this.spreadsheetId,
+            range: `${sheetName}!A1:Z1`,
+        });
+        const headers = response.data.values?.[0] || [];
+
+        if (headers.length === 0) {
+            console.error('[SheetSync] Marketplace sheet has no headers. Cannot sync.');
+            return;
+        }
+
+        // 2. Map Item to Row
+        const rowData = new Array(headers.length).fill('');
+        const mapVal = (headerCandidates: string[], value: any) => {
+            const index = headers.findIndex(h => headerCandidates.includes(h.toLowerCase().trim()));
+            if (index !== -1) rowData[index] = value;
+        };
+
+        mapVal(['product name', 'item name', 'name', 'nama barang'], item.name);
+        mapVal(['price (idr)', 'price', 'harga'], item.price);
+        mapVal(['stock', 'stok', 'qty', '# stock', '# stok'], item.stock);
+        mapVal(['category', 'kategori'], item.category);
+        mapVal(['weight (grams)', 'weight', 'berat'], item.weight);
+        mapVal(['description', 'desc', 'deskripsi'], item.description);
+        mapVal(['image url 1', 'image', 'gambar'], item.images?.[0] || '');
+        // Optional: Add Seller info if available in item (might need fetch)
+
+        // 3. Append
+        await this.appendRow(sheetName, rowData);
+        console.log(`[SheetSync] Added item: ${item.name}`);
+    }
+
+    async updateMarketplaceItem(originalName: string, updates: any) {
+        const sheetName = process.env.GOOGLE_SHEET_NAME_MARKETPLACE || 'Market Place';
+
+        // 1. Get Headers & Data
+        const response = await this.sheets.spreadsheets.values.get({
+            spreadsheetId: this.spreadsheetId,
+            range: sheetName,
+        });
+        const rows = response.data.values;
+        if (!rows) return;
+        const headers = rows[0];
+
+        // 2. Find Name Column
+        const nameIndex = headers.findIndex(h => {
+            const norm = h.toLowerCase().trim().replace(/_/g, ' ');
+            return ['product name', 'item name', 'name', 'nama barang'].includes(norm);
+        });
+
+        if (nameIndex === -1) {
+            console.error('[SheetSync] Name column not found');
+            return;
+        }
+
+        // 3. Find Row (Case Insensitive)
+        const rowIndex = rows.findIndex(row => {
+            const val = row[nameIndex];
+            return val && String(val).trim().toLowerCase() === String(originalName).trim().toLowerCase();
+        });
+
+        if (rowIndex === -1) {
+            console.warn(`[SheetSync] Item not found for update: ${originalName}`);
+            // Optional: Call addMarketplaceItem if not found? For now just warn.
+            return;
+        }
+
+        // 4. Update Columns
+        const updateMap: Record<string, any> = {};
+        if (updates.name) updateMap['name'] = updates.name;
+        if (updates.price) updateMap['price'] = updates.price;
+        if (updates.stock !== undefined) updateMap['stock'] = updates.stock; // Handle 0
+        if (updates.category) updateMap['category'] = updates.category;
+        if (updates.weight) updateMap['weight'] = updates.weight;
+        if (updates.description) updateMap['description'] = updates.description;
+        if (updates.images && updates.images.length > 0) updateMap['image'] = updates.images[0];
+
+        // Helper to find col index for a key (using loose matching)
+        const findCol = (key: string) => {
+            const candidates = {
+                'name': ['product name', 'item name', 'name', 'nama barang'],
+                'price': ['price (idr)', 'price', 'harga'],
+                'stock': ['stock', 'stok', 'qty', '# stock', '# stok'],
+                'category': ['category', 'kategori'],
+                'weight': ['weight (grams)', 'weight', 'berat'],
+                'description': ['description', 'desc', 'deskripsi'],
+                'image': ['image url 1', 'image', 'gambar']
+            }[key] || [];
+            return headers.findIndex(h => candidates.includes(h.toLowerCase().trim()));
+        };
+
+        for (const [key, val] of Object.entries(updateMap)) {
+            const colIndex = findCol(key);
+            if (colIndex !== -1) {
+                const cellRange = `${sheetName}!${this.getColumnLetter(colIndex)}${rowIndex + 1}`;
+                await this.sheets.spreadsheets.values.update({
+                    spreadsheetId: this.spreadsheetId,
+                    range: cellRange,
+                    valueInputOption: 'USER_ENTERED',
+                    requestBody: { values: [[String(val)]] }
+                });
+            }
+        }
+        console.log(`[SheetSync] Updated item: ${originalName}`);
+    }
+
+    async deleteMarketplaceItem(itemName: string) {
+        const sheetName = process.env.GOOGLE_SHEET_NAME_MARKETPLACE || 'Market Place';
+
+        // 1. Get Data
+        const response = await this.sheets.spreadsheets.values.get({
+            spreadsheetId: this.spreadsheetId,
+            range: sheetName,
+        });
+        const rows = response.data.values;
+        if (!rows) return;
+        const headers = rows[0];
+
+        // 2. Find Name Column
+        const nameIndex = headers.findIndex(h => {
+            const norm = h.toLowerCase().trim().replace(/_/g, ' ');
+            return ['product name', 'item name', 'name', 'nama barang'].includes(norm);
+        });
+
+        if (nameIndex === -1) return;
+
+        // 3. Find Row
+        const rowIndex = rows.findIndex(row => {
+            const val = row[nameIndex];
+            return val && String(val).trim().toLowerCase() === String(itemName).trim().toLowerCase();
+        });
+
+        if (rowIndex === -1) {
+            console.warn(`[SheetSync] Item not found for deletion: ${itemName}`);
+            return;
+        }
+
+        // 4. Delete Row (Using batchUpdate deleteDimension)
+        // rowIndex is 0-based relative to values.
+        // deleteDimension expects start/end index.
+        const sheetId = await this.getSheetIdByName(sheetName);
+        if (sheetId === null) {
+            console.error('[SheetSync] Could not resolve sheetId for deletion');
+            return;
+        }
+
+        await this.sheets.spreadsheets.batchUpdate({
+            spreadsheetId: this.spreadsheetId,
+            requestBody: {
+                requests: [{
+                    deleteDimension: {
+                        range: {
+                            sheetId: sheetId,
+                            dimension: 'ROWS',
+                            startIndex: rowIndex,
+                            endIndex: rowIndex + 1
+                        }
+                    }
+                }]
+            }
+        });
+        console.log(`[SheetSync] Deleted item: ${itemName}`);
+    }
+
+    async getSheetIdByName(sheetName: string): Promise<number | null> {
+        const response = await this.sheets.spreadsheets.get({
+            spreadsheetId: this.spreadsheetId,
+        });
+        const sheet = response.data.sheets?.find(s => s.properties?.title === sheetName);
+        return sheet?.properties?.sheetId || null;
+    }
+
     async updateMarketplaceStock(itemName: string, quantitySold: number) {
         const sheetName = process.env.GOOGLE_SHEET_NAME_MARKETPLACE || 'Market Place';
 

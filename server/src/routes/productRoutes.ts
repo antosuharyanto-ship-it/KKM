@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import { db } from '../db';
 import { products } from '../db/schema';
+import { googleSheetService } from '../services/googleSheets';
 import { eq, desc, and } from 'drizzle-orm';
 import { authenticateSellerToken, ensureSellerAccess } from '../middleware/sellerAuth';
 import { v4 as uuidv4 } from 'uuid';
@@ -226,6 +227,13 @@ router.post('/', async (req: Request, res: Response) => {
             preorderDays: preorder_days ? Number(preorder_days) : null
         }).returning();
 
+        // [Sync] Add to Google Sheet
+        try {
+            await googleSheetService.addMarketplaceItem(newProduct[0]);
+        } catch (syncErr) {
+            console.error('[ProductRoutes] Sheet Sync Failed (Create):', syncErr);
+        }
+
         res.status(201).json({ success: true, data: newProduct[0] });
 
     } catch (error) {
@@ -277,6 +285,17 @@ router.put('/:id', async (req: Request, res: Response) => {
 
         res.json({ success: true, data: updatedProduct[0] });
 
+        // [Sync] Update Google Sheet
+        try {
+            // Use original name for lookup if name changed (requires fetching original first, which we did check existence)
+            // But we didn't save the original name explicitly above, let's assume existence check row is reliable.
+            // Oh wait, `existing` array has it.
+            const originalName = existing[0].name;
+            await googleSheetService.updateMarketplaceItem(originalName, cleanUpdates);
+        } catch (syncErr) {
+            console.error('[ProductRoutes] Sheet Sync Failed (Update):', syncErr);
+        }
+
     } catch (error) {
         console.error('[ProductRoutes] Error updating product:', error);
         res.status(500).json({ error: 'Failed to update product' });
@@ -305,6 +324,14 @@ router.delete('/:id', async (req: Request, res: Response) => {
         }
 
         res.json({ success: true, message: 'Product deleted successfully' });
+
+        // [Sync] Delete from Google Sheet
+        try {
+            const deletedItem = result[0];
+            await googleSheetService.deleteMarketplaceItem(deletedItem.name);
+        } catch (syncErr) {
+            console.error('[ProductRoutes] Sheet Sync Failed (Delete):', syncErr);
+        }
     } catch (error) {
         console.error('[ProductRoutes] Error deleting product:', error);
         res.status(500).json({ error: 'Failed to delete product' });
