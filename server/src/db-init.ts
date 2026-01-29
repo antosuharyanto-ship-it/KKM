@@ -109,8 +109,32 @@ const createShippingCacheTable = async () => {
   }
 };
 
+const createShipmentProofsTable = async () => {
+  const proofsPool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+  });
+  try {
+    console.log('🏗️ Creating Shipment Proofs Table...');
+    await proofsPool.query(`
+            CREATE TABLE IF NOT EXISTS shipment_proofs (
+                id SERIAL PRIMARY KEY,
+                order_id TEXT NOT NULL,
+                file_data BYTEA NOT NULL,
+                mime_type TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT NOW()
+            );
+        `);
+    console.log('✅ Shipment Proofs Table created/verified');
+  } catch (error: any) {
+    console.error('❌ Error creating shipment proofs table:', error.message);
+  } finally {
+    await proofsPool.end();
+  }
+};
+
 (async () => {
   await createTables();
   await createAddressesTable();
   await createShippingCacheTable();
+  await createShipmentProofsTable();
 })();
