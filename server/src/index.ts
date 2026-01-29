@@ -23,6 +23,7 @@ import passport from './auth';
 import sellerRoutes from './routes/sellerRoutes';
 import productRoutes from './routes/productRoutes';
 import publicRoutes from './routes/publicRoutes';
+import chatRoutes from './routes/chat';
 import { neon } from '@neondatabase/serverless';
 
 dotenv.config();
@@ -199,6 +200,7 @@ app.get('/api/officer/check', checkOfficer, (req, res) => {
 // Public Routes (Marketplace, etc.)
 // =============================================================================
 app.use('/api', publicRoutes);
+app.use('/api', chatRoutes);
 
 // =============================================================================
 // Seller Routes (OAuth, Profile, etc.)

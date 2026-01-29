@@ -3,6 +3,7 @@ import { Outlet, NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next'; // Import Hook
 import { Tent, ShoppingBag, User, Search, LayoutDashboard, Megaphone, Instagram, Facebook, Youtube, Twitter, Mail, Phone, MapPin, Package } from 'lucide-react';
 import { LanguageSwitcher } from '../components/LanguageSwitcher'; // Import Switcher
+import { ChatWidget } from '../components/ChatWidget';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 
@@ -140,6 +141,7 @@ export const AppLayout: React.FC = () => {
                     <p>&copy; {new Date().getFullYear()} Kemah Keluarga Muslim. All rights reserved. | Powered by Mastery AI by Abu Fatih</p>
                 </div>
             </footer>
+            <ChatWidget />
         </div>
     );
 };
