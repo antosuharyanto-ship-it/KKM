@@ -96,13 +96,60 @@ export const handleNotification = async (req: Request, res: Response): Promise<v
                     console.log(`[Midtrans] Found marketplace order for ${order_id}`);
 
                     // Update marketplace order status to "Paid"
-                    // Store Midtrans transaction info
                     const proofText = `Midtrans: ${order_id} (Auto-confirmed)`;
 
                     await googleSheetService.updateMarketplaceOrder(order_id, {
                         status: 'Paid',
                         proofUrl: proofText
                     });
+
+                    // --- STOCK REDUCTION ---
+                    try {
+                        const itemName = marketplaceOrder.item_name || marketplaceOrder['Item Name'];
+                        const quantity = parseInt(marketplaceOrder.quantity || '1');
+
+                        if (itemName) {
+                            console.log(`[Stock] Reducing stock for ${itemName} by ${quantity}`);
+
+                            // 1. Update Google Sheet Stock
+                            await googleSheetService.updateMarketplaceStock(itemName, quantity);
+
+                            // 2. Update Postgres Stock
+                            // We match by Name because Order Sheet doesn't strictly store UUID
+                            // Normalize name for matching just in case, but usually strict match is best first
+                            const { db } = require('../db');
+                            const { products } = require('../db/schema');
+                            const { eq, sql } = require('drizzle-orm');
+
+                            // Find product by name (case-insensitive try)
+                            // Note: In real app, storing ProductID in Order is safer.
+                            const product = await db
+                                .select()
+                                .from(products)
+                                .where(eq(products.name, itemName))
+                                .limit(1);
+
+                            if (product.length > 0) {
+                                const currentStock = product[0].stock;
+                                const newStock = Math.max(0, currentStock - quantity);
+
+                                await db
+                                    .update(products)
+                                    .set({
+                                        stock: newStock,
+                                        updatedAt: new Date()
+                                    })
+                                    .where(eq(products.id, product[0].id));
+
+                                console.log(`[Stock] Postgres updated: ${currentStock} -> ${newStock}`);
+                            } else {
+                                console.warn(`[Stock] Product not found in DB for name: ${itemName}`);
+                            }
+                        }
+                    } catch (stockError) {
+                        console.error(`[Stock] Failed to reduce stock for order ${order_id}:`, stockError);
+                        // Don't fail the webhook response, just log it
+                    }
 
                     console.log(`[Midtrans] Marketplace order ${order_id} auto-confirmed`);
                 } else {
