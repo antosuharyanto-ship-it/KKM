@@ -12,7 +12,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ticketService } from './services/ticketService';
 import { db } from './db';
 import { products, sellers, orders } from './db/schema';
-import { eq, desc, ilike, and } from 'drizzle-orm';
+import { eq, desc, and, sql } from 'drizzle-orm';
 import { googleSheetService } from './services/googleSheets';
 import { emailService } from './services/emailService';
 import { rajaOngkirService } from './services/rajaOngkirService';
@@ -579,8 +579,9 @@ app.post('/api/marketplace/order', async (req, res) => {
         let dbSellerId: string | null = null;
 
         // A. Check Postgres (DB)
-        // A. Check Postgres (DB)
         try {
+            // SAFE SQL SEARCH
+            const safeName = orderData.itemName?.trim() || '';
             const dbProduct = await db
                 .select({
                     product: products,
@@ -588,7 +589,7 @@ app.post('/api/marketplace/order', async (req, res) => {
                 })
                 .from(products)
                 .innerJoin(sellers, eq(products.sellerId, sellers.id))
-                .where(ilike(products.name, orderData.itemName?.trim() || ''))
+                .where(sql`${products.name} ILIKE ${safeName}`)
                 .limit(1);
 
             if (dbProduct.length > 0) {
@@ -612,7 +613,7 @@ app.post('/api/marketplace/order', async (req, res) => {
                     weight_gram: product.weight
                 };
             } else {
-                console.warn('[OrderDebug] Item not found in DB:', orderData.itemName);
+                console.warn('[OrderDebug] Item not found in DB:', safeName);
             }
         } catch (dbError) {
             console.error('[OrderDebug] DB lookup failed:', dbError);
