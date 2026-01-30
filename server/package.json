@@ -12,7 +12,8 @@
     "start": "node dist/index.js",
     "dev": "nodemon src/index.ts",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "migrate:backfill-products": "npx tsx src/scripts/backfillProductIds.ts"
   },
   "keywords": [],
   "author": "",
