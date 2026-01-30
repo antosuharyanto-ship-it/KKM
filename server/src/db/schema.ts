@@ -1,5 +1,24 @@
 
-import { pgTable, uuid, varchar, timestamp, json, boolean } from 'drizzle-orm/pg-core';
+import {
+    pgTable,
+    uuid,
+    varchar,
+    timestamp,
+    json,
+    boolean,
+    customType,
+    serial,
+    decimal,
+    integer,
+    text
+} from 'drizzle-orm/pg-core';
+
+// Custom Bytea Type
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+    dataType() {
+        return 'bytea';
+    },
+});
 
 export const users = pgTable('users', {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -14,19 +33,9 @@ export const users = pgTable('users', {
 
 export const session = pgTable('session', {
     sid: varchar('sid').primaryKey(),
-    sess: json('sess').notNull(), // connect-pg-simple uses json/jsonb usually but Drizzle introspection often sees it as generic or we match it. Let's use json if possible, or varchar for safety if type is unknown. check pg-simple docs. usually json.
+    sess: json('sess').notNull(),
     expire: timestamp('expire', { precision: 6 }).notNull(),
 });
-
-import { customType } from 'drizzle-orm/pg-core';
-
-const bytea = customType<{ data: Buffer; driverData: Buffer }>({
-    dataType() {
-        return 'bytea';
-    },
-});
-
-import { serial } from 'drizzle-orm/pg-core';
 
 export const paymentProofs = pgTable('payment_proofs', {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -37,14 +46,12 @@ export const paymentProofs = pgTable('payment_proofs', {
 });
 
 export const shipmentProofs = pgTable('shipment_proofs', {
-    id: serial('id').primaryKey(), // using serial to match introspection
+    id: serial('id').primaryKey(),
     orderId: text('order_id').notNull(),
     fileData: bytea('file_data').notNull(),
     mimeType: text('mime_type').notNull(),
     createdAt: timestamp('created_at').defaultNow(),
 });
-
-
 
 export const userAddresses = pgTable('user_addresses', {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -66,13 +73,11 @@ export const shippingCache = pgTable('shipping_cache', {
     id: uuid('id').defaultRandom().primaryKey(),
     origin: varchar('origin').notNull(),
     destination: varchar('destination').notNull(),
-    weight: varchar('weight').notNull(), // using varchar to matching mixed types input, or assume int. let's use varchar for safety as key often stringified
+    weight: varchar('weight').notNull(),
     courier: varchar('courier').notNull(),
     result: json('result').notNull(),
     createdAt: timestamp('created_at').defaultNow(),
 });
-
-import { decimal, integer, text } from 'drizzle-orm/pg-core';
 
 export const sellers = pgTable('sellers', {
     id: uuid('seller_id').defaultRandom().primaryKey(),
