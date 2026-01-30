@@ -151,10 +151,26 @@ app.get('/auth/google',
 );
 
 app.get('/auth/google/callback',
-    passport.authenticate('google', { failureRedirect: process.env.CLIENT_URL + '/login?error=failed' }),
-    (req, res) => {
-        // Successful authentication, redirect home.
-        res.redirect(process.env.CLIENT_URL || 'http://localhost:5173');
+    (req, res, next) => {
+        console.log('[AuthDebug] Callback received. processing passport...');
+        passport.authenticate('google', { failureRedirect: process.env.CLIENT_URL + '/login?error=failed' }, (err, user, info) => {
+            if (err) {
+                console.error('[AuthDebug] Passport Authenticate Error:', err);
+                return next(err); // Pass to global error handler
+            }
+            if (!user) {
+                console.error('[AuthDebug] No user found/returned:', info);
+                return res.redirect(process.env.CLIENT_URL + '/login?error=no_user');
+            }
+            req.logIn(user, (loginErr) => {
+                if (loginErr) {
+                    console.error('[AuthDebug] req.logIn Error:', loginErr);
+                    return next(loginErr);
+                }
+                console.log('[AuthDebug] Login successful. Redirecting...');
+                return res.redirect(process.env.CLIENT_URL || 'http://localhost:5173');
+            });
+        })(req, res, next);
     }
 );
 

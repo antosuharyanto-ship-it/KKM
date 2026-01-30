@@ -33,42 +33,56 @@ passport.use(new GoogleStrategy({
     passReqToCallback: true
 },
     async (req: Request, accessToken, refreshToken, profile, done) => {
+        const start = Date.now();
+        console.log('[AuthDebug] Google Callback Started');
+        console.log('[AuthDebug] Profile ID:', profile?.id);
+
         try {
             const email = profile.emails?.[0].value;
             const googleId = profile.id;
             const displayName = profile.displayName;
             const photo = profile.photos?.[0].value;
 
+            console.log(`[AuthDebug] Processing user: ${email} (${googleId})`);
+
             if (!email) {
+                console.error('[AuthDebug] No email found in profile');
                 return done(new Error('No email found in Google profile'), undefined);
             }
 
             // Check if user exists
+            console.log('[AuthDebug] Querying DB for user...');
             let res = await pool.query('SELECT * FROM users WHERE google_id = $1 OR email = $2', [googleId, email]);
+            console.log(`[AuthDebug] DB Query Result: ${res.rows.length} rows`);
 
             if (res.rows.length > 0) {
-                // User exists, update info if needed (optional)
+                // User exists
                 const user = res.rows[0];
                 if (!user.google_id) {
-                    // Link Google ID if only email existed
+                    console.log('[AuthDebug] Linking existing user to Google ID');
                     await pool.query('UPDATE users SET google_id = $1, picture = $2 WHERE email = $3', [googleId, photo, email]);
-                    // Refresh user object
                     const updated = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
                     return done(null, updated.rows[0]);
                 }
+                console.log('[AuthDebug] User found and linked. Done.');
                 return done(null, user);
             } else {
                 // Create new user
+                console.log('[AuthDebug] Creating NEW user...');
                 const newUserQuery = `
           INSERT INTO users (google_id, email, full_name, picture, role, membership_type) 
           VALUES ($1, $2, $3, $4, 'user', 'general') 
           RETURNING *
         `;
                 res = await pool.query(newUserQuery, [googleId, email, displayName, photo]);
+                console.log('[AuthDebug] New user created:', res.rows[0].id);
                 return done(null, res.rows[0]);
             }
         } catch (err: any) {
+            console.error('[AuthDebug] CRITICAL ERROR in strategy:', err);
             return done(err, undefined);
+        } finally {
+            console.log(`[AuthDebug] Callback took ${Date.now() - start}ms`);
         }
     }
 ));
