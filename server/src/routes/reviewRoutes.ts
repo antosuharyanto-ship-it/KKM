@@ -51,29 +51,32 @@ router.post('/', checkAuth, async (req: Request, res: Response) => {
 
         // Fallback: Lookup by Item Name if ID still missing
         // Fallback: Lookup by Item Name if ID still missing
-        if (!finalProductId && orderItemName) {
-            console.log(`[ReviewDebug] Attempting fallback lookup by name: "${orderItemName}"`);
+        if (!finalProductId && orderItemName && typeof orderItemName === 'string') {
+            const safeName = orderItemName.trim();
+            console.log(`[ReviewDebug] Attempting fallback lookup by name: "${safeName}"`);
+
             try {
+                // Use raw SQL for maximum safety against ORM version mismatches
                 const productsFound = await db
                     .select()
                     .from(products)
-                    .where(ilike(products.name, orderItemName.trim())) // Use standard ilike
+                    .where(sql`${products.name} ILIKE ${safeName}`)
                     .limit(1);
 
                 if (productsFound.length > 0) {
-                    finalProductId = productsFound[0].id;
-                    console.log(`[ReviewDebug] Fallback SUCCESS: Found Product "${productsFound[0].name}" (ID: ${finalProductId})`);
+                    finalProductId = productsFound[0].id; // Safe assignment
+                    console.log(`[ReviewDebug] Fallback SUCCESS: Found Product ID: ${finalProductId}`);
 
                     // Self-Healing
                     await db.update(orders)
                         .set({ productId: finalProductId })
                         .where(eq(orders.id, orderId));
-                    console.log(`[ReviewDebug] Self-Healing: Updated Order ${orderId} with ProductID ${finalProductId}`);
+                    console.log(`[ReviewDebug] Self-Healing: Updated Order ${orderId}`);
                 } else {
-                    console.error(`[ReviewDebug] Fallback FAILED: No product found with name "${orderItemName}"`);
+                    console.error(`[ReviewDebug] Fallback FAILED: No product found with name "${safeName}"`);
                 }
             } catch (fallbackError) {
-                console.error('[ReviewDebug] Fallback mechanism failed:', fallbackError);
+                console.error('[ReviewDebug] Fallback mechanism failed/crashed:', fallbackError);
             }
         }
 
