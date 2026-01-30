@@ -16,6 +16,8 @@ router.post('/', checkAuth, async (req: Request, res: Response) => {
         const { productId, orderId, rating, comment } = req.body;
         const userId = req.user?.id;
 
+        console.log(`[ReviewDebug] Incoming Request: User=${userId}, Order=${orderId}, Product=${productId}, Rating=${rating}`);
+
         if ((!productId && !orderId) || !rating) {
             console.error('[ReviewDebug] Missing params:', { productId, rating, orderId });
             return res.status(400).json({ error: 'Product ID/Order ID and Rating are required' });
@@ -27,26 +29,75 @@ router.post('/', checkAuth, async (req: Request, res: Response) => {
 
         // Robustness: If productId missing but orderId present, fetch from DB
         let finalProductId: string | undefined = productId;
+        let orderItemName: string | undefined;
 
         if (!finalProductId && orderId) {
+            console.log(`[ReviewDebug] Product ID missing. Looking up Order ${orderId}...`);
             const order = await db.query.orders.findFirst({
                 where: eq(orders.id, orderId)
             });
-            if (order && order.productId) {
-                finalProductId = order.productId;
-                console.log(`[ReviewDebug] Recovered ProductID ${finalProductId} from Order ${orderId}`);
+            if (order) {
+                if (order.productId) {
+                    finalProductId = order.productId;
+                    console.log(`[ReviewDebug] Recovered ProductID ${finalProductId} from Order ${orderId}`);
+                } else {
+                    console.warn(`[ReviewDebug] Order ${orderId} found but has NO ProductID. Item Name: ${order.itemName}`);
+                    orderItemName = order.itemName;
+                }
+            } else {
+                console.error(`[ReviewDebug] Order ${orderId} not found in DB.`);
+            }
+        }
+
+        // Fallback: Lookup by Item Name if ID still missing
+        if (!finalProductId && orderItemName) {
+            console.log(`[ReviewDebug] Attempting fallback lookup by name: "${orderItemName}"`);
+            const productsFound = await db
+                .select()
+                .from(products)
+                .where(sql`lower(${products.name}) = lower(${orderItemName})`) // Case-insensitive match
+                .limit(1);
+
+            if (productsFound.length > 0) {
+                finalProductId = productsFound[0].id;
+                console.log(`[ReviewDebug] Fallback SUCCESS: Found Product "${productsFound[0].name}" (ID: ${finalProductId})`);
+
+                // Self-Healing: Update Order with new ID
+                try {
+                    await db.update(orders)
+                        .set({ productId: finalProductId })
+                        .where(eq(orders.id, orderId));
+                    console.log(`[ReviewDebug] Self-Healing: Updated Order ${orderId} with ProductID ${finalProductId}`);
+                } catch (healingErr) {
+                    console.error('[ReviewDebug] Self-Healing Failed (Non-critical):', healingErr);
+                }
+            } else {
+                console.error(`[ReviewDebug] Fallback FAILED: No product found with name "${orderItemName}"`);
             }
         }
 
         if (!finalProductId) {
             console.error('[ReviewDebug] Product ID could not be resolved');
-            return res.status(400).json({ error: 'Product Not Found for this Order' });
+            return res.status(400).json({ error: 'Product Not Found. Please contact support or try again.' });
+        }
+
+        // Check if review already exists
+        const existingReview = await db.query.productReviews.findFirst({
+            where: and(
+                eq(productReviews.orderId, orderId),
+                eq(productReviews.userId, userId)
+            )
+        });
+
+        if (existingReview) {
+            console.log(`[ReviewDebug] Review already exists for Order ${orderId}`);
+            return res.status(400).json({ error: 'You have already reviewed this item.' });
         }
 
         // Basic validation
         if (rating < 1 || rating > 5) return res.status(400).json({ error: 'Rating must be between 1 and 5' });
 
-        console.log(`[ReviewDebug] Submitting review: User=${userId}, Product=${finalProductId}, Order=${orderId}`);
+        console.log(`[ReviewDebug] Inserting review: User=${userId}, Product=${finalProductId}, Order=${orderId}`);
 
         // Insert Review
         await db.insert(productReviews).values({
@@ -59,9 +110,13 @@ router.post('/', checkAuth, async (req: Request, res: Response) => {
 
         console.log('[ReviewDebug] Review submitted successfully');
         res.json({ success: true, message: 'Review submitted successfully' });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Submit Review Error:', error);
-        res.status(500).json({ error: 'Failed to submit review' });
+        // Expose error details for debugging
+        res.status(500).json({
+            error: 'Failed to submit review',
+            details: error.message || String(error)
+        });
     }
 });
 
