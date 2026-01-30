@@ -398,7 +398,7 @@ export const MyOrdersPage: React.FC = () => {
                                             <CheckCircle size={16} /> Confirm Receipt
                                         </button>
                                     )}
-                                    {['item received', 'completed'].includes((order.status || '').toLowerCase()) && (
+                                    {['item received', 'completed'].includes((order.status || '').toLowerCase()) && (order.product_id || order.productId) && (
                                         <button onClick={() => handleReviewClick(order)} className="px-4 py-2 bg-yellow-500 text-white text-sm font-bold rounded-lg hover:bg-yellow-600 flex items-center gap-2">
                                             <Star size={16} /> Rate Item
                                         </button>
