@@ -11,6 +11,10 @@ const router = express.Router();
  * POST /api/reviews
  * Submit a review for a product
  */
+router.get('/test', (req, res) => {
+    res.json({ message: 'Review Route is active', version: 'v1.7.8' });
+});
+
 router.post('/', checkAuth, async (req: Request, res: Response) => {
     console.log('[ReviewRoute] Handling POST /api/reviews (v1.7.7-PARANOID)');
     try {

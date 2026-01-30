@@ -35,7 +35,7 @@ console.log('DEBUG: Env Var Loaded Check');
 console.log('GOOGLE_DRIVE_TICKET_FOLDER_ID:', process.env.GOOGLE_DRIVE_TICKET_FOLDER_ID);
 console.log('CLIENT_URL:', process.env.CLIENT_URL);
 console.log('GOOGLE_CALLBACK_URL:', process.env.GOOGLE_CALLBACK_URL);
-console.log('DEPLOY_TIMESTAMP:', new Date().toISOString()); // Force Redeploy v1.7.1
+console.log('DEPLOY_TIMESTAMP:', new Date().toISOString()); // Force Redeploy v1.7.8-reviews-paranoid
 console.log('---------------------------------------------------');
 
 const app = express();
@@ -49,7 +49,19 @@ app.set('trust proxy', 1);
 app.use((req, res, next) => {
     console.log(`[Request] ${req.method} ${req.path}`);
     next();
+    next();
 });
+
+// GLOBAL ERROR HANDLER (Last Resort to prevent HTML 500)
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error('[GlobalErrorHandler] Uncaught Error:', err);
+    res.status(500).json({
+        error: 'Critical Server Error',
+        message: err.message || 'Unknown error occurred',
+        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
+});
+
 
 app.use('/api/reviews', reviewRoutes); // Verified: New Feature
 
@@ -60,7 +72,7 @@ app.get('/', (req, res) => {
 app.get('/api/health-check', (req, res) => {
     res.json({
         status: 'ok',
-        version: 'v1.7.6-fix-reviews', // Bumped for Review Fix Verification
+        version: 'v1.7.8-reviews-paranoid', // Bumped for Review Fix Verification
         timestamp: new Date().toISOString(),
         service: 'KKM Backend'
     });
@@ -567,6 +579,7 @@ app.post('/api/marketplace/order', async (req, res) => {
         let dbSellerId: string | null = null;
 
         // A. Check Postgres (DB)
+        // A. Check Postgres (DB)
         try {
             const dbProduct = await db
                 .select({
@@ -598,6 +611,8 @@ app.post('/api/marketplace/order', async (req, res) => {
                     unit_price: product.price,
                     weight_gram: product.weight
                 };
+            } else {
+                console.warn('[OrderDebug] Item not found in DB:', orderData.itemName);
             }
         } catch (dbError) {
             console.error('[OrderDebug] DB lookup failed:', dbError);
