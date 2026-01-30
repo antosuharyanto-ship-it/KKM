@@ -87,7 +87,10 @@ router.post('/', checkAuth, async (req: Request, res: Response) => {
 
         if (!finalProductId) {
             console.error('[ReviewDebug] Product ID could not be resolved');
-            return res.status(400).json({ error: 'Product Not Found. Please contact support or try again.' });
+            return res.status(400).json({
+                error: 'Unable to Submit Review',
+                details: 'This order is from a legacy system and cannot be reviewed at this time. Please contact support if you need assistance.'
+            });
         }
 
         // Check if review already exists
