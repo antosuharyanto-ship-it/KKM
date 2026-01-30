@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { formatPrice } from '../utils/formatPrice';
 import {
     LayoutDashboard, Users, CheckCircle, Wallet, Tent,
     Search, Filter, Download, XCircle, RefreshCw, Tag, Edit
@@ -1062,7 +1063,7 @@ export const OrganizerDashboard: React.FC = () => {
                                             </div>
                                             <div className="flex flex-col">
                                                 <span className="text-gray-400 uppercase text-[10px] font-bold">Total</span>
-                                                <span className="font-semibold text-teal-700">{order.total_price || order['Total Price']}</span>
+                                                <span className="font-semibold text-teal-700">{formatPrice(order.total_price || order['Total Price'])}</span>
                                             </div>
                                             <div className="col-span-2 flex flex-col border-t border-gray-100 pt-2 mt-1">
                                                 <span className="text-gray-400 uppercase text-[10px] font-bold">Customer</span>
@@ -1134,7 +1135,7 @@ export const OrganizerDashboard: React.FC = () => {
                                             </td>
                                             <td className="p-4">
                                                 <div className="font-medium text-gray-900">{order.item_name || order['Item Name']}</div>
-                                                <div className="text-xs text-gray-500">{order.quantity || order['Quantity']} x {order.unit_price || order['Unit Price']}</div>
+                                                <div className="text-xs text-gray-500">{order.quantity || order['Quantity']} x {formatPrice(order.unit_price || order['Unit Price'])}</div>
                                             </td>
                                             <td className="p-4">
                                                 <div className="font-medium text-gray-900">{order.supplier_name || order.supplier_email || order['Supplier Email'] || 'Unknown'}</div>
@@ -1167,7 +1168,7 @@ export const OrganizerDashboard: React.FC = () => {
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className="p-4 font-bold text-teal-700">{order.total_price || order['Total Price']}</td>
+                                            <td className="p-4 font-bold text-teal-700">{formatPrice(order.total_price || order['Total Price'])}</td>
                                             <td className="p-4">
                                                 <span className={`px-2 py-1 rounded-full text-xs font-bold ${(order.status || '').includes('Settled') ? 'bg-gray-100 text-gray-600' :
                                                     (order.status || '').includes('Ready') ? 'bg-purple-100 text-purple-700' :

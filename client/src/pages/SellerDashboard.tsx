@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { formatPrice } from '../utils/formatPrice';
 import { useSellerAuth } from '../contexts/SellerAuthContext';
 import { FaStore, FaBox, FaShippingFast, FaUser, FaSignOutAlt, FaBars, FaTimes } from 'react-icons/fa';
 import ProductList from '../components/seller/ProductList';
@@ -355,7 +356,7 @@ const SellerDashboard: React.FC = () => {
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <div className="font-medium text-gray-900">{order.item_name}</div>
-                                                        <div className="text-sm text-gray-500">{order.quantity} x {order.unit_price}</div>
+                                                        <div className="text-sm text-gray-500">{order.quantity} x {formatPrice(order.unit_price)}</div>
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <div className="font-bold text-gray-900">{order.user_name}</div>
@@ -375,7 +376,7 @@ const SellerDashboard: React.FC = () => {
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-green-600 font-bold">
-                                                        {order.total_price}
+                                                        {formatPrice(order.total_price)}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         {(() => {
@@ -390,11 +391,11 @@ const SellerDashboard: React.FC = () => {
                                                             return (
                                                                 <div>
                                                                     <div className="font-bold text-teal-700">
-                                                                        {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(net)}
+                                                                        {formatPrice(net)}
                                                                     </div>
                                                                     {fee > 0 && (
                                                                         <div className="text-xs text-red-400 mt-0.5" title={`Platform Fee (${feePercent}%)`}>
-                                                                            - {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(fee)} (Fee)
+                                                                            - {formatPrice(fee)} (Fee)
                                                                         </div>
                                                                     )}
                                                                 </div>

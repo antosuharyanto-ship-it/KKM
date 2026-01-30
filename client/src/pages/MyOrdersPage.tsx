@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { formatPrice } from '../utils/formatPrice';
 
 import { Tag, CheckCircle, Upload, Star } from 'lucide-react';
 import { API_BASE_URL } from '../config';
@@ -344,8 +345,8 @@ export const MyOrdersPage: React.FC = () => {
                                         </span>
                                     </div>
                                     <h3 className="font-bold text-gray-800">{order.item_name}</h3>
-                                    <p className="text-sm text-gray-500">{order.quantity} x {order.unit_price}</p>
-                                    <p className="text-orange-600 font-bold mt-1">{order.total_price}</p>
+                                    <p className="text-sm text-gray-500">{order.quantity} x {formatPrice(order.unit_price)}</p>
+                                    <p className="text-orange-600 font-bold mt-1">{formatPrice(order.total_price)}</p>
                                     <p className="text-xs text-gray-400 mt-2">{formatDate(order.date)}</p>
 
                                     {/* Resi Display */}
