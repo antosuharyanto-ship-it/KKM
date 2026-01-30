@@ -1226,14 +1226,21 @@ export const OrganizerDashboard: React.FC = () => {
                                                         );
                                                     }
                                                     if (isPaid) {
+                                                        const isMidtrans = (order.payment_proof || order.proofUrl || '').toString().startsWith('Midtrans:');
                                                         return (
                                                             <div className="flex flex-col gap-1">
-                                                                <button
-                                                                    onClick={() => handleNotifySeller(order.order_id || order['Order ID'])}
-                                                                    className="bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-purple-700 transition"
-                                                                    disabled={processingId === (order.order_id || order['Order ID'])}>
-                                                                    {processingId === (order.order_id || order['Order ID']) ? 'Processing...' : 'Notify Seller'}
-                                                                </button>
+                                                                {isMidtrans ? (
+                                                                    <span className="text-xs text-purple-600 font-bold border border-purple-200 bg-purple-50 px-2 py-1.5 rounded-lg text-center">
+                                                                        Auto-Notified
+                                                                    </span>
+                                                                ) : (
+                                                                    <button
+                                                                        onClick={() => handleNotifySeller(order.order_id || order['Order ID'])}
+                                                                        className="bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-purple-700 transition"
+                                                                        disabled={processingId === (order.order_id || order['Order ID'])}>
+                                                                        {processingId === (order.order_id || order['Order ID']) ? 'Processing...' : 'Notify Seller'}
+                                                                    </button>
+                                                                )}
                                                                 <button
                                                                     onClick={() => handleCancelOrder(order)}
                                                                     className="text-red-500 hover:text-red-700 text-[10px] font-bold uppercase">

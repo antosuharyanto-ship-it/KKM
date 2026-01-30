@@ -103,6 +103,56 @@ export const handleNotification = async (req: Request, res: Response): Promise<v
                         proofUrl: proofText
                     });
 
+                    // --- UPDATE DB STATUS ---
+                    try {
+                        const { db } = require('../db');
+                        const { orders, sellers } = require('../db/schema');
+                        const { eq } = require('drizzle-orm');
+                        const { emailService } = require('../services/emailService');
+
+                        // Update Order Status in Postgres
+                        await db.update(orders)
+                            .set({
+                                status: 'paid',
+                                paymentProofUrl: proofText,
+                                updatedAt: new Date()
+                            })
+                            .where(eq(orders.id, order_id));
+
+                        console.log(`[Midtrans] DB Order ${order_id} updated to 'paid'`);
+
+                        // --- AUTO NOTIFY SELLER ---
+                        // Fetch order with seller details to send email
+                        const dbOrder = await db.query.orders.findFirst({
+                            where: eq(orders.id, order_id),
+                            with: {
+                                seller: true
+                            }
+                        });
+
+                        if (dbOrder && dbOrder.seller) {
+                            console.log(`[Midtrans] Auto-notifying seller: ${dbOrder.seller.email}`);
+
+                            // Construct order object for email template
+                            const emailOrderData = {
+                                order_id: dbOrder.id,
+                                item_name: marketplaceOrder.item_name || marketplaceOrder['Item Name'], // Fallback to Sheet data if needed
+                                quantity: marketplaceOrder.quantity || '1',
+                                total_price: marketplaceOrder.total_price || marketplaceOrder['Total Price'],
+                                user_name: marketplaceOrder.user_name || marketplaceOrder['User Name'],
+                                user_email: marketplaceOrder.user_email || marketplaceOrder['User Email'] || 'N/A',
+                                phone: marketplaceOrder.phone || marketplaceOrder['Phone'] || 'N/A'
+                            };
+
+                            // Send Shipping Instruction (Fire & Forget)
+                            emailService.sendShippingInstruction(emailOrderData, dbOrder.seller.email)
+                                .catch((e: any) => console.error('[Midtrans] Failed to send auto-notification:', e));
+                        }
+
+                    } catch (dbError) {
+                        console.error(`[Midtrans] DB Update/Notify Failed for ${order_id}:`, dbError);
+                    }
+
                     // --- STOCK REDUCTION ---
                     try {
                         const itemName = marketplaceOrder.item_name || marketplaceOrder['Item Name'];

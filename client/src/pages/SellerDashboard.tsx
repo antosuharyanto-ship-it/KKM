@@ -380,7 +380,10 @@ const SellerDashboard: React.FC = () => {
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         {(() => {
                                                             const feePercent = parseFloat(seller?.sellerFeePercent || '0');
-                                                            const unitPrice = parseInt(order.unit_price.replace(/[^0-9]/g, '') || '0');
+                                                            // Fix: Handle both "49900.00" and "49900" 
+                                                            const unitPriceStr = (order.unit_price || '0').toString();
+                                                            const unitPrice = parseFloat(unitPriceStr) || 0; // Use parseFloat to keep cents
+
                                                             const gross = unitPrice * parseInt(order.quantity || '0');
                                                             const fee = Math.ceil(gross * (feePercent / 100));
                                                             const net = gross - fee;

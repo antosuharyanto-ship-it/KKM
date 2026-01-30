@@ -527,6 +527,14 @@ app.post('/api/payment/resume', checkAuth, async (req, res) => {
 app.post('/api/officer/marketplace/notify-seller', checkOfficer, async (req, res) => {
     try {
         const { orderId } = req.body;
+
+        // Update DB
+        // Keep status 'paid' so Seller can see the order and ship it (enter Resi).
+        // If we set 'shipped' here, the Seller flow is bypassed.
+        await db.update(orders)
+            .set({ status: 'paid', updatedAt: new Date() })
+            .where(eq(orders.id, orderId));
+
         await googleSheetService.updateMarketplaceOrder(orderId, { status: 'Ready to Ship' });
         res.json({ success: true });
     } catch (error: any) {
@@ -1394,6 +1402,14 @@ app.post('/api/officer/marketplace/cancel-order', checkOfficer, async (req, res)
             cancelled_date: new Date().toISOString()
         });
 
+        // Update DB
+        await db.update(orders)
+            .set({
+                status: 'cancelled',
+                updatedAt: new Date()
+            })
+            .where(eq(orders.id, orderId));
+
         // Send cancellation email to customer
         await emailService.sendCancellationEmail(order, reason, notes);
 
@@ -1430,6 +1446,15 @@ app.post('/api/officer/marketplace/process-refund', checkOfficer, async (req, re
             refunded_by: req.user?.email || 'Unknown'
         });
 
+        // Update DB
+        // 'refunded' not in enum, usage 'cancelled'
+        await db.update(orders)
+            .set({
+                status: 'cancelled',
+                updatedAt: new Date()
+            })
+            .where(eq(orders.id, orderId));
+
         // TODO: If method is 'midtrans_api', call Midtrans Refund API
 
         // Send refund confirmation email to customer
@@ -1451,9 +1476,18 @@ app.post('/api/officer/marketplace/verify-payment', checkOfficer, async (req, re
             status: 'Ready to Ship'
         });
 
+        // Update DB
+        // 'ready to ship' not in enum, using 'paid'
+        await db.update(orders)
+            .set({
+                status: 'paid',
+                updatedAt: new Date()
+            })
+            .where(eq(orders.id, orderId));
+
         // Fetch Order details
-        const orders = await googleSheetService.getMarketplaceOrders();
-        const order = orders.find((o: any) => o.order_id === orderId);
+        const sheetOrders = await googleSheetService.getMarketplaceOrders();
+        const order = sheetOrders.find((o: any) => o.order_id === orderId);
 
         if (order) {
             console.log(`[VerifyPayment] Payment verified for ${orderId}. Fetching supplier info...`);
