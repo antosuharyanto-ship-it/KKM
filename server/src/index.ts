@@ -60,7 +60,7 @@ app.get('/', (req, res) => {
 app.get('/api/health-check', (req, res) => {
     res.json({
         status: 'ok',
-        version: 'v1.7.5', // Bumped for Cache Bust
+        version: 'v1.7.6-fix-reviews', // Bumped for Review Fix Verification
         timestamp: new Date().toISOString(),
         service: 'KKM Backend'
     });

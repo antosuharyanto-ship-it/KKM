@@ -207,9 +207,25 @@ export const MyOrdersPage: React.FC = () => {
             fetchAll();
         } catch (err: any) {
             console.error(err);
-            const errorMessage = err.response?.data?.details
-                ? `${err.response?.data?.error}: ${err.response?.data?.details}`
-                : (err.response?.data?.error || 'Failed to submit review');
+            let errorMessage = 'Failed to submit review';
+            if (err.response) {
+                // Backend responded (4xx/5xx)
+                const data = err.response.data;
+                if (typeof data === 'object') {
+                    if (data.details) errorMessage = `${data.error}: ${data.details}`;
+                    else if (data.error) errorMessage = data.error;
+                    else if (data.message) errorMessage = data.message;
+                } else if (typeof data === 'string') {
+                    // Check if HTML (Vercel error)
+                    if (data.includes('<!DOCTYPE html>')) errorMessage = 'Server Error (HTML Response). Check logs.';
+                    else errorMessage = data;
+                }
+            } else if (err.request) {
+                // Request made but no response (Network)
+                errorMessage = 'Network Error: No response from server';
+            } else {
+                errorMessage = err.message;
+            }
             showNotification(errorMessage, 'error');
         } finally {
             setIsSubmittingReview(false);
