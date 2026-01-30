@@ -195,8 +195,8 @@ export const MyOrdersPage: React.FC = () => {
         setIsSubmittingReview(true);
         try {
             await axios.post(`${API_BASE_URL}/api/reviews`, {
-                productId: reviewingOrder.product_id, // Need to ensure backend returns this
-                orderId: reviewingOrder.order_id,
+                productId: reviewingOrder.productId || reviewingOrder.product_id, // Handle both cases for safety
+                orderId: reviewingOrder.order_id || reviewingOrder.id, // Handle potential ID mismatch too
                 rating,
                 comment: reviewComment
             }, { withCredentials: true });
