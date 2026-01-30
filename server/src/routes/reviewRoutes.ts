@@ -2,7 +2,7 @@
 import express, { Request, Response } from 'express';
 import { db } from '../db';
 import { productReviews, products, users, orders } from '../db/schema';
-import { eq, and, sql, desc } from 'drizzle-orm';
+import { eq, and, sql, desc, ilike } from 'drizzle-orm';
 import { checkAuth } from '../middleware/auth';
 
 const router = express.Router();
@@ -50,29 +50,30 @@ router.post('/', checkAuth, async (req: Request, res: Response) => {
         }
 
         // Fallback: Lookup by Item Name if ID still missing
+        // Fallback: Lookup by Item Name if ID still missing
         if (!finalProductId && orderItemName) {
             console.log(`[ReviewDebug] Attempting fallback lookup by name: "${orderItemName}"`);
-            const productsFound = await db
-                .select()
-                .from(products)
-                .where(sql`lower(${products.name}) = lower(${orderItemName})`) // Case-insensitive match
-                .limit(1);
+            try {
+                const productsFound = await db
+                    .select()
+                    .from(products)
+                    .where(ilike(products.name, orderItemName.trim())) // Use standard ilike
+                    .limit(1);
 
-            if (productsFound.length > 0) {
-                finalProductId = productsFound[0].id;
-                console.log(`[ReviewDebug] Fallback SUCCESS: Found Product "${productsFound[0].name}" (ID: ${finalProductId})`);
+                if (productsFound.length > 0) {
+                    finalProductId = productsFound[0].id;
+                    console.log(`[ReviewDebug] Fallback SUCCESS: Found Product "${productsFound[0].name}" (ID: ${finalProductId})`);
 
-                // Self-Healing: Update Order with new ID
-                try {
+                    // Self-Healing
                     await db.update(orders)
                         .set({ productId: finalProductId })
                         .where(eq(orders.id, orderId));
                     console.log(`[ReviewDebug] Self-Healing: Updated Order ${orderId} with ProductID ${finalProductId}`);
-                } catch (healingErr) {
-                    console.error('[ReviewDebug] Self-Healing Failed (Non-critical):', healingErr);
+                } else {
+                    console.error(`[ReviewDebug] Fallback FAILED: No product found with name "${orderItemName}"`);
                 }
-            } else {
-                console.error(`[ReviewDebug] Fallback FAILED: No product found with name "${orderItemName}"`);
+            } catch (fallbackError) {
+                console.error('[ReviewDebug] Fallback mechanism failed:', fallbackError);
             }
         }
 
