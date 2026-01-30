@@ -51,19 +51,8 @@ app.set('trust proxy', 1);
 app.use((req, res, next) => {
     console.log(`[Request] ${req.method} ${req.path}`);
     next();
-    next();
 });
 
-// GLOBAL ERROR HANDLER (Last Resort to prevent HTML 500)
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    console.error('[GlobalErrorHandler] Uncaught Error:', err);
-    res.status(500).json({
-        error: 'Critical Server Error',
-        message: err.message || 'Unknown error occurred',
-        hint: 'Check server logs for database connection issues',
-        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-    });
-});
 
 
 app.use('/api/reviews', reviewRoutes); // Verified: New Feature
@@ -98,6 +87,30 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 }));
 app.use(express.json());
+
+app.get('/api/health-test', async (req, res) => {
+    try {
+        const result = await dbPool.query('SELECT 1 as val');
+        res.json({
+            status: 'ok',
+            db_connected: true,
+            db_value: result.rows[0].val,
+            env: {
+                client_url: process.env.CLIENT_URL,
+                callback_url: process.env.GOOGLE_CALLBACK_URL,
+                node_env: process.env.NODE_ENV
+            }
+        });
+    } catch (err: any) {
+        console.error('Health Test Failed:', err);
+        res.status(500).json({
+            status: 'error',
+            db_connected: false,
+            message: err.message,
+            stack: err.stack
+        });
+    }
+});
 
 // Serve Tickets Statically
 app.use('/tickets', express.static(path.join(__dirname, '../tickets')));
@@ -1757,6 +1770,17 @@ app.delete('/api/user/addresses/:id', async (req, res) => {
     } catch (error: any) {
         res.status(500).json({ error: 'Failed to delete address' });
     }
+});
+
+// GLOBAL ERROR HANDLER (Must be last middleware to catch all route errors)
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error('[GlobalErrorHandler] Uncaught Error:', err);
+    res.status(500).json({
+        error: 'Critical Server Error',
+        message: err.message || 'Unknown error occurred',
+        hint: 'Check server logs for database connection issues',
+        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
 });
 
 // Start Server

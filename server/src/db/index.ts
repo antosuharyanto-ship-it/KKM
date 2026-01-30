@@ -10,9 +10,10 @@ dotenv.config();
 // SINGLETON POOL DEFINITION
 const poolConfig = {
     connectionString: process.env.DATABASE_URL,
-    connectionTimeoutMillis: 10000, // 10s return error if connection cannot be established
-    idleTimeoutMillis: 30000, // Close idle clients after 30s
-    max: 20, // Max clients in the pool (Neon/Serverless usually supports around 20-50 for non-pooled)
+    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 30000,
+    max: 20,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined
 };
 
 export const pool = new Pool(poolConfig);
