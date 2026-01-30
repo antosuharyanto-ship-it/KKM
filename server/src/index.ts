@@ -108,7 +108,6 @@ app.use('/tickets', express.static(path.join(__dirname, '../tickets')));
 
 // REMOVED: Error listener (Moved to src/db/index.ts)
 
-
 // Session Setup
 // Add types for req.user
 declare global {
@@ -1772,7 +1771,7 @@ app.listen(PORT, async () => {
         // await googleSheetService.ensureHeaders('News', ['id', 'title', 'content', 'date', 'type', 'author']);
         // await googleSheetService.ensureHeaders('Community', ['id', 'user_name', 'user_email', 'content', 'date', 'likes']);
 
-        console.log('✅ Sheets initialized');
+        // Local DB Check
         await checkDatabaseConnection();
     } catch (e) {
         console.error('Failed to init sheets:', e);

@@ -3,16 +3,13 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
 import { Request } from 'express';
+// Use shared pool
+import { pool } from './db';
 
 dotenv.config();
 
-console.log('[Auth] Initializing dedicated Auth Pool...');
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    connectionTimeoutMillis: 5000
-    // No idle timeout for auth to ensure readiness? Or standard.
-});
-pool.on('error', (err) => console.error('[AuthPool] Unexpected error:', err));
+// Remove local pool creation
+// const pool = new Pool({...});
 
 // Serialize user to session
 passport.serializeUser((user: any, done) => {
