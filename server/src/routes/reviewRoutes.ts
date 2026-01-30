@@ -2,7 +2,7 @@
 import express, { Request, Response } from 'express';
 import { db } from '../db';
 import { productReviews, products, users, orders } from '../db/schema';
-import { eq, and, sql, desc, ilike } from 'drizzle-orm';
+import { eq, and, sql, desc } from 'drizzle-orm';
 import { checkAuth } from '../middleware/auth';
 
 const router = express.Router();
@@ -12,6 +12,7 @@ const router = express.Router();
  * Submit a review for a product
  */
 router.post('/', checkAuth, async (req: Request, res: Response) => {
+    console.log('[ReviewRoute] Handling POST /api/reviews (v1.7.7-PARANOID)');
     try {
         const { productId, orderId, rating, comment } = req.body;
         const userId = req.user?.id;
