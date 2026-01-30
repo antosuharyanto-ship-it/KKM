@@ -106,6 +106,14 @@ CREATE TABLE bookings (
 );
 ```
 
+### Database Connection Strategy (Resilience)
+To prevent "Too many connections" errors common in serverless environments, the backend uses a **Consolidated Singleton Pool**:
+- A single `pg.Pool` instance is shared across the entire application (App, Auth, Sessions).
+- **Idle Timeout**: Connections are closed after 30 seconds of inactivity.
+- **Connection Limit**: Capped at 20 connections to stay comfortably within Neon/Supabase free tier limits.
+- **Error Handling**: "Idle client" errors are caught to prevent process crashes.
+
+
 ## 6. Implementation Stages
 1.  **Project Init**: Repo setup, CI/CD pipeline.
 2.  **Backend Core**: Auth + Postgres connection.

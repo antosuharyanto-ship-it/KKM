@@ -3,12 +3,13 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
 import { Request } from 'express';
+// Use shared pool
+import { pool } from './db';
 
 dotenv.config();
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-});
+// Remove local pool creation
+// const pool = new Pool({...});
 
 // Serialize user to session
 passport.serializeUser((user: any, done) => {

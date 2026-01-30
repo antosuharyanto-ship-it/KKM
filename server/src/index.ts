@@ -18,7 +18,9 @@ import { emailService } from './services/emailService';
 import { rajaOngkirService } from './services/rajaOngkirService';
 import { komerceService } from './services/komerceService';
 import * as midtransService from './services/midtransService';
-import { pool as dbPool } from './db';
+
+// Import shared pool
+import { pool as dbPool, checkDatabaseConnection } from './db';
 import passport from './auth';
 import sellerRoutes from './routes/sellerRoutes';
 import productRoutes from './routes/productRoutes';
@@ -58,6 +60,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
     res.status(500).json({
         error: 'Critical Server Error',
         message: err.message || 'Unknown error occurred',
+        hint: 'Check server logs for database connection issues',
         stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
 });
@@ -100,17 +103,11 @@ app.use(express.json());
 app.use('/tickets', express.static(path.join(__dirname, '../tickets')));
 
 // Database Connection
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    connectionTimeoutMillis: 20000, // 20s timeout
-    idleTimeoutMillis: 30000,
-    keepAlive: true
-});
+// REMOVED: Local Pool instantiation (Moved to src/db/index.ts)
+// const pool = new Pool({...});
 
-// Resiliency: Prevent crash on idle client error
-pool.on('error', (err, client) => {
-    console.error('Unexpected error on idle client', err);
-});
+// REMOVED: Error listener (Moved to src/db/index.ts)
+
 
 // Session Setup
 // Add types for req.user
@@ -132,7 +129,7 @@ const PgStore = pgSession(session);
 
 app.use(session({
     store: new PgStore({
-        pool: pool,
+        pool: dbPool, // Use the shared export (aliased from ./db)
         tableName: 'session'
     }),
     secret: process.env.JWT_SECRET || 'secret',
@@ -1277,7 +1274,7 @@ app.post('/api/marketplace/upload-proof', checkAuth, upload.single('proof'), asy
             VALUES ($1, $2, $3)
             RETURNING id;
         `;
-        const result = await pool.query(insertQuery, [orderId, file.buffer, file.mimetype]);
+        const result = await dbPool.query(insertQuery, [orderId, file.buffer, file.mimetype]);
         const proofId = result.rows[0].id;
 
         // 3. Construct Local URL
@@ -1312,7 +1309,7 @@ app.get('/api/marketplace/proof/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const query = 'SELECT file_data, mime_type FROM payment_proofs WHERE id = $1';
-        const result = await pool.query(query, [id]);
+        const result = await dbPool.query(query, [id]);
 
         if (result.rows.length === 0) {
             return res.status(404).send('Proof not found');
@@ -1760,6 +1757,7 @@ app.listen(PORT, async () => {
         // await googleSheetService.ensureHeaders('Community', ['id', 'user_name', 'user_email', 'content', 'date', 'likes']);
 
         console.log('✅ Sheets initialized');
+        await checkDatabaseConnection();
     } catch (e) {
         console.error('Failed to init sheets:', e);
     }
