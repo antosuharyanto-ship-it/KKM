@@ -1227,7 +1227,7 @@ export const OrganizerDashboard: React.FC = () => {
                                                         );
                                                     }
                                                     if (isPaid) {
-                                                        const isMidtrans = (order.payment_proof || order.proofUrl || '').toString().startsWith('Midtrans:');
+                                                        const isMidtrans = (order.payment_proof || order.proofUrl || '').toString().toLowerCase().includes('midtrans');
                                                         return (
                                                             <div className="flex flex-col gap-1">
                                                                 {isMidtrans ? (
