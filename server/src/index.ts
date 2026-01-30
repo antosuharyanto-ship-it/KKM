@@ -55,7 +55,6 @@ app.use((req, res, next) => {
 
 
 
-app.use('/api/reviews', reviewRoutes); // Verified: New Feature
 
 app.get('/', (req, res) => {
     res.send('Server is up and running!');
@@ -156,6 +155,9 @@ app.use(session({
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Protected Routes (must be after Passport init)
+app.use('/api/reviews', reviewRoutes);
 
 // Auth Routes
 app.get('/auth/google',
