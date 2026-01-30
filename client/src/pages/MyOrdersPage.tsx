@@ -207,7 +207,10 @@ export const MyOrdersPage: React.FC = () => {
             fetchAll();
         } catch (err: any) {
             console.error(err);
-            showNotification(err.response?.data?.error || 'Failed to submit review', 'error');
+            const errorMessage = err.response?.data?.details
+                ? `${err.response?.data?.error}: ${err.response?.data?.details}`
+                : (err.response?.data?.error || 'Failed to submit review');
+            showNotification(errorMessage, 'error');
         } finally {
             setIsSubmittingReview(false);
         }
@@ -279,7 +282,7 @@ export const MyOrdersPage: React.FC = () => {
 
             {/* Mobile Notification Banner */}
             {notification && (
-                <div className={`fixed top-0 left-0 right-0 p-4 z-50 shadow-lg flex justify-between items-center ${notification.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+                <div className={`fixed top-0 left-0 right-0 p-4 z-[100] shadow-lg flex justify-between items-center ${notification.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
                     <span className="font-bold text-sm">{notification.message}</span>
                     <button onClick={() => setNotification(null)} className="text-white/80 hover:text-white">&times;</button>
                 </div>
