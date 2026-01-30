@@ -675,9 +675,9 @@ app.post('/api/marketplace/order', async (req, res) => {
                     sellerId: dbSellerId,
                     productId: dbProductId,
                     itemName: safeOrderData.itemName,
-                    itemPrice: safeOrderData.unitPrice,
+                    itemPrice: typeof safeOrderData.unitPrice === 'string' ? safeOrderData.unitPrice.replace(/[^0-9]/g, '') : safeOrderData.unitPrice,
                     quantity: parseInt(safeOrderData.quantity) || 1,
-                    totalPrice: safeOrderData.totalPrice,
+                    totalPrice: typeof safeOrderData.totalPrice === 'string' ? safeOrderData.totalPrice.replace(/[^0-9]/g, '') : safeOrderData.totalPrice, // Fix "5.55" issue by stripping formatting
                     customerName: safeOrderData.userName,
                     customerEmail: safeOrderData.userEmail,
                     customerPhone: safeOrderData.phone,
