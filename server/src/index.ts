@@ -11,8 +11,8 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { ticketService } from './services/ticketService';
 import { db } from './db';
-import { products, sellers } from './db/schema';
-import { eq, desc, ilike } from 'drizzle-orm';
+import { products, sellers, orders } from './db/schema';
+import { eq, desc, ilike, and } from 'drizzle-orm';
 import { googleSheetService } from './services/googleSheets';
 import { emailService } from './services/emailService';
 import { rajaOngkirService } from './services/rajaOngkirService';
@@ -555,6 +555,8 @@ app.post('/api/marketplace/order', async (req, res) => {
         // 1. Fetch Item (Try DB first, then Sheets)
         console.log('[OrderDebug] Finding product:', orderData.itemName);
         let item: any = null;
+        let dbProductId: string | null = null;
+        let dbSellerId: string | null = null;
 
         // A. Check Postgres (DB)
         try {
@@ -571,6 +573,10 @@ app.post('/api/marketplace/order', async (req, res) => {
             if (dbProduct.length > 0) {
                 const { product, seller } = dbProduct[0];
                 console.log('[OrderDebug] Found item in DB:', product.name);
+
+                // Capture IDs for Order Insert
+                dbProductId = product.id;
+                dbSellerId = seller.id;
 
                 // Map to legacy format expected by downstream logic
                 item = {
@@ -660,6 +666,35 @@ app.post('/api/marketplace/order', async (req, res) => {
 
 
 
+        // 2a. Save to Neon DB (New Source of Truth)
+        try {
+            if (dbProductId && dbSellerId && req.user?.id) {
+                await db.insert(orders).values({
+                    id: orderId,
+                    userId: req.user.id,
+                    sellerId: dbSellerId,
+                    productId: dbProductId,
+                    itemName: safeOrderData.itemName,
+                    itemPrice: safeOrderData.unitPrice,
+                    quantity: parseInt(safeOrderData.quantity) || 1,
+                    totalPrice: safeOrderData.totalPrice,
+                    customerName: safeOrderData.userName,
+                    customerEmail: safeOrderData.userEmail,
+                    customerPhone: safeOrderData.phone,
+                    shippingAddress: '', // Add if available in future
+                    status: 'pending',
+                    createdAt: safeOrderData.date ? new Date(safeOrderData.date) : new Date()
+                });
+                console.log('[OrderDebug] Order saved to Neon DB:', orderId);
+            } else {
+                console.warn('[OrderDebug] Skipping Neon DB insert (missing IDs):', { dbProductId, dbSellerId, userId: req.user?.id });
+            }
+        } catch (dbErr) {
+            console.error('[OrderDebug] Failed to save order to Neon:', dbErr);
+            // Don't fail the request, proceed to Sheet backup
+        }
+
+        // 2b. Save to Sheets (Legacy/Dual Write)
         // 2. Save to Sheets
         console.log('[OrderDebug] Creating order in Sheet...');
         await googleSheetService.createMarketplaceOrder({
@@ -1198,14 +1233,21 @@ app.post('/api/marketplace/upload-proof', checkAuth, upload.single('proof'), asy
     try {
         const { orderId } = req.body;
         const file = req.file;
+        const userId = req.user?.id;
 
-        if (!orderId || !file) {
-            return res.status(400).json({ message: 'Order ID and Proof Image are required' });
-        }
+        if (!orderId || !file) return res.status(400).json({ message: 'Order ID and Proof Image are required' });
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        // 1. Validate Ownership (Neon)
+        const order = await db.query.orders.findFirst({
+            where: and(eq(orders.id, orderId), eq(orders.userId, userId))
+        });
+
+        if (!order) return res.status(404).json({ message: 'Order not found or access denied' });
 
         console.log(`[UploadProof] Received for Order ${orderId}, File: ${file.originalname}`);
 
-        // 1. Insert into Database
+        // 2. Insert into Database (Proofs)
         const insertQuery = `
             INSERT INTO payment_proofs (order_id, file_data, mime_type)
             VALUES ($1, $2, $3)
@@ -1214,13 +1256,21 @@ app.post('/api/marketplace/upload-proof', checkAuth, upload.single('proof'), asy
         const result = await pool.query(insertQuery, [orderId, file.buffer, file.mimetype]);
         const proofId = result.rows[0].id;
 
-        // 2. Construct Local URL
-        // req.get('host') gets 'host:port'
-        const protocol = req.protocol; // http or https
+        // 3. Construct Local URL
+        const protocol = req.protocol;
         const host = req.get('host');
         const proofUrl = `${protocol}://${host}/api/marketplace/proof/${proofId}`;
 
-        // 3. Update Sheet
+        // 4. Update Order in Neon
+        await db.update(orders)
+            .set({
+                status: 'paid', // Mapping 'Verifying Payment' to 'paid' for now
+                paymentProofUrl: proofUrl,
+                updatedAt: new Date()
+            })
+            .where(eq(orders.id, orderId));
+
+        // 5. Update Sheet (Legacy)
         await googleSheetService.updateMarketplaceOrder(orderId, {
             status: 'Verifying Payment',
             proofUrl: proofUrl
@@ -1257,9 +1307,26 @@ app.get('/api/marketplace/proof/:id', async (req, res) => {
 app.post('/api/marketplace/confirm-receipt', checkAuth, async (req, res) => {
     try {
         const { orderId } = req.body;
-        // Verify ownership? Ideally we check if req.user.email matches order.user_email.
-        // But for MVP trust the checkAuth + ID for now or fetch to verify.
+        const userId = req.user?.id;
 
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        // 1. Validate Ownership (Neon)
+        const order = await db.query.orders.findFirst({
+            where: and(eq(orders.id, orderId), eq(orders.userId, userId))
+        });
+
+        if (!order) return res.status(404).json({ message: 'Order not found or access denied' });
+
+        // 2. Update Neon
+        await db.update(orders)
+            .set({
+                status: 'completed',
+                updatedAt: new Date()
+            })
+            .where(eq(orders.id, orderId));
+
+        // 3. Update Sheet
         await googleSheetService.updateMarketplaceOrder(orderId, {
             status: 'Item Received'
         });
@@ -1423,22 +1490,34 @@ app.post('/api/officer/marketplace/verify-payment', checkOfficer, async (req, re
 });
 app.get('/api/my-market-orders', checkAuth, async (req, res) => {
     try {
-        const userEmail = req.user?.email;
-        if (!userEmail) return res.status(401).json({ message: 'Unauthorized' });
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
-        const allOrders = await googleSheetService.getMarketplaceOrders();
-        // Filter by user email & Map product_id
-        const myOrders = allOrders
-            .filter((o: any) => o.user_email?.toLowerCase() === userEmail.toLowerCase())
-            .map((o: any) => ({
-                ...o,
-                product_id: o.item_id || o.product_id || '' // Ensure product_id
-            }));
+        const myOrders = await db
+            .select()
+            .from(orders)
+            .where(eq(orders.userId, userId))
+            .orderBy(desc(orders.createdAt));
 
-        // Reverse to show newest first
-        res.json(myOrders.reverse());
+        const mappedOrders = myOrders.map(o => ({
+            order_id: o.id,
+            item_name: o.itemName,
+            item_id: o.productId || '', // Legacy support
+            product_id: o.productId || '',
+            unit_price: o.itemPrice,
+            quantity: o.quantity,
+            total_price: o.totalPrice,
+            status: o.status,
+            created_at: o.createdAt,
+            date: o.createdAt,
+            payment_proof_url: o.paymentProofUrl,
+            // Add user_email for potential debugging if needed, though filtered by ID
+            user_email: req.user?.email
+        }));
+
+        res.json(mappedOrders);
     } catch (error) {
-        console.error('Error fetching my orders:', error);
+        console.error('Error fetching my orders from DB:', error);
         res.status(500).json({ message: 'Failed to fetch orders' });
     }
 });

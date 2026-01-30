@@ -1,7 +1,7 @@
 
 import express, { Request, Response } from 'express';
 import { db } from '../db';
-import { productReviews, products, users } from '../db/schema';
+import { productReviews, products, users, orders } from '../db/schema';
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { checkAuth } from '../middleware/auth';
 
@@ -16,21 +16,48 @@ router.post('/', checkAuth, async (req: Request, res: Response) => {
         const { productId, orderId, rating, comment } = req.body;
         const userId = req.user?.id;
 
-        if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-        if (!productId || !rating) return res.status(400).json({ error: 'Product ID and Rating are required' });
+        if ((!productId && !orderId) || !rating) {
+            console.error('[ReviewDebug] Missing params:', { productId, rating, orderId });
+            return res.status(400).json({ error: 'Product ID/Order ID and Rating are required' });
+        }
+
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        // Robustness: If productId missing but orderId present, fetch from DB
+        let finalProductId: string | undefined = productId;
+
+        if (!finalProductId && orderId) {
+            const order = await db.query.orders.findFirst({
+                where: eq(orders.id, orderId)
+            });
+            if (order && order.productId) {
+                finalProductId = order.productId;
+                console.log(`[ReviewDebug] Recovered ProductID ${finalProductId} from Order ${orderId}`);
+            }
+        }
+
+        if (!finalProductId) {
+            console.error('[ReviewDebug] Product ID could not be resolved');
+            return res.status(400).json({ error: 'Product Not Found for this Order' });
+        }
 
         // Basic validation
         if (rating < 1 || rating > 5) return res.status(400).json({ error: 'Rating must be between 1 and 5' });
 
+        console.log(`[ReviewDebug] Submitting review: User=${userId}, Product=${finalProductId}, Order=${orderId}`);
+
         // Insert Review
         await db.insert(productReviews).values({
-            userId,
-            productId,
+            userId: userId!,
+            productId: finalProductId!,
             orderId: orderId || null,
             rating,
             comment: comment || '',
         });
 
+        console.log('[ReviewDebug] Review submitted successfully');
         res.json({ success: true, message: 'Review submitted successfully' });
     } catch (error) {
         console.error('Submit Review Error:', error);

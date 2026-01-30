@@ -16,8 +16,8 @@ import {
 import { googleSheetService } from '../services/googleSheets';
 import multer from 'multer';
 import { pool, db } from '../db';
-import { products, sellers } from '../db/schema';
-import { eq } from 'drizzle-orm';
+import { products, sellers, orders } from '../db/schema';
+import { eq, and, desc } from 'drizzle-orm';
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -237,54 +237,28 @@ router.get('/orders', authenticateSellerToken, ensureSellerAccess, async (req: R
     try {
         if (!req.seller) return res.status(401).json({ error: 'Not authenticated' });
 
-        // 1. Get all orders
-        const allOrders = await googleSheetService.getMarketplaceOrders();
+        const myOrders = await db
+            .select()
+            .from(orders)
+            .where(eq(orders.sellerId, req.seller.seller_id))
+            .orderBy(desc(orders.createdAt));
 
-        // 2. Get all items to map ownership
-        // 2. Get all items from DB to map ownership (Replaces Sheet Fetch)
-        const dbProducts = await db
-            .select({
-                name: products.name,
-                supplier_email: sellers.email
-            })
-            .from(products)
-            .innerJoin(sellers, eq(products.sellerId, sellers.id));
-
-        const allItems = dbProducts.map(p => ({
-            product_name: p.name,
-            supplier_email: p.supplier_email
+        const mappedOrders = myOrders.map(o => ({
+            order_id: o.id,
+            item_name: o.itemName,
+            unit_price: o.itemPrice,
+            quantity: o.quantity,
+            total_price: o.totalPrice,
+            user_name: o.customerName,
+            user_email: o.customerEmail,
+            phone: o.customerPhone,
+            shipping_address: o.shippingAddress,
+            status: o.status,
+            created_at: o.createdAt,
+            supplier_email: req.seller?.email // Self
         }));
 
-        // 3. Filter orders belonging to this seller
-        const sellerEmail = req.seller.email.toLowerCase();
-        const sellerName = req.seller.full_name?.toLowerCase();
-
-        const normalize = (str: string) => str?.toLowerCase().replace(/[^a-z0-9]/g, '') || '';
-
-        const myOrders = allOrders.filter((order: any) => {
-            // Priority 1: Check Order's direct Supplier Email (New System)
-            // 'readSheet' normalizes "Supplier Email" -> "supplier_email"
-            const orderSupplierEmail = (order.supplier_email || order['supplier_email'] || '').toLowerCase().trim();
-            if (orderSupplierEmail) {
-                // Return true only if it matches. If it exists but doesn't match, it's definitely not theirs.
-                return orderSupplierEmail === sellerEmail;
-            }
-
-            // Priority 2: Fallback to Item Lookup (Old System)
-            // Find corresponding product with normalized matching
-            const orderItemName = normalize(order.item_name || order['item_name']);
-            const item = allItems.find((i: any) => normalize(i.product_name || i['product_name']) === orderItemName);
-
-            if (!item) return false;
-
-            // Check if item's supplier email matches seller
-            const itemSupplierEmail = (item.supplier_email || '').toLowerCase().trim();
-
-            // STRICT: Only allow Email match. Names are too ambiguous.
-            return itemSupplierEmail === sellerEmail;
-        });
-
-        res.json({ success: true, data: myOrders.reverse() });
+        res.json({ success: true, data: mappedOrders });
 
     } catch (error) {
         console.error('[SellerRoutes] Error fetching orders:', error);
@@ -322,53 +296,18 @@ router.post('/ship', authenticateSellerToken, ensureSellerAccess, upload.single(
         const file = req.file;
 
         if (!orderId || !resi) return res.status(400).json({ error: 'Order ID and Resi are required' });
-
         if (!req.seller) return res.status(401).json({ error: 'Not authenticated' });
 
-        // 1. Verify Ownership
-        const allOrders = await googleSheetService.getMarketplaceOrders();
+        // 1. Verify Ownership & Existence in DB
+        const order = await db.query.orders.findFirst({
+            where: and(
+                eq(orders.id, orderId),
+                eq(orders.sellerId, req.seller.seller_id)
+            )
+        });
 
-        // Fetch DB products for verification
-        const dbProducts = await db
-            .select({
-                name: products.name,
-                supplier_email: sellers.email,
-                contact_person: sellers.fullName
-            })
-            .from(products)
-            .innerJoin(sellers, eq(products.sellerId, sellers.id));
-
-        const allItems = dbProducts.map(p => ({
-            product_name: p.name,
-            supplier_email: p.supplier_email,
-            contact_person: p.contact_person
-        }));
-        const sellerEmail = req.seller.email.toLowerCase();
-        const sellerName = req.seller.full_name?.toLowerCase();
-        const normalize = (str: string) => str?.toLowerCase().replace(/[^a-z0-9]/g, '') || '';
-
-        const order = allOrders.find((o: any) => (o.order_id || o['Order ID']) === orderId);
-        if (!order) return res.status(404).json({ error: 'Order not found' });
-
-        // 1. Check Direct Ownership via Order's Supplier Email
-        const orderSupplierEmail = (order.supplier_email || order['supplier_email'] || '').toLowerCase().trim();
-        if (orderSupplierEmail === sellerEmail) {
-            // Access Granted via Direct Email Match
-        } else {
-            // 2. Fallback to Item Lookup (Legacy)
-            const orderItemName = normalize(order.item_name || order['Item Name']);
-            const item = allItems.find((i: any) => normalize(i.product_name || i['Product Name']) === orderItemName);
-
-            if (!item) return res.status(403).json({ error: 'Item not found or access denied (No matching product)' });
-
-            const itemSupplierEmail = (item.supplier_email || '').toLowerCase().trim();
-            const itemContactPerson = (item.contact_person || '').toLowerCase().trim();
-
-            const isOwner = itemSupplierEmail === sellerEmail || (sellerName && itemContactPerson === sellerName);
-
-            if (!isOwner) {
-                return res.status(403).json({ error: 'You do not own this order' });
-            }
+        if (!order) {
+            return res.status(404).json({ error: 'Order not found or access denied' });
         }
 
         let proofUrl = '';
@@ -386,7 +325,20 @@ router.post('/ship', authenticateSellerToken, ensureSellerAccess, upload.single(
             proofUrl = `${protocol}://${host}/api/seller/proof-shipment/${proofId}`;
         }
 
-        // 2. Update Status and Resi
+        // 2. Update Status in DB
+        await db.update(orders)
+            .set({
+                status: 'shipped',
+                // Store Resi/ProofUrl if schema supports it? 
+                // Schema has paymentProofUrl but not shipment info besides status?
+                // The sheet update stores 'Resi' and 'Tracking Number'.
+                // Ideally schema should have `tracking_number` and `shipment_proof_url`.
+                // For now, I'll update status. Ideally I should extend schema, but I'll stick to scope.
+            })
+            .where(eq(orders.id, orderId));
+
+
+        // 3. Update Sheet (Dual Write - critical for legacy support of tracking numbers)
         const updates: any = {
             'status': 'On Shipment',
             'Resi': resi,

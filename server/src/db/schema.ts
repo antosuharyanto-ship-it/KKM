@@ -26,6 +26,8 @@ const bytea = customType<{ data: Buffer; driverData: Buffer }>({
     },
 });
 
+import { serial } from 'drizzle-orm/pg-core';
+
 export const paymentProofs = pgTable('payment_proofs', {
     id: uuid('id').defaultRandom().primaryKey(),
     orderId: varchar('order_id').notNull(),
@@ -33,6 +35,16 @@ export const paymentProofs = pgTable('payment_proofs', {
     mimeType: varchar('mime_type').notNull(),
     createdAt: timestamp('created_at').defaultNow(),
 });
+
+export const shipmentProofs = pgTable('shipment_proofs', {
+    id: serial('id').primaryKey(), // using serial to match introspection
+    orderId: text('order_id').notNull(),
+    fileData: bytea('file_data').notNull(),
+    mimeType: text('mime_type').notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+});
+
+
 
 export const userAddresses = pgTable('user_addresses', {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -124,4 +136,33 @@ export const productReviews = pgTable('product_reviews', {
     rating: integer('rating').notNull(), // 1-5
     comment: text('comment'),
     createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const orders = pgTable('orders', {
+    id: varchar('id').primaryKey(), // Using Custom Order ID (e.g. "ORD-...") or UUID. Sheets used generated IDs. Let's start with varchar to accommodate existing IDs.
+    userId: uuid('user_id').references(() => users.id).notNull(),
+    sellerId: uuid('seller_id').references(() => sellers.id).notNull(),
+    productId: uuid('product_id').references(() => products.id), // Nullable if product deleted? Or keep data? Better nullable or set null.
+
+    // Snapshot of Item details at purchase time (Price/Name can change later)
+    itemName: varchar('item_name').notNull(),
+    itemPrice: decimal('item_price', { precision: 12, scale: 2 }).notNull(),
+    quantity: integer('quantity').notNull(),
+    totalPrice: decimal('total_price', { precision: 12, scale: 2 }).notNull(),
+
+    // Customer Details (Snapshot)
+    customerName: varchar('customer_name'),
+    customerEmail: varchar('customer_email'),
+    customerPhone: varchar('customer_phone'),
+    shippingAddress: text('shipping_address'),
+
+    // Status
+    status: varchar('status', { enum: ['pending', 'paid', 'shipped', 'completed', 'cancelled'] }).default('pending'),
+
+    // Payment Proof
+    paymentProofUrl: text('payment_proof_url'), // Cloudinary/Drive Link
+
+    // Timestamps
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
 });
