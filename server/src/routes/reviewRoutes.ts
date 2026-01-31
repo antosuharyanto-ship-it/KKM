@@ -204,6 +204,8 @@ router.get('/product/:productId', async (req: Request, res: Response) => {
         const { productId } = req.params as { productId: string };
         const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
 
+        console.log('[ReviewRoute] Fetching reviews for productId:', productId);
+
         const reviews = await db
             .select({
                 id: productReviews.id,
@@ -219,6 +221,8 @@ router.get('/product/:productId', async (req: Request, res: Response) => {
             .orderBy(desc(productReviews.createdAt))
             .limit(limit);
 
+        console.log(`[ReviewRoute] Found ${reviews.length} reviews for productId:`, productId);
+
         // Calculate average rating
         const avgRating = reviews.length > 0
             ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
@@ -233,8 +237,13 @@ router.get('/product/:productId', async (req: Request, res: Response) => {
             }
         });
     } catch (error) {
-        console.error('Get Product Reviews Error:', error);
-        res.status(500).json({ error: 'Failed to fetch reviews' });
+        console.error('[ReviewRoute] Get Product Reviews Error:', error);
+        console.error('[ReviewRoute] Error stack:', error instanceof Error ? error.stack : 'No stack');
+        console.error('[ReviewRoute] ProductId attempted:', req.params.productId);
+        res.status(500).json({
+            error: 'Failed to fetch reviews',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
     }
 });
 
