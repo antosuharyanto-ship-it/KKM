@@ -504,23 +504,34 @@ router.post('/trips/:tripId/dates', validate(v.addDateOptionSchema, 'body'), asy
             return res.status(400).json({ error: 'Dates already confirmed' });
         }
 
-        // Convert YYYY-MM-DD to explicit ISO timestamp (UTC)
-        const startDateISO = `${startDate}T00:00:00.000Z`;
-        const endDateISO = `${endDate}T00:00:00.000Z`;
 
-        console.log('[DEBUG] Adding date option:', { startDate, endDate });
-        console.log('[DEBUG] ISO Timestamps:', { start: startDateISO, end: endDateISO });
+        // Debug: Log raw input
+        console.log('[DEBUG] Raw input:', { startDate, endDate, type: typeof startDate });
+
+        // Simple date construction from YYYY-MM-DD
+        const startDateObj = new Date(startDate);
+        const endDateObj = new Date(endDate);
+
+        console.log('[DEBUG] Constructed dates:', {
+            start: startDateObj,
+            startISO: startDateObj.toISOString(),
+            startTime: startDateObj.getTime(),
+            end: endDateObj,
+            endISO: endDateObj.toISOString()
+        });
 
         const newDateOption = await db
             .insert(tripDateVotes)
             .values({
                 tripId,
-                startDate: new Date(startDateISO),
-                endDate: new Date(endDateISO),
+                startDate: startDateObj,
+                endDate: endDateObj,
                 voteCount: 0,
                 createdBy: req.user.id
             })
             .returning();
+
+        console.log('[DEBUG] Inserted date option:', newDateOption[0]);
 
         res.status(201).json({ success: true, data: newDateOption[0] });
     } catch (error) {
