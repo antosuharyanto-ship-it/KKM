@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next'; // Import Hook
-import { Tent, ShoppingBag, User, Search, LayoutDashboard, Megaphone, Instagram, Facebook, Youtube, Twitter, Mail, Phone, MapPin, Package } from 'lucide-react';
+import { Tent, ShoppingBag, User, Search, LayoutDashboard, Megaphone, Instagram, Facebook, Youtube, Twitter, Mail, Phone, MapPin, Package, Compass } from 'lucide-react';
 import { LanguageSwitcher } from '../components/LanguageSwitcher'; // Import Switcher
 import { ChatWidget } from '../components/ChatWidget';
 import axios from 'axios';
@@ -43,6 +43,7 @@ export const AppLayout: React.FC = () => {
                     <DesktopNavItem to="/" label={t('nav.events')} />
                     <DesktopNavItem to="/news" label={t('nav.news')} />
                     <DesktopNavItem to="/community" label={t('nav.community')} />
+                    <DesktopNavItem to="/campbar" label="CampBar" />
                     <DesktopNavItem to="/islamic-tools" label={t('nav.prayer')} />
                     <DesktopNavItem to="/marketplace" label={t('nav.marketplace')} />
                     <DesktopNavItem to="/my-orders" label="My Orders" />
@@ -74,6 +75,7 @@ export const AppLayout: React.FC = () => {
             <nav className="md:hidden absolute bottom-0 left-0 right-0 bg-white border-t border-stone-200 px-4 py-3 flex justify-around items-center z-50 rounded-t-2xl shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
                 <MobileNavItem to="/" icon={<Tent size={20} />} label={t('nav.events')} />
                 <MobileNavItem to="/news" icon={<Megaphone size={20} />} label={t('nav.news')} />
+                <MobileNavItem to="/campbar" icon={<Compass size={20} />} label="CampBar" />
                 {/* <MobileNavItem to="/community" icon={<MessageSquare size={20} />} label={t('nav.community')} /> */}
                 {/* Replaced Community in main view to make space, or keep scrolling? 5 items is comfortable. Let's swap or squeeze. 
                     Actually, let's replace Community with My Orders for mobile if space is tight, or just add it. 
