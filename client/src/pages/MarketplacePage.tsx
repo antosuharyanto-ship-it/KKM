@@ -7,6 +7,7 @@ import { getDisplayImageUrl } from '../utils/imageHelper';
 import { useNavigate } from 'react-router-dom';
 
 interface Product {
+    id?: string; // [NEW] Product ID from DB
     product_name: string;
     unit_price: string;
     category: string;
@@ -83,17 +84,19 @@ export const MarketplacePage: React.FC = () => {
     useEffect(() => {
         if (selectedItem) {
             setCurrentImageIndex(0);
-            fetchProductReviews(selectedItem.product_name);
+            // Fetch reviews using product ID (from DB)
+            if (selectedItem.id) {
+                fetchProductReviews(selectedItem.id);
+            }
         } else {
             setProductReviews([]);
         }
     }, [selectedItem]);
 
-    const fetchProductReviews = async (productName: string) => {
+    const fetchProductReviews = async (productId: string) => {
         setLoadingReviews(true);
         try {
-            // Use product name as ID for now (backend should ideally use real product IDs)
-            const res = await axios.get(`${API_BASE_URL}/api/reviews/product/${encodeURIComponent(productName)}`);
+            const res = await axios.get(`${API_BASE_URL}/api/reviews/product/${encodeURIComponent(productId)}`);
             if (res.data.success) {
                 setProductReviews(res.data.data.reviews || []);
             }
