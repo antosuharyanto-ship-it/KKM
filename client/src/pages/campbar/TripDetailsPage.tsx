@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Edit, Users, Calendar, MapPin, DollarSign, AlertCircle } from 'lucide-react';
+import { API_BASE_URL } from '../../config';
 import campbarApi from '../../utils/campbarApi';
 import type { Trip } from '../../utils/campbarTypes';
 import DateVotingSection from './components/DateVotingSection.tsx';
@@ -27,7 +28,7 @@ export const TripDetailsPage: React.FC = () => {
     const fetchCurrentUser = async () => {
         try {
             // Fetch current user info from auth endpoint
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/auth/me`, {
+            const response = await fetch(`${API_BASE_URL}/auth/me`, {
                 credentials: 'include'
             });
             if (response.ok) {
