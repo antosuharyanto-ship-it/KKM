@@ -12,6 +12,7 @@ interface Product {
     description: string;
     availabilityStatus: 'ready' | 'preorder';
     preorderDays?: number;
+    condition: 'new' | 'pre-loved';
     isDiscountActive: boolean;
     discountPrice?: string;
     images: string[];
@@ -34,6 +35,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, onSuccess, onCan
         description: '',
         availabilityStatus: 'ready',
         preorderDays: 7,
+        condition: 'new',
         isDiscountActive: false,
         discountPrice: '',
         images: []
@@ -89,6 +91,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, onSuccess, onCan
                 category: formData.category,
                 description: formData.description,
                 images: formData.images,
+                condition: formData.condition,
                 discount_price: formData.discountPrice,
                 is_discount_active: formData.isDiscountActive,
                 availability_status: formData.availabilityStatus,
@@ -237,8 +240,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, onSuccess, onCan
             {/* Advanced Settings */}
             <div className="bg-gray-50 p-4 rounded-lg mb-6">
                 <h3 className="font-bold text-gray-700 mb-4">Availability & Promo</h3>
-                <div className="flex flex-col md:flex-row gap-6">
-                    <div className="flex-1">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Availability</label>
                         <select
                             name="availabilityStatus"
@@ -250,19 +253,31 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, onSuccess, onCan
                             <option value="preorder">Pre-Order</option>
                         </select>
                     </div>
-                    {formData.availabilityStatus === 'preorder' && (
-                        <div className="flex-1">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Pre-Order Duration (Days)</label>
-                            <input
-                                type="number"
-                                name="preorderDays"
-                                value={formData.preorderDays}
-                                onChange={handleChange}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                            />
-                        </div>
-                    )}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Condition</label>
+                        <select
+                            name="condition"
+                            value={formData.condition}
+                            onChange={handleChange}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        >
+                            <option value="new">✨ New (Brand New)</option>
+                            <option value="pre-loved">♻️ Pre-loved (Used/Secondhand)</option>
+                        </select>
+                    </div>
                 </div>
+                {formData.availabilityStatus === 'preorder' && (
+                    <div className="mt-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Pre-Order Duration (Days)</label>
+                        <input
+                            type="number"
+                            name="preorderDays"
+                            value={formData.preorderDays}
+                            onChange={handleChange}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        />
+                    </div>
+                )}
 
                 <div className="mt-4 border-t border-gray-200 pt-4">
                     <div className="flex items-center gap-2 mb-2">

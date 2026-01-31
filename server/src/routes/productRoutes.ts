@@ -190,6 +190,7 @@ router.post('/', async (req: Request, res: Response) => {
             weight,
             category,
             images,
+            condition,
             discount_price,
             is_discount_active,
             availability_status,
@@ -217,6 +218,9 @@ router.post('/', async (req: Request, res: Response) => {
             category,
             images: images || [],
             status: status || 'active',
+
+            // Condition
+            condition: condition || 'new',
 
             // Promo
             discountPrice: discount_price ? String(discount_price) : null,
@@ -270,6 +274,9 @@ router.put('/:id', async (req: Request, res: Response) => {
         // Promo
         if (updates.discount_price !== undefined) cleanUpdates.discountPrice = updates.discount_price ? String(updates.discount_price) : null;
         if (updates.is_discount_active !== undefined) cleanUpdates.isDiscountActive = Boolean(updates.is_discount_active);
+
+        // Condition
+        if (updates.condition) cleanUpdates.condition = updates.condition;
 
         // Availability
         if (updates.availability_status) cleanUpdates.availabilityStatus = updates.availability_status;
