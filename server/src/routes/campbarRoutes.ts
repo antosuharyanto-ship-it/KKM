@@ -508,8 +508,8 @@ router.post('/trips/:tripId/dates', validate(v.addDateOptionSchema, 'body'), asy
             .insert(tripDateVotes)
             .values({
                 tripId,
-                startDate: new Date(startDate),
-                endDate: new Date(endDate),
+                startDate: new Date(startDate + 'T00:00:00Z'), // Force UTC to avoid timezone shift
+                endDate: new Date(endDate + 'T00:00:00Z'),
                 voteCount: 0,
                 createdBy: req.user.id
             })
@@ -613,6 +613,41 @@ router.delete('/trips/:tripId/dates/:dateId/vote', async (req: Request, res: Res
     } catch (error) {
         console.error('[CampBar] Error removing vote:', error);
         res.status(500).json({ error: 'Failed to remove vote' });
+    }
+});
+
+/**
+ * DELETE /api/campbar/trips/:tripId/dates/:dateId
+ * Delete date option (organizer only)
+ */
+router.delete('/trips/:tripId/dates/:dateId', async (req: Request, res: Response) => {
+    try {
+        if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+        const { tripId, dateId } = req.params;
+        const trip_id = getParam(tripId);
+        const date_id = getParam(dateId);
+
+        // Check if organizer
+        const trip = await db.select().from(tripBoards).where(eq(tripBoards.id, trip_id)).limit(1);
+        if (trip.length === 0) return res.status(404).json({ error: 'Trip not found' });
+        if (trip[0].organizerId !== req.user.id) {
+            return res.status(403).json({ error: 'Only organizer can delete date options' });
+        }
+
+        // Delete date option
+        const result = await db
+            .delete(tripDateVotes)
+            .where(eq(tripDateVotes.id, date_id))
+            .returning();
+
+        if (result.length === 0) {
+            return res.status(404).json({ error: 'Date option not found' });
+        }
+
+        res.json({ success: true, message: 'Date option deleted' });
+    } catch (error) {
+        console.error('[CampBar] Error deleting date option:', error);
+        res.status(500).json({ error: 'Failed to delete date option' });
     }
 });
 
