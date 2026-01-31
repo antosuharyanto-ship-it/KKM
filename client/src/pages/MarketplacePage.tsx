@@ -80,6 +80,10 @@ export const MarketplacePage: React.FC = () => {
     // Review State
     const [productReviews, setProductReviews] = useState<any[]>([]);
     const [loadingReviews, setLoadingReviews] = useState(false);
+    const [reviewStats, setReviewStats] = useState<Record<string, { avgRating: number, count: number }>>({});
+
+    // Sorting State
+    const [sortBy, setSortBy] = useState('newest');
 
     useEffect(() => {
         if (selectedItem) {
@@ -146,12 +150,77 @@ export const MarketplacePage: React.FC = () => {
         fetchItems();
     }, []);
 
-    // Filter Logic
-    const filteredItems = items.filter(item => {
-        const matchesSearch = (item.product_name || '').toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
-        return matchesSearch && matchesCategory;
-    });
+    // Fetch review stats when items are loaded
+    useEffect(() => {
+        const fetchReviewStats = async () => {
+            if (items.length === 0) return;
+
+            try {
+                // Fetch stats for all products with IDs in parallel
+                const statsPromises = items
+                    .filter(item => item.id) // Only products with database IDs
+                    .map(item =>
+                        axios.get(`${API_BASE_URL}/api/reviews/product/${item.id}/stats`)
+                            .then(res => ({
+                                id: item.id!,
+                                stats: res.data.data
+                            }))
+                            .catch(() => null) // Gracefully handle errors for individual products
+                    );
+
+                const results = await Promise.all(statsPromises);
+
+                // Build stats map
+                const statsMap: Record<string, any> = {};
+                results.forEach(result => {
+                    if (result && result.stats.totalReviews > 0) {
+                        statsMap[result.id] = {
+                            avgRating: result.stats.averageRating,
+                            count: result.stats.totalReviews
+                        };
+                    }
+                });
+
+                setReviewStats(statsMap);
+            } catch (error) {
+                console.error('Failed to fetch review stats:', error);
+            }
+        };
+
+        fetchReviewStats();
+    }, [items]);
+
+    // Helper: Parse price string to number
+    const parsePrice = (priceStr: string): number => {
+        return parseInt(priceStr.replace(/[^0-9]/g, '')) || 0;
+    };
+
+    // Filter Logic with rating data
+    const filteredItems = items
+        .filter(item => {
+            const matchesSearch = (item.product_name || '').toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
+            return matchesSearch && matchesCategory;
+        })
+        .map(item => ({
+            ...item,
+            rating: reviewStats[item.id!]?.avgRating || 0,
+            review_count: reviewStats[item.id!]?.count || 0
+        }))
+        .sort((a, b) => {
+            switch (sortBy) {
+                case 'rating':
+                    return (b.rating || 0) - (a.rating || 0);
+                case 'reviews':
+                    return (b.review_count || 0) - (a.review_count || 0);
+                case 'price-low':
+                    return parsePrice(a.unit_price) - parsePrice(b.unit_price);
+                case 'price-high':
+                    return parsePrice(b.unit_price) - parsePrice(a.unit_price);
+                default:
+                    return 0; // Keep original order (newest first)
+            }
+        });
 
     const categories = ['All', ...Array.from(new Set(items.map(i => i.category).filter(Boolean)))];
 
@@ -463,19 +532,37 @@ export const MarketplacePage: React.FC = () => {
             </div>
 
             {/* Category Filter */}
-            <div className="px-6 md:px-10 -mt-8 mb-8 max-w-4xl mx-auto overflow-x-auto no-scrollbar flex gap-3 pb-2 relative z-20">
-                {categories.map(cat => (
-                    <button
-                        key={cat}
-                        onClick={() => setSelectedCategory(cat)}
-                        className={`whitespace-nowrap px-5 py-2 rounded-full text-sm font-semibold shadow-sm transition-all ${selectedCategory === cat
-                            ? 'bg-orange-500 text-white scale-105'
-                            : 'bg-white text-gray-600 hover:bg-gray-100'
-                            }`}
+            <div className="px-6 md:px-10 -mt-8 mb-4 max-w-6xl mx-auto relative z-20">
+                <div className="flex flex-col md:flex-row gap-3 md:items-center">
+                    {/* Category Pills */}
+                    <div className="overflow-x-auto no-scrollbar flex gap-3 pb-2 flex-1">
+                        {categories.map(cat => (
+                            <button
+                                key={cat}
+                                onClick={() => setSelectedCategory(cat)}
+                                className={`whitespace-nowrap px-5 py-2 rounded-full text-sm font-semibold shadow-sm transition-all ${selectedCategory === cat
+                                    ? 'bg-orange-500 text-white scale-105'
+                                    : 'bg-white text-gray-600 hover:bg-gray-100'
+                                    }`}
+                            >
+                                {cat}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Sort Dropdown */}
+                    <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        className="px-4 py-2 rounded-full bg-white border border-gray-200 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 cursor-pointer"
                     >
-                        {cat}
-                    </button>
-                ))}
+                        <option value="newest">✨ Newest First</option>
+                        <option value="rating">⭐ Highest Rated</option>
+                        <option value="reviews">💬 Most Reviewed</option>
+                        <option value="price-low">💰 Price: Low to High</option>
+                        <option value="price-high">💵 Price: High to Low</option>
+                    </select>
+                </div>
             </div>
 
             {/* Product Grid */}
@@ -513,16 +600,18 @@ export const MarketplacePage: React.FC = () => {
                             <span className="text-[10px] uppercase font-bold text-teal-600 tracking-wider bg-teal-50 px-2 py-1 rounded-md mb-2 inline-block">
                                 {item.category || 'General'}
                             </span>
-                            <h3 className="font-bold text-gray-900 text-sm md:text-base leading-tight mb-1 line-clamp-2">{item.product_name || 'Unnamed Item'}</h3>
+                            <h3 className="font-bold text-gray-900 text-sm md:text-base leading-tight mb-2 line-clamp-2">{item.product_name || 'Unnamed Item'}</h3>
 
-                            {/* Rating Display */}
+                            {/* Enhanced Rating Display */}
                             {item.rating && item.rating > 0 ? (
-                                <div className="flex items-center gap-1 mb-2">
-                                    <Star size={12} className="text-yellow-400 fill-yellow-400" />
-                                    <span className="text-xs font-bold text-gray-600">{item.rating.toFixed(1)}</span>
-                                    <span className="text-[10px] text-gray-400">({item.review_count})</span>
+                                <div className="flex items-center gap-1.5 mb-2 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-100 w-fit">
+                                    <Star size={14} className="text-amber-500 fill-amber-500 flex-shrink-0" />
+                                    <span className="text-sm font-bold text-gray-800">{item.rating.toFixed(1)}</span>
+                                    <span className="text-xs text-gray-500">({item.review_count})</span>
                                 </div>
-                            ) : null}
+                            ) : (
+                                <div className="text-[10px] text-gray-400 mb-2 italic">No reviews yet</div>
+                            )}
                         </div>
                         <div className="mt-4 flex items-center justify-between">
                             <p className="text-orange-600 font-bold">{item.unit_price || 'Free'}</p>
