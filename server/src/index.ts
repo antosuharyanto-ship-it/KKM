@@ -27,7 +27,6 @@ import sellerRoutes from './routes/sellerRoutes';
 import productRoutes from './routes/productRoutes';
 import publicRoutes from './routes/publicRoutes';
 import chatRoutes from './routes/chat';
-import campbarRoutes from './routes/campbarRoutes';
 import { checkAuth } from './middleware/auth';
 import { ensureCsrfToken } from './middleware/csrf';
 import reviewRoutes from './routes/reviewRoutes';
@@ -244,11 +243,6 @@ app.get('/api/officer/check', checkOfficer, (req, res) => {
 // =============================================================================
 app.use('/api', publicRoutes);
 app.use('/api', chatRoutes);
-
-// =============================================================================
-// CampBar Routes (Trip Coordination)
-// =============================================================================
-app.use('/api/campbar', campbarRoutes);
 
 // =============================================================================
 // Seller Routes (OAuth, Profile, etc.)
