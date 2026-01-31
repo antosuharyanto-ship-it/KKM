@@ -515,8 +515,8 @@ router.post('/trips/:tripId/dates', validate(v.addDateOptionSchema, 'body'), asy
             .insert(tripDateVotes)
             .values({
                 tripId,
-                startDate: startDateISO,
-                endDate: endDateISO,
+                startDate: new Date(startDateISO),
+                endDate: new Date(endDateISO),
                 voteCount: 0,
                 createdBy: req.user.id
             })
