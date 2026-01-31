@@ -35,8 +35,8 @@ export const tripQuerySchema = z.object({
 // ============================================================================
 
 export const addDateOptionSchema = z.object({
-    startDate: z.string().datetime('Start date must be a valid datetime'),
-    endDate: z.string().datetime('End date must be a valid datetime'),
+    startDate: z.string().refine(val => !isNaN(Date.parse(val)), 'Start date must be a valid date'),
+    endDate: z.string().refine(val => !isNaN(Date.parse(val)), 'End date must be a valid date'),
 }).refine(data => new Date(data.endDate) > new Date(data.startDate), {
     message: 'End date must be after start date',
     path: ['endDate'],
