@@ -504,21 +504,18 @@ router.post('/trips/:tripId/dates', validate(v.addDateOptionSchema, 'body'), asy
             return res.status(400).json({ error: 'Dates already confirmed' });
         }
 
-        // Manually parse YYYY-MM-DD to ensure UTC
-        const startParts = startDate.split('-').map(Number);
-        const endParts = endDate.split('-').map(Number);
-        const startDateUtc = new Date(Date.UTC(startParts[0], startParts[1] - 1, startParts[2]));
-        const endDateUtc = new Date(Date.UTC(endParts[0], endParts[1] - 1, endParts[2]));
+        const startDateObj = new Date(startDate);
+        const endDateObj = new Date(endDate);
 
         console.log('[DEBUG] Adding date option:', { startDate, endDate });
-        console.log('[DEBUG] Constructed UTC Start:', startDateUtc.toISOString());
+        console.log('[DEBUG] Parsed Dates:', { start: startDateObj, end: endDateObj });
 
         const newDateOption = await db
             .insert(tripDateVotes)
             .values({
                 tripId,
-                startDate: startDateUtc,
-                endDate: endDateUtc,
+                startDate: startDateObj,
+                endDate: endDateObj,
                 voteCount: 0,
                 createdBy: req.user.id
             })
