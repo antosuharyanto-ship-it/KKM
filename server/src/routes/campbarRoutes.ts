@@ -158,11 +158,17 @@ router.get('/trips/:id', validate(v.tripIdParamSchema, 'params'), async (req: Re
         }));
 
         // Get date options with votes
+        console.log('[DEBUG GET] Fetching date options for tripId:', id);
         const dateOptions = await db
             .select()
             .from(tripDateVotes)
             .where(eq(tripDateVotes.tripId, getParam(id)))
             .orderBy(desc(tripDateVotes.voteCount));
+
+        console.log('[DEBUG GET] Found', dateOptions.length, 'date options');
+        if (dateOptions.length > 0) {
+            console.log('[DEBUG GET] First date option:', JSON.stringify(dateOptions[0]));
+        }
 
         // Get gear items
         const gearItems = await db
