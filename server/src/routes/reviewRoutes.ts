@@ -1,13 +1,16 @@
 
 import express, { Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
-import DOMPurify from 'isomorphic-dompurify';
+import * as DOMPurifyModule from 'isomorphic-dompurify';
 import { distance as levenshtein } from 'fastest-levenshtein';
 import { db } from '../db';
 import { productReviews, products, users, orders } from '../db/schema';
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { checkAuth } from '../middleware/auth';
 import { validateCsrfToken } from '../middleware/csrf';
+
+// Handle ESM/CommonJS interop for DOMPurify
+const DOMPurify = (DOMPurifyModule as any).default || DOMPurifyModule;
 
 const router = express.Router();
 
