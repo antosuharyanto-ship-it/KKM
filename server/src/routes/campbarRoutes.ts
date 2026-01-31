@@ -514,7 +514,7 @@ router.post('/trips/:tripId/dates', validate(v.addDateOptionSchema, 'body'), asy
         const newDateOption = await db
             .insert(tripDateVotes)
             .values({
-                trip_id: tripId,
+                tripId,
                 startDate: new Date(startDateISO),
                 endDate: new Date(endDateISO),
                 voteCount: 0,
