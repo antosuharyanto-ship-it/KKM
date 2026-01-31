@@ -14,6 +14,10 @@ import SellerLoginPage from './pages/SellerLoginPage';
 import SellerDashboard from './pages/SellerDashboard';
 import ProtectedSellerRoute from './components/ProtectedSellerRoute';
 import { SellerAuthProvider } from './contexts/SellerAuthContext';
+// CampBar Pages
+import { CampBarPage } from './pages/campbar/CampBarPage';
+import { CreateTripPage } from './pages/campbar/CreateTripPage';
+import { TripDetailsPage } from './pages/campbar/TripDetailsPage';
 
 function App() {
   return (
@@ -43,6 +47,11 @@ function App() {
             <Route path="islamic-tools" element={<IslamicToolsPage />} />
             <Route path="scanner" element={<ScannerPage />} />
             <Route path="dashboard" element={<OrganizerDashboard />} />
+
+            {/* CampBar Routes */}
+            <Route path="campbar" element={<CampBarPage />} />
+            <Route path="campbar/trips/new" element={<CreateTripPage />} />
+            <Route path="campbar/trips/:id" element={<TripDetailsPage />} />
 
             <Route path="more" element={<div className="p-8 text-center text-gray-500">More Features Coming Soon</div>} />
           </Route>
