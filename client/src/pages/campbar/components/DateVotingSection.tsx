@@ -164,9 +164,15 @@ export const DateVotingSection: React.FC<Props> = ({ tripId, dateOptions, isOrga
                         >
                             <div className="flex-1">
                                 <div className="font-semibold text-gray-900">
-                                    {new Date(option.startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                                    {' - '}
-                                    {new Date(option.endDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                    {(() => {
+                                        const start = new Date(option.startDate);
+                                        const end = new Date(option.endDate);
+
+                                        // If invalid date, show raw value for debugging
+                                        if (isNaN(start.getTime())) return `Invalid: ${option.startDate}`;
+
+                                        return `${start.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} - ${end.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+                                    })()}
                                 </div>
                                 <div className="text-sm text-gray-600 mt-1">
                                     {option.voteCount} {option.voteCount === 1 ? 'vote' : 'votes'}
