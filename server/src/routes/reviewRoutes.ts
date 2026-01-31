@@ -1,11 +1,26 @@
 
 import express, { Request, Response } from 'express';
+import rateLimit from 'express-rate-limit';
+import DOMPurify from 'isomorphic-dompurify';
+import { distance as levenshtein } from 'fastest-levenshtein';
 import { db } from '../db';
 import { productReviews, products, users, orders } from '../db/schema';
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { checkAuth } from '../middleware/auth';
 
 const router = express.Router();
+
+// Rate limiting: Max 5 reviews per hour per user
+const reviewLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour window
+    max: 5, // Max 5 reviews per hour
+    message: {
+        error: 'Too many reviews submitted',
+        details: 'Please try again later.'
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
 
 /**
  * POST /api/reviews
@@ -15,8 +30,8 @@ router.get('/test', (req, res) => {
     res.json({ message: 'Review Route is active', version: 'v1.7.8' });
 });
 
-router.post('/', checkAuth, async (req: Request, res: Response) => {
-    console.log('[ReviewRoute] Handling POST /api/reviews (v1.7.7-PARANOID)');
+router.post('/', checkAuth, reviewLimiter, async (req: Request, res: Response) => {
+    console.log('[ReviewRoute] Handling POST /api/reviews (v1.8.0-SECURE)');
     try {
         const { productId, orderId, rating, comment } = req.body;
         const userId = req.user?.id;
@@ -31,6 +46,20 @@ router.post('/', checkAuth, async (req: Request, res: Response) => {
         if (!userId) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
+
+        // Input validation: Comment length
+        if (comment && comment.length > 1000) {
+            return res.status(400).json({
+                error: 'Comment too long',
+                details: 'Reviews must be 1000 characters or less.'
+            });
+        }
+
+        // XSS Protection: Sanitize comment
+        const sanitizedComment = comment ? DOMPurify.sanitize(comment, {
+            ALLOWED_TAGS: [], // Strip all HTML
+            ALLOWED_ATTR: []  // Strip all attributes
+        }).trim() : '';
 
         // Robustness: If productId missing but orderId present, fetch from DB
         let finalProductId: string | undefined = productId;
@@ -54,34 +83,66 @@ router.post('/', checkAuth, async (req: Request, res: Response) => {
             }
         }
 
-        // Fallback: Lookup by Item Name if ID still missing
-        // Fallback: Lookup by Item Name if ID still missing
+        // Improved Fallback: Lookup by Item Name with better matching
         if (!finalProductId && orderItemName && typeof orderItemName === 'string') {
             const safeName = orderItemName.trim();
-            console.log(`[ReviewDebug] Attempting fallback lookup by name: "${safeName}"`);
+            console.log(`[ReviewDebug] Attempting smart product match for: "${safeName}"`);
 
             try {
-                // Use raw SQL for maximum safety against ORM version mismatches
-                const productsFound = await db
-                    .select()
-                    .from(products)
-                    .where(sql`${products.name} ILIKE ${safeName}`)
-                    .limit(1);
+                // 1. Try exact match first
+                let matchedProduct = await db.query.products.findFirst({
+                    where: eq(products.name, safeName)
+                });
 
-                if (productsFound.length > 0) {
-                    finalProductId = productsFound[0].id; // Safe assignment
-                    console.log(`[ReviewDebug] Fallback SUCCESS: Found Product ID: ${finalProductId}`);
+                // 2. If no exact match, try case-insensitive exact match
+                if (!matchedProduct) {
+                    const productsFound = await db
+                        .select()
+                        .from(products)
+                        .where(sql`LOWER(${products.name}) = LOWER(${safeName})`)
+                        .limit(1);
 
-                    // Self-Healing
+                    matchedProduct = productsFound[0];
+                    if (matchedProduct) {
+                        console.log(`[ReviewDebug] Case-insensitive match found: ${matchedProduct.name}`);
+                    }
+                }
+
+                // 3. Last resort: fuzzy match with Levenshtein distance
+                if (!matchedProduct) {
+                    console.log('[ReviewDebug] Attempting fuzzy match with Levenshtein distance...');
+                    const allProducts = await db.select().from(products);
+                    const matches = allProducts
+                        .map(p => ({
+                            product: p,
+                            distance: levenshtein(
+                                safeName.toLowerCase().trim(),
+                                p.name.toLowerCase().trim()
+                            )
+                        }))
+                        .filter(m => m.distance <= 3) // Max 3 character difference
+                        .sort((a, b) => a.distance - b.distance);
+
+                    if (matches.length > 0) {
+                        matchedProduct = matches[0].product;
+                        console.log(`[ReviewDebug] Fuzzy match found: ${matchedProduct.name} (distance: ${matches[0].distance})`);
+                    }
+                }
+
+                if (matchedProduct) {
+                    finalProductId = matchedProduct.id;
+
+                    // Self-healing: Update order with found product_id
                     await db.update(orders)
                         .set({ productId: finalProductId })
                         .where(eq(orders.id, orderId));
-                    console.log(`[ReviewDebug] Self-Healing: Updated Order ${orderId}`);
+
+                    console.log(`[ReviewDebug] Product matched and order updated: ${matchedProduct.name}`);
                 } else {
-                    console.error(`[ReviewDebug] Fallback FAILED: No product found with name "${safeName}"`);
+                    console.error(`[ReviewDebug] No product match found for "${safeName}"`);
                 }
             } catch (fallbackError) {
-                console.error('[ReviewDebug] Fallback mechanism failed/crashed:', fallbackError);
+                console.error('[ReviewDebug] Fallback mechanism failed:', fallbackError);
             }
         }
 
@@ -111,13 +172,13 @@ router.post('/', checkAuth, async (req: Request, res: Response) => {
 
         console.log(`[ReviewDebug] Inserting review: User=${userId}, Product=${finalProductId}, Order=${orderId}`);
 
-        // Insert Review
+        // Insert Review (with sanitized comment)
         await db.insert(productReviews).values({
             userId: userId!,
             productId: finalProductId!,
             orderId: orderId || null,
             rating,
-            comment: comment || '',
+            comment: sanitizedComment,
         });
 
         console.log('[ReviewDebug] Review submitted successfully');
@@ -134,11 +195,12 @@ router.post('/', checkAuth, async (req: Request, res: Response) => {
 
 /**
  * GET /api/reviews/product/:productId
- * Get reviews for a specific product
+ * Get reviews for a specific product (public endpoint)
  */
 router.get('/product/:productId', async (req: Request, res: Response) => {
     try {
         const { productId } = req.params as { productId: string };
+        const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
 
         const reviews = await db
             .select({
@@ -152,12 +214,62 @@ router.get('/product/:productId', async (req: Request, res: Response) => {
             .from(productReviews)
             .leftJoin(users, eq(productReviews.userId, users.id))
             .where(eq(productReviews.productId, productId))
-            .orderBy(desc(productReviews.createdAt));
+            .orderBy(desc(productReviews.createdAt))
+            .limit(limit);
 
-        res.json({ success: true, data: reviews });
+        // Calculate average rating
+        const avgRating = reviews.length > 0
+            ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+            : 0;
+
+        res.json({
+            success: true,
+            data: {
+                reviews,
+                averageRating: parseFloat(avgRating.toFixed(1)),
+                totalReviews: reviews.length
+            }
+        });
     } catch (error) {
         console.error('Get Product Reviews Error:', error);
         res.status(500).json({ error: 'Failed to fetch reviews' });
+    }
+});
+
+/**
+ * GET /api/reviews/product/:productId/stats
+ * Get review statistics for a product (for card display)
+ */
+router.get('/product/:productId/stats', async (req: Request, res: Response) => {
+    try {
+        const { productId } = req.params as { productId: string };
+
+        const reviews = await db.select()
+            .from(productReviews)
+            .where(eq(productReviews.productId, productId));
+
+        const totalReviews = reviews.length;
+        const avgRating = totalReviews > 0
+            ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews
+            : 0;
+
+        res.json({
+            success: true,
+            data: {
+                averageRating: parseFloat(avgRating.toFixed(1)),
+                totalReviews,
+                ratingDistribution: {
+                    5: reviews.filter(r => r.rating === 5).length,
+                    4: reviews.filter(r => r.rating === 4).length,
+                    3: reviews.filter(r => r.rating === 3).length,
+                    2: reviews.filter(r => r.rating === 2).length,
+                    1: reviews.filter(r => r.rating === 1).length,
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Get Review Stats Error:', error);
+        res.status(500).json({ error: 'Failed to fetch review stats' });
     }
 });
 
