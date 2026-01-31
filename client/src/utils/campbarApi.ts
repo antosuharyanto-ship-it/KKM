@@ -26,10 +26,10 @@ export const campbarApi = {
      * @param filters - Optional filters for status, difficulty, search
      */
     getTrips: async (filters?: TripFilters) => {
-        const response = await api.get<{ trips: Trip[] }>('/api/campbar/trips', {
+        const response = await api.get<{ success: boolean; data: Trip[] }>('/api/campbar/trips', {
             params: filters,
         });
-        return response.data.trips;
+        return response.data.data;
     },
 
     /**
@@ -37,8 +37,8 @@ export const campbarApi = {
      * @param id - Trip ID
      */
     getTrip: async (id: string) => {
-        const response = await api.get<{ trip: Trip }>(`/api/campbar/trips/${id}`);
-        return response.data.trip;
+        const response = await api.get<{ success: boolean; data: Trip }>(`/api/campbar/trips/${id}`);
+        return response.data.data;
     },
 
     /**
