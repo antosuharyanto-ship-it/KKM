@@ -206,6 +206,9 @@ router.get('/trips/:id', validate(v.tripIdParamSchema, 'params'), async (req: Re
             }
         }));
 
+        // Debug: Log what we're sending back
+        console.log('[DEBUG GET] Date options from DB:', JSON.stringify(dateOptions, null, 2));
+
         res.json({
             success: true,
             data: {
