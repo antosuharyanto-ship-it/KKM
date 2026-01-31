@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { Pool } from 'pg';
 import path from 'path';
@@ -27,6 +28,7 @@ import productRoutes from './routes/productRoutes';
 import publicRoutes from './routes/publicRoutes';
 import chatRoutes from './routes/chat';
 import { checkAuth } from './middleware/auth';
+import { ensureCsrfToken } from './middleware/csrf';
 import reviewRoutes from './routes/reviewRoutes';
 import { neon } from '@neondatabase/serverless';
 
@@ -86,6 +88,7 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 }));
 app.use(express.json());
+app.use(cookieParser()); // Required for CSRF tokens
 
 app.get('/api/health-test', async (req, res) => {
     try {
@@ -155,6 +158,9 @@ app.use(session({
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+// CSRF Protection: Ensure token cookie exists on all requests
+app.use(ensureCsrfToken);
 
 // Protected Routes (must be after Passport init)
 app.use('/api/reviews', reviewRoutes);

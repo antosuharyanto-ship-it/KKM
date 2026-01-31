@@ -5,6 +5,14 @@ import { formatPrice } from '../utils/formatPrice';
 import { Tag, CheckCircle, Upload, Star } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
+// Helper to get cookie value by name
+const getCookie = (name: string): string | null => {
+    const matches = document.cookie.match(new RegExp(
+        "(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"
+    ));
+    return matches ? decodeURIComponent(matches[1]) : null;
+};
+
 interface MarketOrder {
     order_id: string;
     item_name: string;
@@ -195,12 +203,20 @@ export const MyOrdersPage: React.FC = () => {
         if (!reviewingOrder) return;
         setIsSubmittingReview(true);
         try {
+            // Get CSRF token from cookie
+            const csrfToken = getCookie('XSRF-TOKEN');
+
             await axios.post(`${API_BASE_URL}/api/reviews`, {
                 productId: reviewingOrder.productId || reviewingOrder.product_id, // Handle both cases for safety
                 orderId: reviewingOrder.order_id || reviewingOrder.id, // Handle potential ID mismatch too
                 rating,
                 comment: reviewComment
-            }, { withCredentials: true });
+            }, {
+                withCredentials: true,
+                headers: {
+                    'X-XSRF-TOKEN': csrfToken || '' // Include CSRF token in header
+                }
+            });
 
             showNotification('Review submitted! Thank you.', 'success');
             setReviewingOrder(null);

@@ -7,6 +7,7 @@ import { db } from '../db';
 import { productReviews, products, users, orders } from '../db/schema';
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { checkAuth } from '../middleware/auth';
+import { validateCsrfToken } from '../middleware/csrf';
 
 const router = express.Router();
 
@@ -25,13 +26,14 @@ const reviewLimiter = rateLimit({
 /**
  * POST /api/reviews
  * Submit a review for a product
+ * Protected by: auth, rate limiting, CSRF validation
  */
 router.get('/test', (req, res) => {
-    res.json({ message: 'Review Route is active', version: 'v1.7.8' });
+    res.json({ message: 'Review Route is active', version: 'v1.8.1-CSRF' });
 });
 
-router.post('/', checkAuth, reviewLimiter, async (req: Request, res: Response) => {
-    console.log('[ReviewRoute] Handling POST /api/reviews (v1.8.0-SECURE)');
+router.post('/', checkAuth, validateCsrfToken, reviewLimiter, async (req: Request, res: Response) => {
+    console.log('[ReviewRoute] Handling POST /api/reviews (v1.8.1-CSRF)');
     try {
         const { productId, orderId, rating, comment } = req.body;
         const userId = req.user?.id;
