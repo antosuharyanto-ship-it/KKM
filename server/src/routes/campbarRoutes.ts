@@ -515,7 +515,8 @@ router.post('/trips/:tripId/dates', validate(v.addDateOptionSchema, 'body'), asy
 
 
         // Debug: Log raw input
-        console.log('[DEBUG] Raw input:', { startDate, endDate, type: typeof startDate });
+        console.log('[DEBUG POST] tripId:', tripId);
+        console.log('[DEBUG POST] Raw date input:', { startDate, endDate, type: typeof startDate });
 
         // Simple date construction from YYYY-MM-DD
         const startDateObj = new Date(startDate);
