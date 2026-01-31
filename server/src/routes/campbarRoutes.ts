@@ -164,13 +164,42 @@ router.get('/trips/:id', validate(v.tripIdParamSchema, 'params'), async (req: Re
             .leftJoin(users, eq(tripGearItems.assignedTo, users.id))
             .where(eq(tripGearItems.tripId, getParam(id)));
 
+        // Get recent messages
+        const messagesRaw = await db
+            .select({
+                id: tripMessages.id,
+                message: tripMessages.message,
+                createdAt: tripMessages.createdAt,
+                userId: tripMessages.userId,
+                userName: users.fullName,
+                userPicture: users.picture
+            })
+            .from(tripMessages)
+            .leftJoin(users, eq(tripMessages.userId, users.id))
+            .where(eq(tripMessages.tripId, getParam(id)))
+            .orderBy(desc(tripMessages.createdAt))
+            .limit(50);
+
+        const messages = messagesRaw.reverse().map(msg => ({
+            id: msg.id,
+            message: msg.message,
+            createdAt: msg.createdAt,
+            userId: msg.userId,
+            user: {
+                id: msg.userId,
+                name: msg.userName,
+                picture: msg.userPicture
+            }
+        }));
+
         res.json({
             success: true,
             data: {
                 ...trip[0],
                 participants,
                 dateOptions,
-                gearItems
+                gearItems,
+                messages
             }
         });
     } catch (error) {
@@ -782,13 +811,14 @@ router.get('/trips/:id/messages', async (req: Request, res: Response) => {
             return res.status(403).json({ error: 'Only participants can view messages' });
         }
 
-        const messages = await db
+        const messagesRaw = await db
             .select({
                 id: tripMessages.id,
                 message: tripMessages.message,
                 createdAt: tripMessages.createdAt,
                 userId: tripMessages.userId,
-                userName: users.fullName
+                userName: users.fullName,
+                userPicture: users.picture
             })
             .from(tripMessages)
             .leftJoin(users, eq(tripMessages.userId, users.id))
@@ -797,7 +827,19 @@ router.get('/trips/:id/messages', async (req: Request, res: Response) => {
             .limit(Number(limit))
             .offset(Number(offset));
 
-        res.json({ success: true, data: messages.reverse() }); // Oldest first
+        const messages = messagesRaw.reverse().map(msg => ({
+            id: msg.id,
+            message: msg.message,
+            createdAt: msg.createdAt,
+            userId: msg.userId,
+            user: {
+                id: msg.userId,
+                name: msg.userName,
+                picture: msg.userPicture
+            }
+        }));
+
+        res.json({ success: true, data: messages });
     } catch (error) {
         console.error('[CampBar] Error fetching messages:', error);
         res.status(500).json({ error: 'Failed to fetch messages' });
