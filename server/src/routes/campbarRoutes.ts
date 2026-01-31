@@ -514,34 +514,23 @@ router.post('/trips/:tripId/dates', validate(v.addDateOptionSchema, 'body'), asy
         }
 
 
+
         // Debug: Log raw input
         console.log('[DEBUG POST] tripId:', tripId);
-        console.log('[DEBUG POST] Raw date input:', { startDate, endDate, type: typeof startDate });
-
-        // Simple date construction from YYYY-MM-DD
-        const startDateObj = new Date(startDate);
-        const endDateObj = new Date(endDate);
-
-        console.log('[DEBUG] Constructed dates:', {
-            start: startDateObj,
-            startISO: startDateObj.toISOString(),
-            startTime: startDateObj.getTime(),
-            end: endDateObj,
-            endISO: endDateObj.toISOString()
-        });
+        console.log('[DEBUG POST] Date strings (YYYY-MM-DD):', { startDate, endDate });
 
         const newDateOption = await db
             .insert(tripDateVotes)
             .values({
                 tripId,
-                startDate: startDateObj,
-                endDate: endDateObj,
+                startDate, // Pass YYYY-MM-DD string directly
+                endDate,   // Pass YYYY-MM-DD string directly
                 voteCount: 0,
                 createdBy: req.user.id
             })
             .returning();
 
-        console.log('[DEBUG] Inserted date option:', newDateOption[0]);
+        console.log('[DEBUG POST] Inserted successfully:', newDateOption[0]);
 
         res.status(201).json({ success: true, data: newDateOption[0] });
     } catch (error) {
