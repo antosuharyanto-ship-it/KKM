@@ -130,18 +130,32 @@ router.get('/trips/:id', validate(v.tripIdParamSchema, 'params'), async (req: Re
         }
 
         // Get participants
-        const participants = await db
+        const participantsRaw = await db
             .select({
                 id: tripParticipants.id,
                 userId: tripParticipants.userId,
                 status: tripParticipants.status,
                 joinedAt: tripParticipants.joinedAt,
                 userName: users.fullName,
-                userEmail: users.email
+                userEmail: users.email,
+                userPicture: users.picture
             })
             .from(tripParticipants)
             .leftJoin(users, eq(tripParticipants.userId, users.id))
             .where(eq(tripParticipants.tripId, getParam(id)));
+
+        const participants = participantsRaw.map(p => ({
+            id: p.id,
+            userId: p.userId,
+            status: p.status,
+            joinedAt: p.joinedAt,
+            user: {
+                id: p.userId,
+                name: p.userName,
+                email: p.userEmail,
+                picture: p.userPicture
+            }
+        }));
 
         // Get date options with votes
         const dateOptions = await db
