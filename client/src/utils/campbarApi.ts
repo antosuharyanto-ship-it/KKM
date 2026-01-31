@@ -1,8 +1,7 @@
 import axios from 'axios';
 import type { Trip, TripFilters, CreateTripFormData, DateOptionFormData, GearItemFormData } from './campbarTypes';
 
-// Get API base URL from config
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { API_BASE_URL } from '../config';
 
 // Create axios instance with defaults
 const api = axios.create({
