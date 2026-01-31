@@ -76,11 +76,34 @@ export const MarketplacePage: React.FC = () => {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [lightboxOpen, setLightboxOpen] = useState(false);
 
+    // Review State
+    const [productReviews, setProductReviews] = useState<any[]>([]);
+    const [loadingReviews, setLoadingReviews] = useState(false);
+
     useEffect(() => {
         if (selectedItem) {
             setCurrentImageIndex(0);
+            fetchProductReviews(selectedItem.product_name);
+        } else {
+            setProductReviews([]);
         }
     }, [selectedItem]);
+
+    const fetchProductReviews = async (productName: string) => {
+        setLoadingReviews(true);
+        try {
+            // Use product name as ID for now (backend should ideally use real product IDs)
+            const res = await axios.get(`${API_BASE_URL}/api/reviews/product/${encodeURIComponent(productName)}`);
+            if (res.data.success) {
+                setProductReviews(res.data.data.reviews || []);
+            }
+        } catch (error) {
+            console.error('Failed to fetch reviews:', error);
+            setProductReviews([]);
+        } finally {
+            setLoadingReviews(false);
+        }
+    };
 
     // Delivery State
     const [addresses, setAddresses] = useState<UserAddress[]>([]);
@@ -649,6 +672,59 @@ export const MarketplacePage: React.FC = () => {
                                 <p className="text-[10px] text-green-600 mt-1">
                                     Verify stock, ask details, or negotiate before ordering
                                 </p>
+                            </div>
+                        )}
+
+                        {/* Reviews Section */}
+                        {productReviews.length > 0 && (
+                            <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-xl mb-4">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <Star size={16} className="text-yellow-500 fill-yellow-500" />
+                                    <h4 className="font-bold text-gray-800">Customer Reviews ({productReviews.length})</h4>
+                                </div>
+                                <div className="space-y-3 max-h-60 overflow-y-auto">
+                                    {productReviews.map((review: any, idx: number) => (
+                                        <div key={idx} className="bg-white p-3 rounded-lg border border-yellow-100">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                {review.reviewerPicture ? (
+                                                    <img
+                                                        src={review.reviewerPicture}
+                                                        alt={review.reviewerName}
+                                                        className="w-8 h-8 rounded-full"
+                                                    />
+                                                ) : (
+                                                    <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-bold text-xs">
+                                                        {review.reviewerName?.charAt(0) || '?'}
+                                                    </div>
+                                                )}
+                                                <div className="flex-1">
+                                                    <p className="font-semibold text-sm text-gray-800">{review.reviewerName || 'Anonymous'}</p>
+                                                    <div className="flex items-center gap-1">
+                                                        {[1, 2, 3, 4, 5].map((star) => (
+                                                            <Star
+                                                                key={star}
+                                                                size={12}
+                                                                className={star <= review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}
+                                                            />
+                                                        ))}
+                                                        <span className="text-xs text-gray-500 ml-1">
+                                                            {new Date(review.createdAt).toLocaleDateString()}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {review.comment && (
+                                                <p className="text-sm text-gray-700 leading-relaxed">{review.comment}</p>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {loadingReviews && (
+                            <div className="text-center py-4">
+                                <p className="text-sm text-gray-500">Loading reviews...</p>
                             </div>
                         )}
 
