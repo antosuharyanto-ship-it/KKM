@@ -230,6 +230,16 @@ export const campbarApi = {
         });
         return response.data.data;
     },
+
+    /**
+     * Update trip status (organizer only)
+     * @param tripId - Trip ID
+     * @param status - New status
+     */
+    updateTripStatus: async (id: string, status: 'ongoing' | 'completed') => {
+        const response = await api.patch<{ success: boolean; data: Trip }>(`/api/campbar/trips/${id}/status`, { status });
+        return response.data.data;
+    },
 };
 
 export default campbarApi;

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit, Users, Calendar, MapPin, DollarSign, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Edit, Users, Calendar, MapPin, DollarSign, AlertCircle, Play, CheckCircle } from 'lucide-react';
 import { API_BASE_URL } from '../../config';
 import campbarApi from '../../utils/campbarApi';
 import type { Trip } from '../../utils/campbarTypes';
@@ -58,6 +58,23 @@ export const TripDetailsPage: React.FC = () => {
             }
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleUpdateStatus = async (status: 'ongoing' | 'completed') => {
+        if (!id || !trip) return;
+        const confirmMsg = status === 'ongoing' ? 'Start this trip?' : 'Mark trip as completed?';
+        if (!window.confirm(confirmMsg)) return;
+
+        setActionLoading(true);
+        try {
+            await campbarApi.updateTripStatus(id, status);
+            await fetchTripDetails();
+        } catch (error: any) {
+            const message = error.response?.data?.error || 'Failed to update status';
+            alert(message);
+        } finally {
+            setActionLoading(false);
         }
     };
 
@@ -256,6 +273,26 @@ export const TripDetailsPage: React.FC = () => {
                                     <Edit size={18} />
                                     Edit Trip
                                 </button>
+                                {trip.status === 'confirmed' && (
+                                    <button
+                                        onClick={() => handleUpdateStatus('ongoing')}
+                                        disabled={actionLoading}
+                                        className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition disabled:opacity-50"
+                                    >
+                                        <Play size={18} />
+                                        Start Trip
+                                    </button>
+                                )}
+                                {trip.status === 'ongoing' && (
+                                    <button
+                                        onClick={() => handleUpdateStatus('completed')}
+                                        disabled={actionLoading}
+                                        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition disabled:opacity-50"
+                                    >
+                                        <CheckCircle size={18} />
+                                        Complete Trip
+                                    </button>
+                                )}
                                 <button
                                     onClick={handleCancelTrip}
                                     disabled={actionLoading}

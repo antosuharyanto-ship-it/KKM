@@ -704,6 +704,43 @@ router.post('/trips/:tripId/dates/:dateId/confirm', async (req: Request, res: Re
 });
 
 // ============================================================================
+/**
+ * PATCH /api/campbar/trips/:id/status
+ * Update trip status (organizer only)
+ */
+router.patch('/trips/:id/status', async (req: Request, res: Response) => {
+    try {
+        if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+        const { id } = req.params;
+        const { status } = req.body;
+        const trip_id = getParam(id);
+
+        if (!['ongoing', 'completed'].includes(status)) {
+            return res.status(400).json({ error: 'Invalid status' });
+        }
+
+        // Check organizer
+        const trip = await db.select().from(tripBoards).where(eq(tripBoards.id, trip_id)).limit(1);
+        if (trip.length === 0) return res.status(404).json({ error: 'Trip not found' });
+        if (trip[0].organizerId !== req.user.id) {
+            return res.status(403).json({ error: 'Only organizer can update status' });
+        }
+
+        // Update status
+        const updated = await db
+            .update(tripBoards)
+            .set({ status, updatedAt: new Date() })
+            .where(eq(tripBoards.id, trip_id))
+            .returning();
+
+        res.json({ success: true, data: updated[0] });
+    } catch (error) {
+        console.error('[CampBar] Error updating status:', error);
+        res.status(500).json({ error: 'Failed to update status' });
+    }
+});
+
+// ============================================================================
 // GEAR COORDINATION
 // ============================================================================
 
