@@ -4,6 +4,7 @@ import {
     uuid,
     varchar,
     timestamp,
+    date,
     json,
     boolean,
     customType,
