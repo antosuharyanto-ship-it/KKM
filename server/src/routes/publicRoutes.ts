@@ -84,6 +84,9 @@ router.get('/marketplace', async (req: Request, res: Response) => {
                 origin_city_id: seller.shippingOriginId, // Komerce ID
                 origin_city: seller.addressCity, // Display Name
 
+                // Item Condition
+                condition: product.condition || 'new', // NEW or PRE-LOVED
+
                 // Meta
                 source: 'db',
                 original_price: product.isDiscountActive ? formatRupiah(Number(product.price)) : undefined,

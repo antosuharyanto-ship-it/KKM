@@ -29,6 +29,8 @@ interface Product {
     origin_city_id?: string;
     origin_city?: string;
     buyer_fee_percent?: number;
+    // Item Condition
+    condition?: 'new' | 'pre-loved'; // NEW or PRE-LOVED
 }
 
 // --- Delivery Integration Interfaces ---
@@ -585,6 +587,13 @@ export const MarketplacePage: React.FC = () => {
                                 : 'bg-green-100 text-green-700'
                                 }`}>
                                 {item.stock_status || 'Ready Stock'}
+                            </div>
+                            {/* Condition Badge - Top Right */}
+                            <div className={`absolute top-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold z-10 ${item.condition === 'pre-loved'
+                                    ? 'bg-purple-100 text-purple-700'
+                                    : 'bg-blue-100 text-blue-700'
+                                }`}>
+                                {item.condition === 'pre-loved' ? '♻️ Pre-loved' : '✨ New'}
                             </div>
                             {item.product_image ? (
                                 <img

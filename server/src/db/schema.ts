@@ -126,6 +126,8 @@ export const products = pgTable('products', {
     // Availability
     availabilityStatus: varchar('availability_status', { enum: ['ready', 'preorder'] }).default('ready'),
     preorderDays: integer('preorder_days'), // Days required if preorder
+    // Item Condition (New vs Pre-loved)
+    condition: varchar('condition', { enum: ['new', 'pre-loved'] }).default('new'),
 
     images: json('images').$type<string[]>().default([]), // Storing array of URLs as JSON
     status: varchar('status', { enum: ['active', 'draft', 'archived'] }).default('active'),
