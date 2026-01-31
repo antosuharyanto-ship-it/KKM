@@ -283,8 +283,8 @@ router.post('/trips', validate(v.createTripSchema, 'body'), async (req: Request,
         if (dateOptions && Array.isArray(dateOptions) && dateOptions.length > 0) {
             const dateVotes = dateOptions.map((option: any) => ({
                 tripId,
-                startDate: new Date(option.startDate),
-                endDate: new Date(option.endDate),
+                startDate: option.startDate, // Already YYYY-MM-DD string
+                endDate: option.endDate,     // Already YYYY-MM-DD string
                 voteCount: 0,
                 createdBy: req.user!.id
             }));
@@ -692,12 +692,12 @@ router.post('/trips/:tripId/dates/:dateId/confirm', async (req: Request, res: Re
             return res.status(404).json({ error: 'Date option not found' });
         }
 
-        // Update trip with final dates
+        // Update trip with final dates (convert date strings to Date objects for timestamp columns)
         await db
             .update(tripBoards)
             .set({
-                startDate: dateOption[0].startDate,
-                endDate: dateOption[0].endDate,
+                startDate: new Date(dateOption[0].startDate!), // Convert YYYY-MM-DD to Date
+                endDate: new Date(dateOption[0].endDate!),     // Convert YYYY-MM-DD to Date
                 datesConfirmed: true,
                 status: 'confirmed',
                 updatedAt: new Date()
