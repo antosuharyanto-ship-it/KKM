@@ -430,8 +430,8 @@ router.post('/trips/:id/join', async (req: Request, res: Response) => {
                 trip: {
                     title: trip[0].title,
                     destination: trip[0].destination || 'TBA',
-                    startDate: trip[0].startDate,
-                    endDate: trip[0].endDate,
+                    startDate: trip[0].startDate ? new Date(trip[0].startDate) : null,
+                    endDate: trip[0].endDate ? new Date(trip[0].endDate) : null,
                     location: trip[0].meetingPoint || trip[0].destination || 'TBA'
                 },
                 user: {
@@ -764,8 +764,8 @@ router.post('/trips/:tripId/dates/:dateId/confirm', async (req: Request, res: Re
         const tripData = {
             title: trip[0].title,
             destination: trip[0].destination || 'TBA',
-            startDate: updatedTripRaw[0].startDate,
-            endDate: updatedTripRaw[0].endDate,
+            startDate: updatedTripRaw[0].startDate ? new Date(updatedTripRaw[0].startDate) : null,
+            endDate: updatedTripRaw[0].endDate ? new Date(updatedTripRaw[0].endDate) : null,
             location: trip[0].meetingPoint || trip[0].destination || 'TBA'
         };
 
