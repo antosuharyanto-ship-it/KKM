@@ -1,6 +1,7 @@
 import React from 'react';
-import { Users, Crown } from 'lucide-react';
+import { Users, Crown, Ticket } from 'lucide-react';
 import type { Participant } from '../../../utils/campbarTypes';
+import { API_BASE_URL } from '../../../config';
 
 interface Props {
     participants: Participant[];
@@ -57,9 +58,22 @@ export const ParticipantsList: React.FC<Props> = ({ participants, organizerId })
                                     </div>
                                 </div>
                             </div>
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusBadge(participant.status)}`}>
-                                {participant.status}
-                            </span>
+                            <div className="flex items-center gap-2">
+                                {participant.ticketUrl && (
+                                    <a
+                                        href={`${API_BASE_URL}/tickets/${participant.ticketUrl.split('/').pop()}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-1.5 text-teal-600 hover:text-teal-800 hover:bg-teal-50 rounded-lg border border-teal-200 transition-colors"
+                                        title="View Ticket"
+                                    >
+                                        <Ticket size={16} />
+                                    </a>
+                                )}
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusBadge(participant.status)}`}>
+                                    {participant.status}
+                                </span>
+                            </div>
                         </div>
                     ))}
                 </div>

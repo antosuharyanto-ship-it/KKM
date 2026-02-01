@@ -37,6 +37,8 @@ export interface Participant {
     userId: string;
     status: 'interested' | 'confirmed' | 'waitlist';
     joinedAt: string;
+    ticketUrl?: string;
+    ticketCode?: string;
     user?: User;
 }
 
