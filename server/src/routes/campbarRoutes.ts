@@ -951,6 +951,55 @@ router.put('/trips/:tripId/gear/:itemId', async (req: Request, res: Response) =>
 });
 
 /**
+ * POST /api/campbar/trips/:tripId/gear/:itemId/volunteer
+ * Volunteer for a gear item
+ */
+router.post('/trips/:tripId/gear/:itemId/volunteer', async (req: Request, res: Response) => {
+    try {
+        if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+        const { tripId, itemId } = req.params;
+        const trip_id = getParam(tripId);
+
+        // Check if participant
+        const participant = await db
+            .select()
+            .from(tripParticipants)
+            .where(and(
+                eq(tripParticipants.tripId, trip_id),
+                eq(tripParticipants.userId, req.user.id)
+            ))
+            .limit(1);
+
+        if (participant.length === 0) {
+            return res.status(403).json({ error: 'Only participants can volunteer for gear' });
+        }
+
+        // Check if item already assigned
+        const item = await db.select().from(tripGearItems).where(eq(tripGearItems.id, getParam(itemId))).limit(1);
+        if (item.length === 0) return res.status(404).json({ error: 'Item not found' });
+
+        if (item[0].assignedTo) {
+            return res.status(400).json({ error: 'Item already assigned' });
+        }
+
+        // Assign gear
+        const updatedGear = await db
+            .update(tripGearItems)
+            .set({
+                assignedTo: req.user.id,
+                isCovered: true
+            })
+            .where(eq(tripGearItems.id, getParam(itemId)))
+            .returning();
+
+        res.json({ success: true, message: 'Volunteered successfully' });
+    } catch (error) {
+        console.error('[CampBar] Error volunteering gear:', error);
+        res.status(500).json({ error: 'Failed to volunteer' });
+    }
+});
+
+/**
  * DELETE /api/campbar/trips/:tripId/gear/:itemId
  * Remove gear item
  */
