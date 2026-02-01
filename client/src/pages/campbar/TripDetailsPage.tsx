@@ -245,8 +245,8 @@ export const TripDetailsPage: React.FC = () => {
                                     {trip.datesConfirmed ? 'Dates Confirmed' : 'Voting Open'}
                                 </div>
                                 <div className="text-xs text-gray-600">
-                                    {trip.datesConfirmed
-                                        ? `${new Date(trip.startDate!).toLocaleDateString()} - ${new Date(trip.endDate!).toLocaleDateString()}`
+                                    {trip.datesConfirmed && trip.startDate
+                                        ? `${new Date(trip.startDate).toLocaleDateString()} - ${new Date(trip.endDate!).toLocaleDateString()}`
                                         : 'Vote on dates below'
                                     }
                                 </div>

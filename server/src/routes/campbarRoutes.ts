@@ -35,7 +35,7 @@ router.use(checkAuth);
 router.get('/trips', async (req: Request, res: Response) => {
     try {
         const {
-            status = 'planning',
+            status = 'all',
             difficulty,
             destination,
             limit = 20,
