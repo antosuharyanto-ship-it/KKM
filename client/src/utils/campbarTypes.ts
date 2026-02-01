@@ -74,6 +74,25 @@ export interface Message {
     user?: User;
 }
 
+export interface EmergencyContact {
+    id: string;
+    name: string;
+    phoneNumber: string;
+    relationship?: string;
+}
+
+export interface SOSAlert {
+    location?: {
+        lat: number;
+        lng: number;
+        accuracy?: number;
+    };
+    message: string;
+    status: 'medical' | 'lost' | 'security' | 'other';
+    batteryLevel?: number;
+    sentAt: string;
+}
+
 // Form types
 export interface CreateTripFormData {
     title: string;

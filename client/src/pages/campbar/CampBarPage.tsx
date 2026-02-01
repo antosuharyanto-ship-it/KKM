@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, Search, Tent, Mountain, Users, Calendar } from 'lucide-react';
+import { Plus, Search, Tent, Mountain, Users, Calendar, AlertTriangle } from 'lucide-react';
 import campbarApi from '../../utils/campbarApi';
 import type { Trip, TripFilters } from '../../utils/campbarTypes';
 import { HowItWorks } from './components/HowItWorks';
@@ -105,6 +105,17 @@ export const CampBarPage: React.FC = () => {
                         </div>
                         <h3 className="font-bold text-center mb-2 text-lg">Group Messaging</h3>
                         <p className="text-xs text-center text-gray-300">Chat with your trip members</p>
+                    </div>
+                    {/* Panic Button Card */}
+                    <div
+                        onClick={() => navigate('/campbar/trips/safety')}
+                        className="bg-red-500/20 backdrop-blur-md rounded-2xl p-6 border border-red-500/40 hover:bg-red-500/30 transition group cursor-pointer"
+                    >
+                        <div className="w-16 h-16 mx-auto mb-4 bg-red-500/20 rounded-full flex items-center justify-center group-hover:scale-110 transition animate-pulse">
+                            <AlertTriangle className="text-red-400" size={32} />
+                        </div>
+                        <h3 className="font-bold text-center mb-2 text-lg text-red-100">SOS / Panic Button</h3>
+                        <p className="text-xs text-center text-red-200">Emergency signal & Location sharing</p>
                     </div>
                 </div>
 
@@ -249,7 +260,17 @@ export const CampBarPage: React.FC = () => {
                         ))}
                     </div>
                 )}
+
             </div>
+
+            {/* Persistent SOS Floating Button */}
+            <button
+                onClick={() => navigate('/campbar/trips/safety')}
+                className="fixed bottom-6 right-6 z-50 bg-red-600 hover:bg-red-700 text-white rounded-full p-4 shadow-lg border-4 border-red-500/30 animate-pulse transition-transform hover:scale-110 active:scale-95 flex items-center justify-center"
+                aria-label="Emergency SOS"
+            >
+                <AlertTriangle size={28} fill="currentColor" />
+            </button>
         </div>
     );
 };

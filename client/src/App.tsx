@@ -19,6 +19,7 @@ import { CampBarPage } from './pages/campbar/CampBarPage';
 import { CreateTripPage } from './pages/campbar/CreateTripPage';
 import { TripDetailsPage } from './pages/campbar/TripDetailsPage';
 import { EditTripPage } from './pages/campbar/EditTripPage';
+import { SafetyPage } from './pages/campbar/SafetyPage';
 
 function App() {
   return (
@@ -54,6 +55,8 @@ function App() {
             <Route path="campbar/trips/new" element={<CreateTripPage />} />
             <Route path="campbar/trips/:id" element={<TripDetailsPage />} />
             <Route path="campbar/trips/:id/edit" element={<EditTripPage />} />
+            <Route path="campbar/trips/safety" element={<SafetyPage />} />
+            <Route path="campbar/trips/:tripId/safety" element={<SafetyPage />} />
 
             <Route path="more" element={<div className="p-8 text-center text-gray-500">More Features Coming Soon</div>} />
           </Route>

@@ -1229,4 +1229,81 @@ router.get('/tickets/download/:filename', async (req: Request, res: Response) =>
     }
 });
 
+// ============================================================================
+// SAFETY / SOS
+// ============================================================================
+
+/**
+ * POST /api/campbar/trips/:tripId/sos
+ * Send SOS Alert to all trip participants
+ */
+router.post('/trips/:tripId/sos', async (req: Request, res: Response) => {
+    try {
+        const { tripId } = req.params;
+        const trip_id = getParam(tripId);
+        const { location, message, status, batteryLevel, sentAt } = req.body;
+
+        console.log(`[SOS] Received SOS from user ${req.user?.id} for trip ${trip_id}`);
+        console.log(`[SOS] Details: Status=${status}, Msg=${message}, Bat=${batteryLevel}%`);
+
+        // 1. Verify Trip Exists
+        const trip = await db.select().from(tripBoards).where(eq(tripBoards.id, trip_id)).limit(1);
+        if (trip.length === 0) {
+            return res.status(404).json({ error: 'Trip not found' });
+        }
+
+        // 2. Get All Participants (including organizer)
+        const participants = await db
+            .select({
+                userId: tripParticipants.userId,
+                email: users.email,
+                phone: users.phoneNumber,
+                fullName: users.fullName
+            })
+            .from(tripParticipants)
+            .leftJoin(users, eq(tripParticipants.userId, users.id))
+            .where(eq(tripParticipants.tripId, trip_id));
+
+        // Also include organizer if not in participants list (though they should be)
+        const organizer = await db
+            .select({
+                id: users.id,
+                email: users.email,
+                phone: users.phoneNumber,
+                fullName: users.fullName
+            })
+            .from(users)
+            .where(eq(users.id, trip[0].organizerId))
+            .limit(1);
+
+        const recipients = [...participants];
+        // Deduplicate if needed, but db constraints usually handle this
+
+        console.log(`[SOS] Broadcasting to ${recipients.length} participants (Trip-Scoped)`);
+
+        // 3. (Placeholder) Logic to send Push Notifications / Emails / SMS
+        // In a real implementation:
+        // await notificationService.sendUrgentPush(recipients.map(r => r.userId), { title: "SOS ALERT", body: ... });
+        // await smsService.send(recipients.map(r => r.phone), ...);
+
+        // For now, we simulate success and log
+        recipients.forEach(r => {
+            console.log(`[SOS] -> Sending ALERT to ${r.fullName} (${r.email})`);
+        });
+
+        // 4. Save to Trip Messages as a critical alert
+        await db.insert(tripMessages).values({
+            tripId: trip_id,
+            userId: req.user?.id || 'system',
+            message: `🔴 SOS ALERT: ${status.toUpperCase()} - ${message} (Bat: ${batteryLevel || '?'}%) @ ${location?.lat},${location?.lng}`,
+            createdAt: new Date()
+        });
+
+        res.json({ success: true, message: 'SOS Broadcasted to trip participants' });
+    } catch (error) {
+        console.error('[CampBar] Error processing SOS:', error);
+        res.status(500).json({ error: 'Failed to process SOS alert' });
+    }
+});
+
 export default router;

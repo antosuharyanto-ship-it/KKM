@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Trip, TripFilters, CreateTripFormData, DateOptionFormData, GearItemFormData } from './campbarTypes';
+import type { Trip, TripFilters, CreateTripFormData, DateOptionFormData, GearItemFormData, SOSAlert } from './campbarTypes';
 
 import { API_BASE_URL } from '../config';
 
@@ -250,6 +250,22 @@ export const campbarApi = {
     updateTripStatus: async (id: string, status: 'ongoing' | 'completed') => {
         const response = await api.patch<{ success: boolean; data: Trip }>(`/api/campbar/trips/${id}/status`, { status });
         return response.data.data;
+    },
+    // ============================================================================
+    // SAFETY / SOS
+    // ============================================================================
+
+    /**
+     * Send SOS Alert
+     * @param tripId - Trip ID
+     * @param data - SOS Data
+     */
+    sendSOS: async (tripId: string, data: SOSAlert) => {
+        const response = await api.post<{ success: boolean; message: string }>(
+            `/api/campbar/trips/${tripId}/sos`,
+            data
+        );
+        return response.data;
     },
 };
 
