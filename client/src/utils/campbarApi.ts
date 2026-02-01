@@ -91,6 +91,17 @@ export const campbarApi = {
         return response.data;
     },
 
+    /**
+     * Confirm attendance for a trip
+     * @param id - Trip ID
+     */
+    confirmAttendance: async (id: string) => {
+        const response = await api.post<{ success: boolean; message: string }>(
+            `/api/campbar/trips/${id}/participation/confirm`
+        );
+        return response.data;
+    },
+
     // ============================================================================
     // DATE VOTING
     // ============================================================================
