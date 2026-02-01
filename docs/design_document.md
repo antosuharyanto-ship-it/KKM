@@ -144,8 +144,10 @@ To prevent "Too many connections" errors common in serverless environments, the 
 5.  **Feature Implementation**:
     - Events & Booking
     - Islamic Tools (Sholat, Kiblat)
+    - Islamic Tools (Sholat, Kiblat)
     - Marketplace
     - **Product Reviews** ✅ **COMPLETED**
+    - **Safety Features (Panic Button)** ✅ **COMPLETED**
 6.  **Deployment**: Push to Vercel/Render.
 
 ---
@@ -434,3 +436,69 @@ describe('POST /api/reviews', () => {
 - Implement proper logging library (Winston/Pino)
 - Add review analytics and reporting
 - Consider GraphQL for complex review queries
+
+---
+
+## 9. Safety / Panic Button System Specification
+
+### 9.1 Overview
+**Status:** ✅ Deployed and Operational (February 2026)
+**Goal:** Provide critical safety tools for camping trips, ensuring help is available even in poor network conditions.
+
+The Safety System includes real-time location tracking, a dedicated SOS activation flow, and a robust offline fallback mechanism covering both 4G/5G and basic GSM (SMS) coverage.
+
+### 9.2 Architecture
+
+```mermaid
+graph TD
+    User[用户 (Camper)] -->|Click Red FAB| SafetyPage[Safety Dashboard]
+    SafetyPage -->|Hold Button 3s| SOS{Internet Avail?}
+    
+    SOS -->|Yes (Online)| API[POST /api/trips/:id/sos]
+    API -->|Lookup| DB[(Trip Participants)]
+    API -->|Broadcast| Server[Notify Group Members]
+    
+    SOS -->|No (Offline/Fail)| SMS[Generate SMS]
+    SMS -->|Pre-fill| NativeApp[Native Message App]
+    NativeApp -->|Send| Network[GSM Network]
+    
+    subgraph "Payload Data"
+        LatLong[GPS Coordinates]
+        Battery[Battery Level]
+        Status[Emergency Type]
+        Msg[Custom Message]
+    end
+```
+
+### 9.3 Key Components
+
+#### A. Trigger Mechanism (UI)
+- **Floating Action Button (FAB):** A persistent, pulsing red button located at `bottom-24 left-6` (above common navbars/widgets).
+- **Hold-to-Activate:** Requires a 3-second long press to prevent accidental triggers.
+- **Vibration Feedback:** Haptic feedback confirms activation.
+
+#### B. Location & Context
+- **Geolocation API:** maximizing accuracy (`enableHighAccuracy: true`).
+- **Battery Status API:** Captures device battery level to inform rescuers of urgency.
+- **Emergency Types:** Pre-defined categories (Medical, Lost, Security, Other).
+
+#### C. Backend Routing (Trip-Scoped)
+- **Endpoint:** `POST /api/campbar/trips/:tripId/sos`
+- **Scope:** Alerts are strictly broadcast to **only** the participants of the specific trip ID.
+- **Privacy:** Location data is only shared during an active SOS event.
+
+#### D. Offline Fallback (SMS)
+- **Automatic Failover:** If the API call fails or times out, the app immediately constructs a `sms:` URI.
+- **Content:**
+  ```text
+  SOS! I need help.
+  Status: LOST
+  Battery: 34%
+  Location: https://maps.google.com/?q=-6.2088,106.8456
+  ```
+- **Universal Link:** Works on iOS and Android native messaging apps.
+
+### 9.4 Deployment & Access
+- **Routes:** `/campbar/trips/safety` and `/campbar/trips/:tripId/safety`
+- **Permissions:** Requests Location access on page load.
+- **Availability:** Always accessible from CampBar Dashboard and active Trip Details.
