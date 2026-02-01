@@ -266,7 +266,7 @@ export const CampBarPage: React.FC = () => {
             {/* Persistent SOS Floating Button */}
             <button
                 onClick={() => navigate('/campbar/trips/safety')}
-                className="fixed bottom-6 left-6 z-50 bg-red-600 hover:bg-red-700 text-white rounded-full p-4 shadow-lg border-4 border-red-500/30 animate-pulse transition-transform hover:scale-110 active:scale-95 flex items-center justify-center"
+                className="fixed bottom-24 left-6 z-50 bg-red-600 hover:bg-red-700 text-white rounded-full p-4 shadow-lg border-4 border-red-500/30 animate-pulse transition-transform hover:scale-110 active:scale-95 flex items-center justify-center"
                 aria-label="Emergency SOS"
             >
                 <AlertTriangle size={28} fill="currentColor" />
