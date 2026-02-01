@@ -138,6 +138,8 @@ router.get('/trips/:id', validate(v.tripIdParamSchema, 'params'), async (req: Re
                 userId: tripParticipants.userId,
                 status: tripParticipants.status,
                 joinedAt: tripParticipants.joinedAt,
+                ticketUrl: tripParticipants.ticketUrl,
+                ticketCode: tripParticipants.ticketCode,
                 userName: users.fullName,
                 userEmail: users.email,
                 userPicture: users.picture
@@ -151,6 +153,8 @@ router.get('/trips/:id', validate(v.tripIdParamSchema, 'params'), async (req: Re
             userId: p.userId,
             status: p.status,
             joinedAt: p.joinedAt,
+            ticketUrl: p.ticketUrl,
+            ticketCode: p.ticketCode,
             user: {
                 id: p.userId,
                 name: p.userName,
