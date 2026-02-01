@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Plus, Search, Tent, Mountain, Users, Calendar } from 'lucide-react';
 import campbarApi from '../../utils/campbarApi';
 import type { Trip, TripFilters } from '../../utils/campbarTypes';
+import { HowItWorks } from './components/HowItWorks';
 
 export const CampBarPage: React.FC = () => {
     useTranslation();
@@ -122,6 +123,9 @@ export const CampBarPage: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* How It Works Section */}
+            <HowItWorks />
 
             {/* Filters & Create Button */}
             <div className="px-6 md:px-10 -mt-8 mb-6 max-w-6xl mx-auto relative z-20">
