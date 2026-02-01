@@ -528,6 +528,42 @@ router.delete('/trips/:id/leave', async (req: Request, res: Response) => {
     }
 });
 
+/**
+ * POST /api/campbar/trips/:id/participation/confirm
+ * Confirm attendance
+ */
+router.post('/trips/:id/participation/confirm', async (req: Request, res: Response) => {
+    try {
+        if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+        const { id } = req.params;
+
+        // Check if participant
+        const participant = await db
+            .select()
+            .from(tripParticipants)
+            .where(and(
+                eq(tripParticipants.tripId, getParam(id)),
+                eq(tripParticipants.userId, req.user.id)
+            ))
+            .limit(1);
+
+        if (participant.length === 0) {
+            return res.status(400).json({ error: 'Not a participant of this trip' });
+        }
+
+        // Update status to confirmed
+        await db
+            .update(tripParticipants)
+            .set({ status: 'confirmed' })
+            .where(eq(tripParticipants.id, participant[0].id));
+
+        res.json({ success: true, message: 'Attendance confirmed' });
+    } catch (error) {
+        console.error('[CampBar] Error confirming participation:', error);
+        res.status(500).json({ error: 'Failed to confirm participation' });
+    }
+});
+
 // ============================================================================
 // DATE VOTING
 // ============================================================================
