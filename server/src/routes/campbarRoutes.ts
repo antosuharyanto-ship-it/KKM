@@ -736,8 +736,8 @@ router.post('/trips/:tripId/dates/:dateId/confirm', async (req: Request, res: Re
         const updatedTripRaw = await db
             .update(tripBoards)
             .set({
-                startDate: new Date(dateOption[0].startDate!), // Convert YYYY-MM-DD to Date
-                endDate: new Date(dateOption[0].endDate!),     // Convert YYYY-MM-DD to Date
+                startDate: new Date(dateOption[0].startDate!),
+                endDate: new Date(dateOption[0].endDate!),
                 datesConfirmed: true,
                 status: 'confirmed',
                 updatedAt: new Date()
