@@ -26,6 +26,7 @@ export const users = pgTable('users', {
     googleId: varchar('google_id').unique(),
     email: varchar('email').notNull().unique(), // Key for auth matching
     fullName: varchar('full_name'),
+    phoneNumber: varchar('phone_number'),
     role: varchar('role', { enum: ['user', 'officer', 'organizer'] }).default('user'),
     membershipType: varchar('membership_type', { enum: ['general', 'new_member', 'alumni'] }).default('general'),
     picture: varchar('picture'),
