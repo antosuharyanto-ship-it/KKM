@@ -61,7 +61,7 @@ export const ParticipantsList: React.FC<Props> = ({ participants, organizerId })
                             <div className="flex items-center gap-2">
                                 {participant.ticketUrl && (
                                     <a
-                                        href={`${API_BASE_URL}/tickets/${participant.ticketUrl.split('/').pop()}`}
+                                        href={`${API_BASE_URL}/api/campbar/tickets/download/${participant.ticketUrl.split('/').pop()}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="p-1.5 text-teal-600 hover:text-teal-800 hover:bg-teal-50 rounded-lg border border-teal-200 transition-colors"

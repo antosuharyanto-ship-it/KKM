@@ -1170,4 +1170,63 @@ router.post('/trips/:id/messages', validate(v.sendMessageSchema, 'body'), async 
     }
 });
 
+router.get('/tickets/download/:filename', async (req: Request, res: Response) => {
+    try {
+        const { filename } = req.params;
+        // filename is like "Ticket-TIX-XXXX.pdf"
+        // Extract ticket code: TIX-XXXX
+        const match = filename.match(/Ticket-(TIX-[A-Z0-9]+)\.pdf/);
+
+        if (!match) {
+            return res.status(400).json({ error: 'Invalid ticket filename format' });
+        }
+
+        const ticketCode = match[1];
+
+        // Find participant with this code
+        const participant = await db
+            .select({
+                participant: tripParticipants,
+                user: users,
+                trip: tripBoards
+            })
+            .from(tripParticipants)
+            .innerJoin(users, eq(tripParticipants.userId, users.id))
+            .innerJoin(tripBoards, eq(tripParticipants.tripId, tripBoards.id))
+            .where(eq(tripParticipants.ticketCode, ticketCode))
+            .limit(1);
+
+        if (participant.length === 0) {
+            return res.status(404).json({ error: 'Ticket not found' });
+        }
+
+        const { user: userData, trip: tripData, participant: partData } = participant[0];
+
+        // Regenerate Ticket
+        const pdfBuffer = await ticketService.generatePDF({
+            ticketCode: ticketCode,
+            trip: {
+                title: tripData.title,
+                destination: tripData.destination || 'TBA',
+                startDate: tripData.startDate ? new Date(tripData.startDate) : null,
+                endDate: tripData.endDate ? new Date(tripData.endDate) : null,
+                location: tripData.meetingPoint || tripData.destination || 'TBA'
+            },
+            user: {
+                fullName: userData.fullName || 'Guest',
+                email: userData.email
+            },
+            bookingDate: new Date(partData.joinedAt).toLocaleDateString()
+        });
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+        res.send(pdfBuffer);
+
+    } catch (error) {
+        console.error('[CampBar] Ticket download error:', error);
+        res.status(500).json({ error: 'Failed to download ticket' });
+    }
+});
+
 export default router;
