@@ -6,3 +6,4 @@ dist
 credentials.json
 google-credentials.json
 service-account-key.json
+tickets/

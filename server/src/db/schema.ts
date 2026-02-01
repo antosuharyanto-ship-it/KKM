@@ -217,6 +217,8 @@ export const tripParticipants = pgTable('trip_participants', {
     userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
 
     status: varchar('status', { length: 20, enum: ['interested', 'confirmed', 'waitlist'] }).default('interested'),
+    ticketCode: varchar('ticket_code').unique(),
+    ticketUrl: text('ticket_url'),
     joinedAt: timestamp('joined_at').defaultNow()
 });
 

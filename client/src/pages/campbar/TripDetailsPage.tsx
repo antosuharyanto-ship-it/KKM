@@ -8,6 +8,8 @@ import DateVotingSection from './components/DateVotingSection.tsx';
 import GearSection from './components/GearSection.tsx';
 import MessagingSection from './components/MessagingSection.tsx';
 import ParticipantsList from './components/ParticipantsList.tsx';
+import TripProgressBar from './components/TripProgressBar.tsx';
+import ActionGuidance from './components/ActionGuidance.tsx';
 
 export const TripDetailsPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -210,8 +212,16 @@ export const TripDetailsPage: React.FC = () => {
                 </div>
             </div>
 
+            {/* UX Guidance System */}
+            <div className="max-w-3xl mx-auto px-6 md:px-10 -mt-10 relative z-10">
+                <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+                    <TripProgressBar status={trip.status} />
+                    <ActionGuidance trip={trip} isOrganizer={isOrganizer} isParticipant={isParticipant || false} />
+                </div>
+            </div>
+
             {/* Trip Info Cards */}
-            <div className="max-w-5xl mx-auto px-6 md:px-10 -mt-8 mb-8">
+            <div className="max-w-5xl mx-auto px-6 md:px-10 mb-8">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-white rounded-xl p-4 shadow-md border border-gray-100">
                         <div className="flex items-center gap-3">

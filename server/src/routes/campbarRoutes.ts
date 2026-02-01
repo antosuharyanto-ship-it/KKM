@@ -13,6 +13,8 @@ import { eq, and, desc, or, sql, gte } from 'drizzle-orm';
 import { checkAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import * as v from '../validators/campbarValidators';
+import { ticketService } from '../services/ticketService';
+import { v4 as uuidv4 } from 'uuid';
 
 const router = express.Router();
 
@@ -412,11 +414,49 @@ router.post('/trips/:id/join', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Already joined this trip' });
         }
 
+        // Generate Ticket if trip is already confirmed
+        let ticketCode = null;
+        let ticketUrl = null;
+
+        if (trip[0].status === 'confirmed' || trip[0].status === 'ongoing') {
+            const user = await db.select().from(users).where(eq(users.id, req.user.id)).limit(1);
+
+            // Format: EVT-RANDOM-USERINIT
+            const shortUuid = uuidv4().split('-')[0].toUpperCase();
+            ticketCode = `TIX-${shortUuid}`;
+
+            const ticketData = {
+                ticketCode,
+                trip: {
+                    title: trip[0].title,
+                    destination: trip[0].destination || 'TBA',
+                    startDate: trip[0].startDate,
+                    endDate: trip[0].endDate,
+                    location: trip[0].meetingPoint || trip[0].destination || 'TBA'
+                },
+                user: {
+                    fullName: user[0].fullName,
+                    email: user[0].email
+                },
+                bookingDate: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+            };
+
+            try {
+                ticketUrl = await ticketService.generateTicket(ticketData);
+                console.log(`[CampBar] Ticket generated for ${req.user.id}: ${ticketUrl}`);
+            } catch (err) {
+                console.error('[CampBar] Failed to generate ticket on join:', err);
+                // Don't fail the join, but log it
+            }
+        }
+
         // Add participant
         await db.insert(tripParticipants).values({
             tripId: getParam(id),
             userId: req.user.id,
-            status: 'interested'
+            status: 'interested',
+            ticketCode,
+            ticketUrl
         });
 
         // Increment participant count
@@ -428,7 +468,7 @@ router.post('/trips/:id/join', async (req: Request, res: Response) => {
             })
             .where(eq(tripBoards.id, getParam(id)));
 
-        res.json({ success: true, message: 'Joined trip successfully' });
+        res.json({ success: true, message: 'Joined trip successfully', ticketUrl });
     } catch (error) {
         console.error('[CampBar] Error joining trip:', error);
         res.status(500).json({ error: 'Failed to join trip' });
@@ -693,7 +733,7 @@ router.post('/trips/:tripId/dates/:dateId/confirm', async (req: Request, res: Re
         }
 
         // Update trip with final dates (convert date strings to Date objects for timestamp columns)
-        await db
+        const updatedTripRaw = await db
             .update(tripBoards)
             .set({
                 startDate: new Date(dateOption[0].startDate!), // Convert YYYY-MM-DD to Date
@@ -702,9 +742,57 @@ router.post('/trips/:tripId/dates/:dateId/confirm', async (req: Request, res: Re
                 status: 'confirmed',
                 updatedAt: new Date()
             })
-            .where(eq(tripBoards.id, trip_id));
+            .where(eq(tripBoards.id, trip_id))
+            .returning();
 
-        res.json({ success: true, message: 'Date confirmed successfully' });
+        // --- GENERATE TICKETS FOR ALL PARTICIPANTS ---
+        const participants = await db
+            .select({
+                id: tripParticipants.id,
+                userId: tripParticipants.userId,
+                email: users.email,
+                fullName: users.fullName
+            })
+            .from(tripParticipants)
+            .leftJoin(users, eq(tripParticipants.userId, users.id))
+            .where(eq(tripParticipants.tripId, trip_id));
+
+        console.log(`[CampBar] Generating tickets for ${participants.length} participants...`);
+
+        // Process in background to avoid timeout, or await if critical?
+        // Let's await to ensure it's done for this MVP flow.
+        const tripData = {
+            title: trip[0].title,
+            destination: trip[0].destination || 'TBA',
+            startDate: updatedTripRaw[0].startDate,
+            endDate: updatedTripRaw[0].endDate,
+            location: trip[0].meetingPoint || trip[0].destination || 'TBA'
+        };
+
+        for (const p of participants) {
+            try {
+                const shortUuid = uuidv4().split('-')[0].toUpperCase();
+                const ticketCode = `TIX-${shortUuid}`;
+                const bookingDate = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+                const ticketUrl = await ticketService.generateTicket({
+                    ticketCode,
+                    trip: tripData,
+                    user: { fullName: p.fullName, email: p.email || '' },
+                    bookingDate
+                });
+
+                await db
+                    .update(tripParticipants)
+                    .set({ ticketCode, ticketUrl })
+                    .where(eq(tripParticipants.id, p.id));
+
+            } catch (err) {
+                console.error(`[CampBar] Failed to generate ticket for participant ${p.id}:`, err);
+            }
+        }
+
+        res.json({ success: true, message: 'Date confirmed and tickets generated' });
     } catch (error) {
         console.error('[CampBar] Error confirming date:', error);
         res.status(500).json({ error: 'Failed to confirm date' });
