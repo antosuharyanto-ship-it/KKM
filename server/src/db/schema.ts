@@ -198,8 +198,8 @@ export const tripBoards = pgTable('trip_boards', {
     status: varchar('status', { length: 20, enum: ['planning', 'confirmed', 'ongoing', 'completed', 'cancelled'] }).default('planning'),
 
     // Dates (Final - after voting)
-    startDate: timestamp('start_date'),
-    endDate: timestamp('end_date'),
+    startDate: date('start_date'),
+    endDate: date('end_date'),
     datesConfirmed: boolean('dates_confirmed').default(false),
 
     // Meeting

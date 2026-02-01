@@ -736,17 +736,8 @@ router.post('/trips/:tripId/dates/:dateId/confirm', async (req: Request, res: Re
         const updatedTripRaw = await db
             .update(tripBoards)
             .set({
-                // Systemic Fix: Manual date parsing to avoid timezone/format issues with 'new Date()'
-                startDate: new Date(
-                    parseInt(dateOption[0].startDate.split('-')[0]),
-                    parseInt(dateOption[0].startDate.split('-')[1]) - 1,
-                    parseInt(dateOption[0].startDate.split('-')[2])
-                ),
-                endDate: new Date(
-                    parseInt(dateOption[0].endDate.split('-')[0]),
-                    parseInt(dateOption[0].endDate.split('-')[1]) - 1,
-                    parseInt(dateOption[0].endDate.split('-')[2])
-                ),
+                startDate: dateOption[0].startDate,
+                endDate: dateOption[0].endDate,
                 datesConfirmed: true,
                 status: 'confirmed',
                 updatedAt: new Date()

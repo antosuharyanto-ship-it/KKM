@@ -4,24 +4,40 @@ import { eq } from 'drizzle-orm';
 
 async function fixTripDates() {
     try {
-        const tripId = '93c0e3bc-6f00-45df-80e1-1a0da89f5d44'; // From previous check
+        const tripId = '93c0e3bc-6f00-45df-80e1-1a0da89f5d44';
 
-        // Hardcode the dates seen in the votes: 2026-02-10 to 2026-02-12
-        const startDate = new Date(2026, 1, 10); // Feb is 1
-        const endDate = new Date(2026, 1, 12);
+        console.log('Attempting to fix trip:', tripId);
 
-        await db.update(tripBoards)
+        // Explicitly set to noon to avoid any midnight date boundary issues
+        // Feb 10, 2026
+        const startDate = '2026-02-10';
+        // Feb 12, 2026
+        const endDate = '2026-02-12';
+
+        console.log('Setting StartDate:', startDate);
+        console.log('Setting EndDate:', endDate);
+
+        const result = await db.update(tripBoards)
             .set({
-                startDate,
-                endDate,
+                startDate: startDate,
+                endDate: endDate,
                 datesConfirmed: true,
                 status: 'confirmed'
             })
-            .where(eq(tripBoards.id, tripId));
+            .where(eq(tripBoards.id, tripId))
+            .returning();
 
-        console.log('Fixed dates for trip:', tripId);
+        console.log('Update Result:', result);
+
+        if (result.length > 0) {
+            console.log('Updated Trip StartDate from DB:', result[0].startDate);
+            console.log('Updated Trip EndDate from DB:', result[0].endDate);
+        } else {
+            console.error('No rows updated! Trip ID might be missing.');
+        }
+
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error during fix:', error);
     }
     process.exit(0);
 }
