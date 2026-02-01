@@ -62,19 +62,21 @@ export const handleNotification = async (req: Request, res: Response): Promise<v
                 console.log(`[Midtrans] Found event booking for ${order_id}`);
 
                 // Generate ticket
+                // Map legacy booking data to new TicketService format
                 const ticketData = {
-                    eventName: booking.event_name || 'Event',
-                    userName: booking.proposed_by || booking.contact_person,
                     ticketCode: booking.reservation_id,
-                    date: booking.date_submitted || new Date().toLocaleDateString(),
-                    location: 'TBA', // You can get this from event data
-                    numberOfPeople: parseInt(booking.participant_count || '1'),
-                    memberType: booking.jenis_anggota || 'General',
-                    tentType: booking.ukuran_tenda || booking.special_requests,
-                    price: booking.jumlah_pembayaran,
-                    kavling: booking.kavling || 'Allocated on Arrival'
+                    trip: {
+                        title: booking.event_name || 'Event',
+                        destination: 'Tiara Camp', // Default or from booking
+                        startDate: null, // Legacy date string might not parse easily, leaving null for now
+                        endDate: null
+                    },
+                    user: {
+                        fullName: booking.proposed_by || booking.contact_person,
+                        email: booking.email_address
+                    },
+                    bookingDate: booking.date_submitted || new Date().toLocaleDateString('id-ID')
                 };
-
 
                 const ticketLink = await ticketService.generateTicket(ticketData);
 

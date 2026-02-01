@@ -1,5 +1,5 @@
 import React from 'react';
-import { Info, Play, CheckCircle, Calendar, Users } from 'lucide-react';
+import { Play, CheckCircle, Calendar, Users } from 'lucide-react';
 import type { Trip } from '../../../utils/campbarTypes';
 
 interface Props {

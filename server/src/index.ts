@@ -1110,17 +1110,19 @@ app.post('/api/officer/confirm-payment', checkOfficer, async (req, res) => {
 
         // 2. Generate PDF Ticket
         const ticketData = {
-            eventName: booking['event_name'],
-            userName: booking['proposed_by'],
             ticketCode: ticketCode,
-            date: booking['date_submitted'] || 'TBA', // Ideally split date/time if available
-            location: 'Tiara Camp and Outdoor', // Could be dynamic if event ID allows lookup
-            seatAllocation: kavling || booking['kavling'] || 'Allocated on Arrival', // Use provided kavling or fallback
-            price: booking['jumlah_pembayaran'],
-            numberOfPeople: parseInt(booking['participant_count'] || '1'),
-            memberType: booking['jenis_anggota'],
-            tentType: booking['special_requests'], // or 'ukuran_tenda' depending on mapping
-            kavling: kavling || booking['kavling'] || 'TBA' // Pass explicitly or TBA
+            trip: {
+                title: booking['event_name'] || 'Event',
+                destination: 'Tiara Camp and Outdoor',
+                startDate: null,
+                endDate: null,
+                location: 'Tiara Camp and Outdoor'
+            },
+            user: {
+                fullName: booking['proposed_by'],
+                email: booking['email_address']
+            },
+            bookingDate: booking['date_submitted'] || new Date().toLocaleDateString('id-ID')
         };
 
         const ticketLink = await ticketService.generateTicket(ticketData);
@@ -1169,17 +1171,18 @@ app.post('/api/officer/regenerate-ticket', checkOfficer, async (req, res) => {
 
         // 2. Generate PDF Ticket (Reuse logic)
         const ticketData = {
-            eventName: booking['event_name'],
-            userName: booking['proposed_by'],
             ticketCode: ticketCode,
-            date: booking['date_submitted'] || 'TBA',
-            location: 'Tiara Camp and Outdoor',
-            seatAllocation: kavling,
-            price: booking['jumlah_pembayaran'],
-            numberOfPeople: parseInt(booking['participant_count'] || '1'),
-            memberType: booking['jenis_anggota'],
-            tentType: booking['special_requests'],
-            kavling: kavling
+            trip: {
+                title: booking['event_name'] || 'Event',
+                destination: 'Tiara Camp and Outdoor',
+                startDate: null,
+                endDate: null
+            },
+            user: {
+                fullName: booking['proposed_by'],
+                email: booking['email_address']
+            },
+            bookingDate: booking['date_submitted'] || new Date().toLocaleDateString('id-ID')
         };
 
         const ticketLink = await ticketService.generateTicket(ticketData);
