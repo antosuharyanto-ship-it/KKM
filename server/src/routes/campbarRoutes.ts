@@ -1172,7 +1172,7 @@ router.post('/trips/:id/messages', validate(v.sendMessageSchema, 'body'), async 
 
 router.get('/tickets/download/:filename', async (req: Request, res: Response) => {
     try {
-        const { filename } = req.params;
+        const filename = req.params.filename as string;
         // filename is like "Ticket-TIX-XXXX.pdf"
         // Extract ticket code: TIX-XXXX
         const match = filename.match(/Ticket-(TIX-[A-Z0-9]+)\.pdf/);
@@ -1216,7 +1216,7 @@ router.get('/tickets/download/:filename', async (req: Request, res: Response) =>
                 fullName: userData.fullName || 'Guest',
                 email: userData.email
             },
-            bookingDate: new Date(partData.joinedAt).toLocaleDateString()
+            bookingDate: partData.joinedAt ? new Date(partData.joinedAt).toLocaleDateString() : new Date().toLocaleDateString()
         });
 
         res.setHeader('Content-Type', 'application/pdf');
