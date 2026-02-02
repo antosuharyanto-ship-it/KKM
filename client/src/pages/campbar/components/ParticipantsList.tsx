@@ -32,33 +32,33 @@ export const ParticipantsList: React.FC<Props> = ({ participants, organizerId })
                     {participants.map((participant) => (
                         <div
                             key={participant.id}
-                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition gap-3 active:scale-[0.98] duration-200"
                         >
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
                                 {participant.user?.picture ? (
                                     <img
                                         src={participant.user.picture}
                                         alt={participant.user.name}
-                                        className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
+                                        className="w-10 h-10 rounded-full border-2 border-white shadow-sm flex-shrink-0"
                                     />
                                 ) : (
-                                    <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-bold">
+                                    <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-bold flex-shrink-0">
                                         {participant.user?.name.charAt(0) || '?'}
                                     </div>
                                 )}
-                                <div>
-                                    <div className="font-semibold text-gray-900 flex items-center gap-2">
-                                        {participant.user?.name || 'Unknown'}
+                                <div className="min-w-0 flex-1">
+                                    <div className="font-semibold text-gray-900 flex items-center gap-1">
+                                        <span className="truncate">{participant.user?.name || 'Unknown'}</span>
                                         {participant.userId === organizerId && (
-                                            <Crown size={14} className="text-yellow-600 inline" />
+                                            <Crown size={14} className="text-yellow-600 inline flex-shrink-0" />
                                         )}
                                     </div>
-                                    <div className="text-xs text-gray-600">
+                                    <div className="text-xs text-gray-600 truncate">
                                         {participant.user?.email}
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-shrink-0">
                                 {participant.ticketUrl && (
                                     <a
                                         href={`${API_BASE_URL}/api/campbar/tickets/download/${participant.ticketUrl.split('/').pop()}`}
@@ -70,7 +70,7 @@ export const ParticipantsList: React.FC<Props> = ({ participants, organizerId })
                                         <Ticket size={16} />
                                     </a>
                                 )}
-                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusBadge(participant.status)}`}>
+                                <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${getStatusBadge(participant.status)}`}>
                                     {participant.status}
                                 </span>
                             </div>

@@ -580,7 +580,7 @@ export const MarketplacePage: React.FC = () => {
                     <div
                         key={idx}
                         onClick={() => handleBuyClick(item)}
-                        className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-teal-100 transition group flex flex-col cursor-pointer active:scale-95 duration-200">
+                        className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-teal-100 hover:-translate-y-1 transition group flex flex-col cursor-pointer active:scale-95 duration-200">
                         <div className="h-32 bg-gray-50 rounded-xl mb-4 flex items-center justify-center relative overflow-hidden">
                             <div className={`absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold z-10 ${item.stock_status?.toLowerCase().includes('pre')
                                 ? 'bg-orange-100 text-orange-700'
@@ -590,8 +590,8 @@ export const MarketplacePage: React.FC = () => {
                             </div>
                             {/* Condition Badge - Top Right */}
                             <div className={`absolute top-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold z-10 ${item.condition === 'pre-loved'
-                                    ? 'bg-purple-100 text-purple-700'
-                                    : 'bg-blue-100 text-blue-700'
+                                ? 'bg-purple-100 text-purple-700'
+                                : 'bg-blue-100 text-blue-700'
                                 }`}>
                                 {item.condition === 'pre-loved' ? '♻️ Pre-loved' : '✨ New'}
                             </div>
@@ -609,7 +609,7 @@ export const MarketplacePage: React.FC = () => {
                             <span className="text-[10px] uppercase font-bold text-teal-600 tracking-wider bg-teal-50 px-2 py-1 rounded-md mb-2 inline-block">
                                 {item.category || 'General'}
                             </span>
-                            <h3 className="font-bold text-gray-900 text-sm md:text-base leading-tight mb-2 line-clamp-2">{item.product_name || 'Unnamed Item'}</h3>
+                            <h3 className="font-bold text-gray-900 text-sm md:text-base leading-snug mb-2 line-clamp-2 h-[40px]">{item.product_name || 'Unnamed Item'}</h3>
 
                             {/* Enhanced Rating Display */}
                             {item.rating && item.rating > 0 ? (
@@ -622,11 +622,11 @@ export const MarketplacePage: React.FC = () => {
                                 <div className="text-[10px] text-gray-400 mb-2 italic">No reviews yet</div>
                             )}
                         </div>
-                        <div className="mt-4 flex items-center justify-between">
-                            <p className="text-orange-600 font-bold">{item.unit_price || 'Free'}</p>
+                        <div className="mt-4 flex items-center justify-between gap-2">
+                            <p className="text-orange-600 font-bold text-sm md:text-base truncate">{item.unit_price || 'Free'}</p>
                             <button
                                 onClick={(e) => handleBuyClick(item, e)}
-                                className="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-teal-800 hover:text-white transition">
+                                className="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-teal-800 hover:text-white transition flex-shrink-0">
                                 <ShoppingCart size={16} />
                             </button>
                         </div>

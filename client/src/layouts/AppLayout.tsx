@@ -1,7 +1,15 @@
 import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next'; // Import Hook
-import { Tent, ShoppingBag, User, Search, LayoutDashboard, Megaphone, Instagram, Facebook, Youtube, Twitter, Mail, Phone, MapPin, Package, Compass } from 'lucide-react';
+import {
+    Tent,
+    ShoppingBag,
+    Compass,
+    Search,
+    Instagram, Facebook, Youtube, Twitter,
+    Mail, Phone, MapPin,
+    User
+} from 'lucide-react';
 import { LanguageSwitcher } from '../components/LanguageSwitcher'; // Import Switcher
 import { ChatWidget } from '../components/ChatWidget';
 import axios from 'axios';
@@ -74,17 +82,11 @@ export const AppLayout: React.FC = () => {
             {/* Mobile Bottom Navigation */}
             <nav className="md:hidden absolute bottom-0 left-0 right-0 bg-white border-t border-stone-200 px-4 py-3 flex justify-around items-center z-50 rounded-t-2xl shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
                 <MobileNavItem to="/" icon={<Tent size={20} />} label={t('nav.events')} />
-                <MobileNavItem to="/news" icon={<Megaphone size={20} />} label={t('nav.news')} />
+                {/* <MobileNavItem to="/news" icon={<Megaphone size={20} />} label={t('nav.news')} /> */}
                 <MobileNavItem to="/campbar" icon={<Compass size={20} />} label="CampBar" />
-                {/* <MobileNavItem to="/community" icon={<MessageSquare size={20} />} label={t('nav.community')} /> */}
-                {/* Replaced Community in main view to make space, or keep scrolling? 5 items is comfortable. Let's swap or squeeze. 
-                    Actually, let's replace Community with My Orders for mobile if space is tight, or just add it. 
-                    Let's just add it.
-                */}
                 <MobileNavItem to="/marketplace" icon={<ShoppingBag size={20} />} label={t('nav.marketplace')} />
-                <MobileNavItem to="/my-orders" icon={<Package size={20} />} label="My Orders" />
-                {isOfficer && <MobileNavItem to="/dashboard" icon={<LayoutDashboard size={20} />} label={t('nav.dashboard')} />}
-                {/* On mobile scanner is in dashboard often but we can keep it if needed. Leaving generic user items priority */}
+                {/* <MobileNavItem to="/my-orders" icon={<Package size={20} />} label="My Orders" /> */}
+                {/* {isOfficer && <MobileNavItem to="/dashboard" icon={<LayoutDashboard size={20} />} label={t('nav.dashboard')} />} */}
                 <MobileNavItem to="/profile" icon={<User size={20} />} label={t('nav.profile')} />
             </nav>
 
@@ -139,8 +141,11 @@ export const AppLayout: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="border-t border-teal-800/50 pt-6 text-center text-xs text-teal-400">
-                    <p>&copy; {new Date().getFullYear()} Kemah Keluarga Muslim. All rights reserved. | Powered by Mastery AI by Abu Fatih</p>
+                <div className="border-t border-teal-800/50 pt-6 text-center text-xs text-teal-400 flex flex-col gap-2">
+                    <p>&copy; {new Date().getFullYear()} Kemah Keluarga Muslim. All rights reserved.</p>
+                    <p className="flex items-center justify-center gap-1.5 text-teal-500/80 font-medium">
+                        Powered by <span className="text-orange-400 font-bold tracking-wider uppercase text-[10px] border border-orange-400/30 px-1.5 py-0.5 rounded bg-orange-400/10">Mastery AI</span> by Abu Fatih
+                    </p>
                 </div>
             </footer>
             <ChatWidget />
@@ -148,18 +153,35 @@ export const AppLayout: React.FC = () => {
     );
 };
 
-const MobileNavItem = ({ to, icon, label }: { to: string, icon: React.ReactNode, label: string }) => (
+interface MobileNavItemProps {
+    to: string;
+    icon: React.ReactNode;
+    label: string;
+}
+
+const MobileNavItem = ({ to, icon, label }: MobileNavItemProps) => (
     <NavLink
         to={to}
-        className={({ isActive }) =>
-            `flex flex-col items-center gap-1 transition-all duration-300 ${isActive
-                ? 'text-teal-800 translate-y-[-2px]'
-                : 'text-gray-400 hover:text-teal-600'
-            }`
-        }
+        className={({ isActive }) => `
+            relative flex flex-col items-center justify-center gap-1 p-2 rounded-xl transition-all duration-300
+            ${isActive ? 'text-teal-700 -translate-y-1' : 'text-gray-400 hover:text-teal-600'}
+            active:scale-95
+        `}
     >
-        {icon}
-        <span className="text-[10px] font-medium tracking-wide">{label}</span>
+        {({ isActive }) => (
+            <>
+                {/* Active Indicator Dot */}
+                {isActive && (
+                    <span className="absolute -top-1 w-1.5 h-1.5 bg-teal-600 rounded-full shadow-sm shadow-teal-300 animate-pulse" />
+                )}
+                <div className={`transition-transform duration-300 ${isActive ? 'scale-110 drop-shadow-sm' : ''}`}>
+                    {icon}
+                </div>
+                <span className={`text-[10px] font-medium tracking-tight transition-all ${isActive ? 'font-bold' : ''}`}>
+                    {label}
+                </span>
+            </>
+        )}
     </NavLink>
 );
 

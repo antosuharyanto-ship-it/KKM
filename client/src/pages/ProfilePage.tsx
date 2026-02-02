@@ -207,6 +207,11 @@ export const ProfilePage: React.FC = () => {
                         Sign Out
                     </button>
                 </div>
+                <div className="text-center mt-8">
+                    <p className="text-[10px] text-gray-400 font-medium flex items-center justify-center gap-1">
+                        Powered by <span className="text-teal-600 font-bold tracking-wide uppercase bg-teal-50 px-1.5 py-0.5 rounded border border-teal-100">Mastery AI</span> by Abu Fatih
+                    </p>
+                </div>
             </div>
 
             {/* Address Modal */}
