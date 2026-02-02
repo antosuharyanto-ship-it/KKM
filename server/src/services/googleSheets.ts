@@ -367,8 +367,8 @@ export class GoogleSheetService {
                 price_new_member: row.price_new_member || row.price || '0', // Normalize simple price
                 id: row.id || row.event_id, // Normalize ID
                 // Robust Fuzzy Search for Gallery/Sponsor
-                gallery_images: row.gallery_images || getValueByFuzzyKey(['gallery', 'folder_img', 'images']),
-                sponsor: row.sponsor || getValueByFuzzyKey(['sponsor', 'support'])
+                gallery_images: row.gallery_images || getValueByFuzzyKey(['gallery', 'folder_img', 'images', 'dokumentasi', 'foto', 'photo', 'media']),
+                sponsor: row.sponsor || getValueByFuzzyKey(['sponsor', 'support', 'partner', 'dukung'])
             };
         });
 
