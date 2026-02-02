@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save } from 'lucide-react';
+import { API_BASE_URL } from '../../config';
 import campbarApi from '../../utils/campbarApi';
 import type { CreateTripFormData } from '../../utils/campbarTypes';
 
@@ -9,7 +10,7 @@ export const CreateTripPage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState<CreateTripFormData>({
         title: '',
-        destination: ' ',
+        destination: '',
         description: '',
         difficulty: 'moderate',
         maxParticipants: 10,
@@ -17,6 +18,23 @@ export const CreateTripPage: React.FC = () => {
         endDate: '',
         estimatedCost: '',
     });
+
+    useEffect(() => {
+        checkAuth();
+    }, []);
+
+    const checkAuth = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/auth/me`, { credentials: 'include' });
+            if (!response.ok) {
+                alert('Please login to create a trip');
+                navigate('/');
+            }
+        } catch (error) {
+            console.error('Auth check failed', error);
+            navigate('/');
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
