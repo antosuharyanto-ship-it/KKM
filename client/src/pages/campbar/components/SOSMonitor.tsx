@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { AlertTriangle, MapPin, CheckCircle } from 'lucide-react';
+import { AlertTriangle, MapPin, CheckCircle, Bell } from 'lucide-react';
 import campbarApi from '../../../utils/campbarApi';
 
 interface SOSAlert {
@@ -16,15 +16,35 @@ interface SOSAlert {
 }
 
 export const SOSMonitor: React.FC = () => {
-    const { tripId } = useParams<{ tripId: string }>();
+    const { id: tripId } = useParams<{ id: string }>();
     const [activeAlert, setActiveAlert] = useState<SOSAlert | null>(null);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [_, setPermissionStatus] = useState<NotificationPermission>(Notification.permission);
     const vibrationInterval = useRef<any>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
-    // Audio for non-vibrating devices (Optional but recommended)
+    // Audio setup
     useEffect(() => {
-        audioRef.current = new Audio('/sos_alarm.mp3'); // Placeholder if you have one, or skip
+        audioRef.current = new Audio('/sos_alarm.mp3');
+        audioRef.current.loop = true;
     }, []);
+
+    const requestPermission = async () => {
+        try {
+            const status = await Notification.requestPermission();
+            setPermissionStatus(status);
+
+            // Also try to unlock audio on this click
+            if (audioRef.current) {
+                audioRef.current.play().then(() => {
+                    audioRef.current?.pause();
+                    audioRef.current!.currentTime = 0;
+                }).catch(() => { }); // Expected if no src or other issues, just priming
+            }
+        } catch (err) {
+            console.error('Permission request failed', err);
+        }
+    };
 
     // Polling Logic
     useEffect(() => {
@@ -34,27 +54,23 @@ export const SOSMonitor: React.FC = () => {
             try {
                 const alerts = await campbarApi.getActiveSOS(tripId);
                 if (alerts && alerts.length > 0) {
-                    const newest = alerts[0]; // Take the most recent active one
+                    const newest = alerts[0];
                     if (!activeAlert || activeAlert.id !== newest.id) {
                         setActiveAlert(newest);
-                        startAlarm();
+                        startAlarm(newest);
                     }
                 } else {
                     if (activeAlert) {
-                        setActiveAlert(null); // Cleared remotely
+                        setActiveAlert(null);
                         stopAlarm();
                     }
                 }
             } catch (err) {
-                // Silent fail on poll error
                 console.warn('[SOSMonitor] Poll failed', err);
             }
         };
 
-        // Initial check
         checkSOS();
-
-        // Poll every 10 seconds
         const interval = setInterval(checkSOS, 10000);
 
         return () => {
@@ -63,24 +79,33 @@ export const SOSMonitor: React.FC = () => {
         };
     }, [tripId, activeAlert]);
 
-    const startAlarm = () => {
-        // VIBRATION: SOS Pattern (... --- ...)
+    const startAlarm = (alertData: SOSAlert) => {
+        // 1. Browser Vibration (May be blocked without gesture)
         if (navigator.vibrate) {
-            // Vibrate immediately
-            navigator.vibrate([
-                200, 100, 200, 100, 200, 100, // S
-                500, 100, 500, 100, 500, 100, // O
-                200, 100, 200, 100, 200       // S
-            ]);
+            const pattern = [200, 100, 200, 100, 200, 100, 500, 100, 500, 100, 500, 100, 200, 100, 200, 100, 200];
+            navigator.vibrate(pattern);
+            vibrationInterval.current = setInterval(() => navigator.vibrate(pattern), 5000);
+        }
 
-            // Loop vibration every 3 seconds (length of pattern + pause)
-            vibrationInterval.current = setInterval(() => {
-                navigator.vibrate([
-                    200, 100, 200, 100, 200, 100, // S
-                    500, 100, 500, 100, 500, 100, // O
-                    200, 100, 200, 100, 200       // S
-                ]);
-            }, 5000);
+        // 2. Play Audio (If unlocked)
+        if (audioRef.current) {
+            audioRef.current.play().catch(e => console.log('Audio blocked:', e));
+        }
+
+        // 3. System Notification (Robust Fallback)
+        if (Notification.permission === 'granted') {
+            try {
+                new Notification('SOS ALERT', {
+                    body: `${alertData.user.fullName}: ${alertData.message}`,
+                    tag: 'sos-alert',
+                    // @ts-ignore
+                    renotify: true,
+                    // @ts-ignore
+                    vibrate: [200, 100, 200, 100, 200, 100, 500, 100, 500, 100, 500, 100, 200]
+                });
+            } catch (e) {
+                console.error('Notification failed', e);
+            }
         }
     };
 
@@ -89,8 +114,10 @@ export const SOSMonitor: React.FC = () => {
             clearInterval(vibrationInterval.current);
             vibrationInterval.current = null;
         }
-        if (navigator.vibrate) {
-            navigator.vibrate(0); // Stop immediately
+        if (navigator.vibrate) navigator.vibrate(0);
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
         }
     };
 
@@ -101,7 +128,7 @@ export const SOSMonitor: React.FC = () => {
             setActiveAlert(null);
             stopAlarm();
         } catch (err) {
-            alert('Failed to resolve alert. Check connection.');
+            alert('Failed to resolve alert.');
         }
     };
 
@@ -112,52 +139,61 @@ export const SOSMonitor: React.FC = () => {
         }
     };
 
-    if (!activeAlert) return null;
+    // Render Logic
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-red-900/90 backdrop-blur-sm animate-pulse">
-            <div className="bg-red-800 text-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border-4 border-red-500 animate-bounce-slow">
-
-                <div className="flex flex-col items-center text-center mb-6">
-                    <div className="bg-red-600 p-4 rounded-full mb-4 animate-ping-slow">
-                        <AlertTriangle size={64} className="text-white" />
+    // If we have an active alert, show the Full Screen Overlay
+    if (activeAlert) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-red-900/90 backdrop-blur-sm animate-pulse">
+                <div className="bg-red-800 text-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border-4 border-red-500 animate-bounce-slow">
+                    <div className="flex flex-col items-center text-center mb-6">
+                        <div className="bg-red-600 p-4 rounded-full mb-4 animate-ping-slow">
+                            <AlertTriangle size={64} className="text-white" />
+                        </div>
+                        <h2 className="text-3xl font-black uppercase tracking-wider mb-1">SOS ALERT</h2>
+                        <p className="text-red-200 font-bold">EMERGENCY REPORTED</p>
                     </div>
-                    <h2 className="text-3xl font-black uppercase tracking-wider mb-1">SOS ALERT</h2>
-                    <p className="text-red-200 font-bold">EMERGENCY REPORTED</p>
-                </div>
 
-                <div className="bg-red-900/50 rounded-xl p-4 mb-6 border border-red-700">
-                    <div className="text-sm text-red-300 uppercase font-semibold mb-1">Sender</div>
-                    <div className="text-xl font-bold">{activeAlert.user.fullName}</div>
-                    <div className="text-md opacity-80">{activeAlert.user.phone}</div>
+                    <div className="bg-red-900/50 rounded-xl p-4 mb-6 border border-red-700">
+                        <div className="text-sm text-red-300 uppercase font-semibold mb-1">Sender</div>
+                        <div className="text-xl font-bold">{activeAlert.user.fullName}</div>
+                        <div className="text-md opacity-80">{activeAlert.user.phone}</div>
+                        <div className="my-3 border-t border-red-700"></div>
+                        <div className="text-sm text-red-300 uppercase font-semibold mb-1">Message</div>
+                        <div className="italic text-lg">"{activeAlert.message}"</div>
+                    </div>
 
-                    <div className="my-3 border-t border-red-700"></div>
-
-                    <div className="text-sm text-red-300 uppercase font-semibold mb-1">Message</div>
-                    <div className="italic text-lg">"{activeAlert.message}"</div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                    <button
-                        onClick={handleOpenMap}
-                        className="bg-white text-red-900 py-4 rounded-xl font-bold flex flex-col items-center justify-center gap-1 hover:bg-gray-100"
-                    >
-                        <MapPin size={24} />
-                        VIEW MAP
-                    </button>
-                    <button
-                        onClick={handleResolve}
-                        className="bg-green-600 text-white py-4 rounded-xl font-bold flex flex-col items-center justify-center gap-1 hover:bg-green-500"
-                    >
-                        <CheckCircle size={24} />
-                        I'M SAFE / RESOLVE
-                    </button>
-                </div>
-
-                <div className="mt-4 text-center text-xs text-red-300">
-                    Received at: {new Date(activeAlert.createdAt).toLocaleTimeString()}
+                    <div className="grid grid-cols-2 gap-3">
+                        <button onClick={handleOpenMap} className="bg-white text-red-900 py-4 rounded-xl font-bold flex flex-col items-center justify-center gap-1 hover:bg-gray-100">
+                            <MapPin size={24} />
+                            VIEW MAP
+                        </button>
+                        <button onClick={handleResolve} className="bg-green-600 text-white py-4 rounded-xl font-bold flex flex-col items-center justify-center gap-1 hover:bg-green-500">
+                            <CheckCircle size={24} />
+                            I'M SAFE
+                        </button>
+                    </div>
+                    <div className="mt-4 text-center text-xs text-red-300">
+                        Received at: {new Date(activeAlert.createdAt).toLocaleTimeString()}
+                    </div>
                 </div>
             </div>
-        </div>
-    );
+        );
+    }
+
+    // Otherwise, check if we need to show the "Enable Permissions" banner
+    // Only show if we haven't granted permission yet and we are in a trip context
+    if (Notification.permission === 'default') {
+        return (
+            <div
+                onClick={requestPermission}
+                className="fixed top-20 left-1/2 -translate-x-1/2 z-40 bg-teal-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 cursor-pointer animate-bounce"
+            >
+                <Bell size={16} />
+                <span className="text-sm font-bold">Tap to enable SOS alerts</span>
+            </div>
+        );
+    }
+
+    return null;
 };
