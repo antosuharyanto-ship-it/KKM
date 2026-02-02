@@ -23,7 +23,7 @@ const router = express.Router();
 const getParam = (value: string | string[]): string => Array.isArray(value) ? value[0] : value;
 
 // All routes require authentication
-router.use(checkAuth);
+// router.use(checkAuth); // REMOVED: Allowing public access to GET routes
 
 // ============================================================================
 // TRIP BOARDS - CRUD
@@ -242,7 +242,7 @@ router.get('/trips/:id', validate(v.tripIdParamSchema, 'params'), async (req: Re
  * POST /api/campbar/trips
  * Create new trip
  */
-router.post('/trips', validate(v.createTripSchema, 'body'), async (req: Request, res: Response) => {
+router.post('/trips', checkAuth, validate(v.createTripSchema, 'body'), async (req: Request, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
 
@@ -309,7 +309,7 @@ router.post('/trips', validate(v.createTripSchema, 'body'), async (req: Request,
  * PUT /api/campbar/trips/:id
  * Update trip (organizer only)
  */
-router.put('/trips/:id', validate(v.tripIdParamSchema, 'params'), validate(v.updateTripSchema, 'body'), async (req: Request, res: Response) => {
+router.put('/trips/:id', checkAuth, validate(v.tripIdParamSchema, 'params'), validate(v.updateTripSchema, 'body'), async (req: Request, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
         const { id } = req.params as { id: string };
@@ -355,7 +355,7 @@ router.put('/trips/:id', validate(v.tripIdParamSchema, 'params'), validate(v.upd
  * DELETE /api/campbar/trips/:id
  * Cancel trip (organizer only)
  */
-router.delete('/trips/:id', async (req: Request, res: Response) => {
+router.delete('/trips/:id', checkAuth, async (req: Request, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
         const { id } = req.params;
@@ -390,7 +390,7 @@ router.delete('/trips/:id', async (req: Request, res: Response) => {
  * POST /api/campbar/trips/:id/join
  * Join a trip
  */
-router.post('/trips/:id/join', async (req: Request, res: Response) => {
+router.post('/trips/:id/join', checkAuth, async (req: Request, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
         const { id } = req.params;
@@ -484,7 +484,7 @@ router.post('/trips/:id/join', async (req: Request, res: Response) => {
  * DELETE /api/campbar/trips/:id/leave
  * Leave a trip
  */
-router.delete('/trips/:id/leave', async (req: Request, res: Response) => {
+router.delete('/trips/:id/leave', checkAuth, async (req: Request, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
         const { id } = req.params;
@@ -537,7 +537,7 @@ router.delete('/trips/:id/leave', async (req: Request, res: Response) => {
  * POST /api/campbar/trips/:id/participation/confirm
  * Confirm attendance
  */
-router.post('/trips/:id/participation/confirm', async (req: Request, res: Response) => {
+router.post('/trips/:id/participation/confirm', checkAuth, async (req: Request, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
         const { id } = req.params;
@@ -577,7 +577,7 @@ router.post('/trips/:id/participation/confirm', async (req: Request, res: Respon
  * POST /api/campbar/trips/:id/dates
  * Add date option (organizer only)
  */
-router.post('/trips/:tripId/dates', validate(v.addDateOptionSchema, 'body'), async (req: Request, res: Response) => {
+router.post('/trips/:tripId/dates', checkAuth, validate(v.addDateOptionSchema, 'body'), async (req: Request, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
         const { tripId } = req.params as { tripId: string };
@@ -624,7 +624,7 @@ router.post('/trips/:tripId/dates', validate(v.addDateOptionSchema, 'body'), asy
  * POST /api/campbar/trips/:tripId/dates/:dateId/vote
  * Vote on a date option
  */
-router.post('/trips/:tripId/dates/:dateId/vote', async (req: Request, res: Response) => {
+router.post('/trips/:tripId/dates/:dateId/vote', checkAuth, async (req: Request, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
         const { tripId, dateId } = req.params;
@@ -682,7 +682,7 @@ router.post('/trips/:tripId/dates/:dateId/vote', async (req: Request, res: Respo
  * DELETE /api/campbar/trips/:tripId/dates/:dateId/vote
  * Remove vote
  */
-router.delete('/trips/:tripId/dates/:dateId/vote', async (req: Request, res: Response) => {
+router.delete('/trips/:tripId/dates/:dateId/vote', checkAuth, async (req: Request, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
         const { dateId } = req.params;
@@ -718,7 +718,7 @@ router.delete('/trips/:tripId/dates/:dateId/vote', async (req: Request, res: Res
  * DELETE /api/campbar/trips/:tripId/dates/:dateId
  * Delete date option (organizer only)
  */
-router.delete('/trips/:tripId/dates/:dateId', async (req: Request, res: Response) => {
+router.delete('/trips/:tripId/dates/:dateId', checkAuth, async (req: Request, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
         const { tripId, dateId } = req.params;
@@ -753,7 +753,7 @@ router.delete('/trips/:tripId/dates/:dateId', async (req: Request, res: Response
  * POST /api/campbar/trips/:tripId/dates/:dateId/confirm
  * Confirm final date (organizer only)
  */
-router.post('/trips/:tripId/dates/:dateId/confirm', async (req: Request, res: Response) => {
+router.post('/trips/:tripId/dates/:dateId/confirm', checkAuth, async (req: Request, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
         const { tripId, dateId } = req.params;
@@ -845,7 +845,7 @@ router.post('/trips/:tripId/dates/:dateId/confirm', async (req: Request, res: Re
  * PATCH /api/campbar/trips/:id/status
  * Update trip status (organizer only)
  */
-router.patch('/trips/:id/status', async (req: Request, res: Response) => {
+router.patch('/trips/:id/status', checkAuth, async (req: Request, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
         const { id } = req.params;
@@ -913,7 +913,7 @@ router.get('/trips/:id/gear', async (req: Request, res: Response) => {
  * POST /api/campbar/trips/:id/gear
  * Add gear item (participants only)
  */
-router.post('/trips/:id/gear', validate(v.addGearItemSchema, 'body'), async (req: Request, res: Response) => {
+router.post('/trips/:id/gear', checkAuth, validate(v.addGearItemSchema, 'body'), async (req: Request, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
         const { id } = req.params as { id: string };
@@ -954,7 +954,7 @@ router.post('/trips/:id/gear', validate(v.addGearItemSchema, 'body'), async (req
  * PUT /api/campbar/trips/:tripId/gear/:itemId
  * Assign gear to user (volunteer)
  */
-router.put('/trips/:tripId/gear/:itemId', async (req: Request, res: Response) => {
+router.put('/trips/:tripId/gear/:itemId', checkAuth, async (req: Request, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
         const { tripId, itemId } = req.params;
@@ -995,7 +995,7 @@ router.put('/trips/:tripId/gear/:itemId', async (req: Request, res: Response) =>
  * POST /api/campbar/trips/:tripId/gear/:itemId/volunteer
  * Volunteer for a gear item
  */
-router.post('/trips/:tripId/gear/:itemId/volunteer', async (req: Request, res: Response) => {
+router.post('/trips/:tripId/gear/:itemId/volunteer', checkAuth, async (req: Request, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
         const { tripId, itemId } = req.params;
@@ -1044,7 +1044,7 @@ router.post('/trips/:tripId/gear/:itemId/volunteer', async (req: Request, res: R
  * DELETE /api/campbar/trips/:tripId/gear/:itemId
  * Remove gear item
  */
-router.delete('/trips/:tripId/gear/:itemId', async (req: Request, res: Response) => {
+router.delete('/trips/:tripId/gear/:itemId', checkAuth, async (req: Request, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
         const { itemId } = req.params;
@@ -1072,7 +1072,7 @@ router.delete('/trips/:tripId/gear/:itemId', async (req: Request, res: Response)
  * GET /api/campbar/trips/:id/messages
  * Get trip messages (participants only)
  */
-router.get('/trips/:id/messages', async (req: Request, res: Response) => {
+router.get('/trips/:id/messages', checkAuth, async (req: Request, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
         const { id } = req.params;
@@ -1131,7 +1131,7 @@ router.get('/trips/:id/messages', async (req: Request, res: Response) => {
  * POST /api/campbar/trips/:id/messages
  * Send message (participants only)
  */
-router.post('/trips/:id/messages', validate(v.sendMessageSchema, 'body'), async (req: Request, res: Response) => {
+router.post('/trips/:id/messages', checkAuth, validate(v.sendMessageSchema, 'body'), async (req: Request, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
         const { id } = req.params;
@@ -1238,7 +1238,7 @@ router.get('/tickets/download/:filename', async (req: Request, res: Response) =>
  * POST /api/campbar/trips/:tripId/sos
  * Send SOS Alert to all trip participants
  */
-router.post('/trips/:tripId/sos', async (req: Request, res: Response) => {
+router.post('/trips/:tripId/sos', checkAuth, async (req: Request, res: Response) => {
     try {
         const { tripId } = req.params;
         const trip_id = getParam(tripId);
@@ -1320,7 +1320,7 @@ router.post('/trips/:tripId/sos', async (req: Request, res: Response) => {
  * GET /api/campbar/trips/:tripId/sos/active
  * Poll for active SOS alerts
  */
-router.get('/trips/:tripId/sos/active', async (req: Request, res: Response) => {
+router.get('/trips/:tripId/sos/active', checkAuth, async (req: Request, res: Response) => {
     try {
         const { tripId } = req.params;
         const trip_id = getParam(tripId);
@@ -1376,7 +1376,7 @@ router.get('/trips/:tripId/sos/active', async (req: Request, res: Response) => {
  * POST /api/campbar/trips/:tripId/sos/:alertId/resolve
  * Resolve an SOS alert
  */
-router.post('/trips/:tripId/sos/:alertId/resolve', async (req: Request, res: Response) => {
+router.post('/trips/:tripId/sos/:alertId/resolve', checkAuth, async (req: Request, res: Response) => {
     try {
         const { tripId, alertId } = req.params;
         const alert_id = getParam(alertId);

@@ -51,14 +51,12 @@ export const TripDetailsPage: React.FC = () => {
             const data = await campbarApi.getTrip(id);
             setTrip(data);
         } catch (error: any) {
-            console.error('[TripDetails] Error:', error);
-            if (error.response?.status === 401) {
-                alert('Please login to view trip details');
-                navigate('/');
-            } else if (error.response?.status === 404) {
+            console.error('[TripDetails] Error w Details:', error);
+            if (error.response?.status === 404) {
                 alert('Trip not found');
                 navigate('/campbar');
             }
+            // 401 is no longer expected for GET, but if it happens, we just show what we can
         } finally {
             setLoading(false);
         }
@@ -194,8 +192,8 @@ export const TripDetailsPage: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20 md:pb-10">
-            {/* SOS Monitor Overlay */}
-            <SOSMonitor />
+            {/* SOS Monitor Overlay (Only for logged in users) */}
+            {currentUserId && <SOSMonitor />}
 
             {/* Header */}
             <div className="bg-gradient-to-br from-teal-700 to-emerald-800 text-white pt-8 pb-16 px-6 md:px-10">
@@ -358,11 +356,19 @@ export const TripDetailsPage: React.FC = () => {
                             </>
                         ) : (
                             <button
-                                onClick={handleJoinTrip}
+                                onClick={
+                                    () => {
+                                        if (!currentUserId) {
+                                            alert('Please login to join this trip');
+                                            // navigate('/login'); // Assuming login is at home or separate page
+                                            return;
+                                        }
+                                        handleJoinTrip();
+                                    }}
                                 disabled={actionLoading || isFull}
                                 className="px-6 py-3 bg-teal-600 text-white rounded-lg font-semibold hover:bg-teal-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {isFull ? 'Trip Full' : 'Join This Trip'}
+                                {isFull ? 'Trip Full' : (currentUserId ? 'Join This Trip' : 'Login to Join')}
                             </button>
                         )}
                     </div >
@@ -404,14 +410,18 @@ export const TripDetailsPage: React.FC = () => {
                 />
             </div>
 
-            {/* Persistent SOS Floating Button (Trip Specific) */}
-            <button
-                onClick={() => navigate(`/campbar/trips/${trip.id}/safety`)}
-                className="fixed bottom-24 left-6 z-50 bg-red-600 hover:bg-red-700 text-white rounded-full p-4 shadow-lg border-4 border-red-500/30 animate-pulse transition-transform hover:scale-110 active:scale-95 flex items-center justify-center"
-                aria-label="Trip Emergency SOS"
-            >
-                <AlertCircle size={28} fill="currentColor" />
-            </button>
+            {/* Persistent SOS Floating Button (Trip Specific) - Only for logged in */}
+            {
+                currentUserId && (
+                    <button
+                        onClick={() => navigate(`/campbar/trips/${trip.id}/safety`)}
+                        className="fixed bottom-24 left-6 z-50 bg-red-600 hover:bg-red-700 text-white rounded-full p-4 shadow-lg border-4 border-red-500/30 animate-pulse transition-transform hover:scale-110 active:scale-95 flex items-center justify-center"
+                        aria-label="Trip Emergency SOS"
+                    >
+                        <AlertCircle size={28} fill="currentColor" />
+                    </button>
+                )
+            }
         </div >
     );
 };

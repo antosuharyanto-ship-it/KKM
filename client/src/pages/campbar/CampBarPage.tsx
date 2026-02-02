@@ -26,11 +26,7 @@ export const CampBarPage: React.FC = () => {
             setTrips(data);
         } catch (error) {
             console.error('[CampBar] Failed to fetch trips:', error);
-            // Handle unauthorized - redirect to login
-            if ((error as any)?.response?.status === 401) {
-                alert('Please login to view trips');
-                navigate('/');
-            }
+            // Public access allowed, so no redirect needed on error unless critical
         } finally {
             setLoading(false);
         }
@@ -170,9 +166,14 @@ export const CampBarPage: React.FC = () => {
                         </select>
                     </div>
 
-                    {/* Create Trip Button */}
                     <button
-                        onClick={() => navigate('/campbar/trips/new')}
+                        onClick={() => {
+                            // We rely on the CreateTripPage to handle auth or the API to fail
+                            // But for better UX, we can just navigate.
+                            // If the backend is protected, submitting will fail.
+                            // Ideally we check auth state here.
+                            navigate('/campbar/trips/new');
+                        }}
                         className="flex items-center gap-2 px-6 py-3 bg-teal-600 text-white rounded-full font-semibold shadow-lg hover:bg-teal-700 transition active:scale-95"
                     >
                         <Plus size={20} />
