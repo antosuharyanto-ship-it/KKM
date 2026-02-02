@@ -187,9 +187,9 @@ export const SOSMonitor: React.FC = () => {
         return (
             <div
                 onClick={requestPermission}
-                className="fixed top-20 left-1/2 -translate-x-1/2 z-40 bg-teal-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 cursor-pointer animate-bounce"
+                className="fixed bottom-36 left-1/2 -translate-x-1/2 z-40 bg-teal-600 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 cursor-pointer animate-bounce border-2 border-white/20 whitespace-nowrap"
             >
-                <Bell size={16} />
+                <Bell size={18} />
                 <span className="text-sm font-bold">Tap to enable SOS alerts</span>
             </div>
         );
