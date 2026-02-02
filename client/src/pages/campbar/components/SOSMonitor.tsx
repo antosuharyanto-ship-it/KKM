@@ -181,8 +181,24 @@ export const SOSMonitor: React.FC = () => {
         );
     }
 
-    // Otherwise, check if we need to show the "Enable Permissions" banner
-    // Only show if we haven't granted permission yet and we are in a trip context
+    // 4. Permission Handling UI
+
+    // CASE A: User explicitly blocked permissions (or system default is blocked)
+    if (Notification.permission === 'denied') {
+        return (
+            <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] bg-orange-600 text-white px-6 py-3 rounded-xl shadow-lg flex flex-col items-center gap-2 max-w-xs text-center border-2 border-orange-400">
+                <div className="flex items-center gap-2 font-bold">
+                    <AlertTriangle size={20} />
+                    <span>ALERTS BLOCKED</span>
+                </div>
+                <p className="text-xs">
+                    You blocked notifications. Please tap the 🔒 icon in your browser URL bar and enable "Notifications" & "Sound" to receive SOS alerts.
+                </p>
+            </div>
+        );
+    }
+
+    // CASE B: Default state (Need to ask)
     if (Notification.permission === 'default') {
         return (
             <div
