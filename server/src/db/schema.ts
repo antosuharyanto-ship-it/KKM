@@ -263,3 +263,16 @@ export const tripMessages = pgTable('trip_messages', {
     message: text('message').notNull(),
     createdAt: timestamp('created_at').defaultNow()
 });
+
+export const tripSosAlerts = pgTable('trip_sos_alerts', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    tripId: uuid('trip_id').references(() => tripBoards.id, { onDelete: 'cascade' }).notNull(),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+
+    status: varchar('status', { enum: ['active', 'resolved'] }).default('active'),
+    message: text('message'),
+    location: json('location'), // { lat, lng, accuracy }
+
+    createdAt: timestamp('created_at').defaultNow(),
+    resolvedAt: timestamp('resolved_at')
+});

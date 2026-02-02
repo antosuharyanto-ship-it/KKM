@@ -267,6 +267,29 @@ export const campbarApi = {
         );
         return response.data;
     },
+
+    /**
+     * Get active SOS alerts for a trip
+     * @param tripId - Trip ID
+     */
+    getActiveSOS: async (tripId: string) => {
+        const response = await api.get<{ success: boolean; alerts: any[] }>(
+            `/api/campbar/trips/${tripId}/sos/active`
+        );
+        return response.data.alerts;
+    },
+
+    /**
+     * Resolve an SOS alert
+     * @param tripId - Trip ID
+     * @param alertId - Alert ID
+     */
+    resolveSOS: async (tripId: string, alertId: string) => {
+        const response = await api.post<{ success: boolean; message: string }>(
+            `/api/campbar/trips/${tripId}/sos/${alertId}/resolve`
+        );
+        return response.data;
+    },
 };
 
 export default campbarApi;

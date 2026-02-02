@@ -63,6 +63,15 @@ export const SafetyPage: React.FC = () => {
         setIsActivating(false);
         setActivationProgress(0);
 
+        // Haptic Feedback: SOS Pattern (... --- ...)
+        if (navigator.vibrate) {
+            navigator.vibrate([
+                100, 100, 100, 100, 100, 100, // S (...)
+                300, 100, 300, 100, 300, 100, // O (---)
+                100, 100, 100, 100, 100       // S (...)
+            ]);
+        }
+
         // Prepare alert data
         const alertData: SOSAlert = {
             location: location ? {
@@ -150,8 +159,8 @@ export const SafetyPage: React.FC = () => {
                             key={s}
                             onClick={() => setStatus(s)}
                             className={`p-4 rounded-xl border-2 font-bold capitalize transition-all ${status === s
-                                    ? 'bg-red-600 border-red-500 text-white shadow-lg scale-105'
-                                    : 'bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700'
+                                ? 'bg-red-600 border-red-500 text-white shadow-lg scale-105'
+                                : 'bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700'
                                 }`}
                         >
                             {s}
@@ -181,10 +190,16 @@ export const SafetyPage: React.FC = () => {
                     )}
 
                     <button
-                        onMouseDown={() => setIsActivating(true)}
+                        onMouseDown={() => {
+                            setIsActivating(true);
+                            if (navigator.vibrate) navigator.vibrate(200);
+                        }}
                         onMouseUp={() => setIsActivating(false)}
                         onMouseLeave={() => setIsActivating(false)}
-                        onTouchStart={() => setIsActivating(true)}
+                        onTouchStart={() => {
+                            setIsActivating(true);
+                            if (navigator.vibrate) navigator.vibrate(200);
+                        }}
                         onTouchEnd={() => setIsActivating(false)}
                         className={`w-full h-32 rounded-3xl font-black text-2xl tracking-widest shadow-2xl transition-all transform active:scale-95 flex flex-col items-center justify-center gap-2 relative overflow-hidden ${isActivating ? 'bg-red-700 scale-95' : 'bg-red-600 hover:bg-red-500'
                             }`}

@@ -7,7 +7,8 @@ import {
     tripDateUserVotes,
     tripGearItems,
     tripMessages,
-    users
+    users,
+    tripSosAlerts
 } from '../db/schema';
 import { eq, and, desc, or, sql, gte } from 'drizzle-orm';
 import { checkAuth } from '../middleware/auth';
@@ -1299,10 +1300,103 @@ router.post('/trips/:tripId/sos', async (req: Request, res: Response) => {
             createdAt: new Date()
         });
 
+        // 5. Save to SOS Alerts Table (Active Persistence)
+        await db.insert(tripSosAlerts).values({
+            tripId: trip_id,
+            userId: req.user!.id,
+            status: 'active',
+            message: message || `SOS triggered (${status})`,
+            location: location || {}
+        });
+
         res.json({ success: true, message: 'SOS Broadcasted to trip participants' });
     } catch (error) {
         console.error('[CampBar] Error processing SOS:', error);
         res.status(500).json({ error: 'Failed to process SOS alert' });
+    }
+});
+
+/**
+ * GET /api/campbar/trips/:tripId/sos/active
+ * Poll for active SOS alerts
+ */
+router.get('/trips/:tripId/sos/active', async (req: Request, res: Response) => {
+    try {
+        const { tripId } = req.params;
+        const trip_id = getParam(tripId);
+
+        // Verify participation
+        const participant = await db
+            .select()
+            .from(tripParticipants)
+            .where(and(
+                eq(tripParticipants.tripId, trip_id),
+                eq(tripParticipants.userId, req.user!.id)
+            ))
+            .limit(1);
+
+        if (participant.length === 0) {
+            // Check if organizer
+            const trip = await db.select().from(tripBoards).where(eq(tripBoards.id, trip_id)).limit(1);
+            if (trip.length === 0 || trip[0].organizerId !== req.user!.id) {
+                return res.status(403).json({ error: 'Unauthorized' });
+            }
+        }
+
+        // Fetch active alerts
+        const activeAlerts = await db
+            .select({
+                id: tripSosAlerts.id,
+                userId: tripSosAlerts.userId,
+                status: tripSosAlerts.status,
+                message: tripSosAlerts.message,
+                location: tripSosAlerts.location,
+                createdAt: tripSosAlerts.createdAt,
+                user: {
+                    fullName: users.fullName,
+                    phone: users.phoneNumber
+                }
+            })
+            .from(tripSosAlerts)
+            .leftJoin(users, eq(tripSosAlerts.userId, users.id))
+            .where(and(
+                eq(tripSosAlerts.tripId, trip_id),
+                eq(tripSosAlerts.status, 'active')
+            ))
+            .orderBy(desc(tripSosAlerts.createdAt));
+
+        res.json({ success: true, alerts: activeAlerts });
+    } catch (error) {
+        console.error('[CampBar] Error fetching SOS alerts:', error);
+        res.status(500).json({ error: 'Failed to fetch active alerts' });
+    }
+});
+
+/**
+ * POST /api/campbar/trips/:tripId/sos/:alertId/resolve
+ * Resolve an SOS alert
+ */
+router.post('/trips/:tripId/sos/:alertId/resolve', async (req: Request, res: Response) => {
+    try {
+        const { tripId, alertId } = req.params;
+        const alert_id = getParam(alertId);
+
+        // Allow any participant to resolve? Or only officer/sender?
+        // For safety, let anyone resolve it if they confirm help arrived.
+        // But logging who resolved it is good practice (can extend schema later).
+
+        await db
+            .update(tripSosAlerts)
+            .set({
+                status: 'resolved',
+                resolvedAt: new Date()
+            })
+            .where(eq(tripSosAlerts.id, alert_id));
+
+        res.json({ success: true, message: 'Alert resolved' });
+    } catch (error) {
+        console.error('[CampBar] Error resolving SOS:', error);
+        res.status(500).json({ error: 'Failed to resolve alert' });
     }
 });
 

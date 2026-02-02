@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Edit, Users, Calendar, MapPin, DollarSign, AlertCircle, Play, CheckCircle } from 'lucide-react';
 import { API_BASE_URL } from '../../config';
+import { SOSMonitor } from './components/SOSMonitor';
 import campbarApi from '../../utils/campbarApi';
 import type { Trip } from '../../utils/campbarTypes';
 import DateVotingSection from './components/DateVotingSection.tsx';
@@ -30,7 +31,7 @@ export const TripDetailsPage: React.FC = () => {
     const fetchCurrentUser = async () => {
         try {
             // Fetch current user info from auth endpoint
-            const response = await fetch(`${API_BASE_URL}/auth/me`, {
+            const response = await fetch(`${API_BASE_URL} /auth/me`, {
                 credentials: 'include'
             });
             if (response.ok) {
@@ -193,6 +194,9 @@ export const TripDetailsPage: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20 md:pb-10">
+            {/* SOS Monitor Overlay */}
+            <SOSMonitor />
+
             {/* Header */}
             <div className="bg-gradient-to-br from-teal-700 to-emerald-800 text-white pt-8 pb-16 px-6 md:px-10">
                 <div className="max-w-5xl mx-auto">
@@ -217,10 +221,10 @@ export const TripDetailsPage: React.FC = () => {
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                            <span className={`px-4 py-2 rounded-full text-sm font-bold border ${getDifficultyColor()}`}>
+                            <span className={`px - 4 py - 2 rounded - full text - sm font - bold border ${getDifficultyColor()} `}>
                                 {trip.difficulty}
                             </span>
-                            <span className={`px-4 py-2 rounded-full text-sm font-bold ${getStatusColor()}`}>
+                            <span className={`px - 4 py - 2 rounded - full text - sm font - bold ${getStatusColor()} `}>
                                 {trip.status}
                             </span>
                         </div>
@@ -262,7 +266,7 @@ export const TripDetailsPage: React.FC = () => {
                                 </div>
                                 <div className="text-xs text-gray-600">
                                     {trip.datesConfirmed && trip.startDate
-                                        ? `${new Date(trip.startDate).toLocaleDateString()} - ${new Date(trip.endDate!).toLocaleDateString()}`
+                                        ? `${new Date(trip.startDate).toLocaleDateString()} - ${new Date(trip.endDate!).toLocaleDateString()} `
                                         : 'Vote on dates below'
                                     }
                                 </div>
@@ -293,32 +297,36 @@ export const TripDetailsPage: React.FC = () => {
                         {isOrganizer ? (
                             <>
                                 <button
-                                    onClick={() => navigate(`/campbar/trips/${id}/edit`)}
+                                    onClick={() => navigate(`/ campbar / trips / ${id}/edit`)}
                                     className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg font-semibold hover:bg-teal-700 transition"
                                 >
                                     <Edit size={18} />
                                     Edit Trip
-                                </button>
-                                {trip.status === 'confirmed' && (
-                                    <button
-                                        onClick={() => handleUpdateStatus('ongoing')}
-                                        disabled={actionLoading}
-                                        className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition disabled:opacity-50"
-                                    >
-                                        <Play size={18} />
-                                        Start Trip
-                                    </button>
-                                )}
-                                {trip.status === 'ongoing' && (
-                                    <button
-                                        onClick={() => handleUpdateStatus('completed')}
-                                        disabled={actionLoading}
-                                        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition disabled:opacity-50"
-                                    >
-                                        <CheckCircle size={18} />
-                                        Complete Trip
-                                    </button>
-                                )}
+                                </button >
+                                {
+                                    trip.status === 'confirmed' && (
+                                        <button
+                                            onClick={() => handleUpdateStatus('ongoing')}
+                                            disabled={actionLoading}
+                                            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition disabled:opacity-50"
+                                        >
+                                            <Play size={18} />
+                                            Start Trip
+                                        </button>
+                                    )
+                                }
+                                {
+                                    trip.status === 'ongoing' && (
+                                        <button
+                                            onClick={() => handleUpdateStatus('completed')}
+                                            disabled={actionLoading}
+                                            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition disabled:opacity-50"
+                                        >
+                                            <CheckCircle size={18} />
+                                            Complete Trip
+                                        </button>
+                                    )
+                                }
                                 <button
                                     onClick={handleCancelTrip}
                                     disabled={actionLoading}
@@ -357,8 +365,8 @@ export const TripDetailsPage: React.FC = () => {
                                 {isFull ? 'Trip Full' : 'Join This Trip'}
                             </button>
                         )}
-                    </div>
-                </div>
+                    </div >
+                </div >
             )}
 
             {/* Main Content Sections */}
@@ -404,7 +412,7 @@ export const TripDetailsPage: React.FC = () => {
             >
                 <AlertCircle size={28} fill="currentColor" />
             </button>
-        </div>
+        </div >
     );
 };
 
