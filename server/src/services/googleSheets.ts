@@ -355,7 +355,10 @@ export class GoogleSheetService {
             ...row,
             activity: row.activity || row.title || row.event_name || 'Untitled Event', // Normalize Title -> Activity
             price_new_member: row.price_new_member || row.price || '0', // Normalize simple price
-            id: row.id || row.event_id // Normalize ID
+            id: row.id || row.event_id, // Normalize ID
+            // Fix for Gallery/Sponsor visibility (User Report)
+            gallery_images: row.gallery_images || row.gallery || row.gallery_folder || row.images_folder || row.folder_gallery || '',
+            sponsor: row.sponsor || row.sponsors || row.sponsor_folder || row.sponsors_folder || row.folder_sponsor || ''
         }));
 
         return validEvents;

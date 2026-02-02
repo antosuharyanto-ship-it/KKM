@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { LogOut, User as UserIcon, Mail, Plus, Trash2 } from 'lucide-react';
+import { LogOut, User as UserIcon, Mail, Plus, Trash2, MessageSquare, Megaphone } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 interface User {
@@ -161,8 +161,23 @@ export const ProfilePage: React.FC = () => {
                     </h3>
                     <div className="text-center py-6">
                         <p className="text-gray-500 text-sm mb-4">View your event bookings and marketplace orders in one place.</p>
-                        <a href="/my-bookings" className="inline-block bg-teal-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-teal-700 transition shadow-lg shadow-teal-200">
+                        <a href="/my-orders" className="inline-block bg-teal-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-teal-700 transition shadow-lg shadow-teal-200">
                             Go to My Orders
+                        </a>
+                    </div>
+                </div>
+
+                {/* Community & News */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-earth-100 mb-4">
+                    <h3 className="font-bold text-gray-900 mb-4">Discover</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                        <a href="/community" className="bg-teal-50 p-4 rounded-xl flex flex-col items-center gap-2 hover:bg-teal-100 transition group">
+                            <MessageSquare size={24} className="text-teal-600 group-hover:scale-110 transition-transform" />
+                            <span className="text-xs font-bold text-teal-800">Community Wall</span>
+                        </a>
+                        <a href="/news" className="bg-orange-50 p-4 rounded-xl flex flex-col items-center gap-2 hover:bg-orange-100 transition group">
+                            <Megaphone size={24} className="text-orange-600 group-hover:scale-110 transition-transform" />
+                            <span className="text-xs font-bold text-orange-800">Latest News</span>
                         </a>
                     </div>
                 </div>

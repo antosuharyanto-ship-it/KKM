@@ -8,7 +8,9 @@ import {
     Search,
     Instagram, Facebook, Youtube, Twitter,
     Mail, Phone, MapPin,
-    User
+    User,
+    Package,
+    QrCode
 } from 'lucide-react';
 import { LanguageSwitcher } from '../components/LanguageSwitcher'; // Import Switcher
 import { ChatWidget } from '../components/ChatWidget';
@@ -80,14 +82,13 @@ export const AppLayout: React.FC = () => {
             </div>
 
             {/* Mobile Bottom Navigation */}
-            <nav className="md:hidden absolute bottom-0 left-0 right-0 bg-white border-t border-stone-200 px-4 py-3 flex justify-around items-center z-50 rounded-t-2xl shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
-                <MobileNavItem to="/" icon={<Tent size={20} />} label={t('nav.events')} />
-                {/* <MobileNavItem to="/news" icon={<Megaphone size={20} />} label={t('nav.news')} /> */}
-                <MobileNavItem to="/campbar" icon={<Compass size={20} />} label="CampBar" />
-                <MobileNavItem to="/marketplace" icon={<ShoppingBag size={20} />} label={t('nav.marketplace')} />
-                {/* <MobileNavItem to="/my-orders" icon={<Package size={20} />} label="My Orders" /> */}
-                {/* {isOfficer && <MobileNavItem to="/dashboard" icon={<LayoutDashboard size={20} />} label={t('nav.dashboard')} />} */}
-                <MobileNavItem to="/profile" icon={<User size={20} />} label={t('nav.profile')} />
+            <nav className="md:hidden absolute bottom-0 left-0 right-0 bg-white border-t border-stone-200 px-2 py-3 flex justify-between items-center z-50 rounded-t-2xl shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
+                <MobileNavItem to="/" icon={<Tent size={18} />} label={t('nav.events')} />
+                <MobileNavItem to="/campbar" icon={<Compass size={18} />} label="CampBar" />
+                <MobileNavItem to="/marketplace" icon={<ShoppingBag size={18} />} label={t('nav.marketplace')} />
+                <MobileNavItem to="/my-orders" icon={<Package size={18} />} label="Orders" />
+                {isOfficer && <MobileNavItem to="/scanner" icon={<QrCode size={18} />} label="Scan" />}
+                <MobileNavItem to="/profile" icon={<User size={18} />} label={t('nav.profile')} />
             </nav>
 
             {/* Rich Footer (Visible on Desktop) */}
