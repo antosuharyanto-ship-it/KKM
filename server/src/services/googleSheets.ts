@@ -351,15 +351,26 @@ export class GoogleSheetService {
             if (nameVal === 'name' || nameVal === 'image' || nameVal === 'id') return false;
 
             return true;
-        }).map((row: any) => ({
-            ...row,
-            activity: row.activity || row.title || row.event_name || 'Untitled Event', // Normalize Title -> Activity
-            price_new_member: row.price_new_member || row.price || '0', // Normalize simple price
-            id: row.id || row.event_id, // Normalize ID
-            // Fix for Gallery/Sponsor visibility (User Report)
-            gallery_images: row.gallery_images || row.gallery || row.gallery_folder || row.images_folder || row.folder_gallery || '',
-            sponsor: row.sponsor || row.sponsors || row.sponsor_folder || row.sponsors_folder || row.folder_sponsor || ''
-        }));
+        }).map((row: any) => {
+            // Helper to find value by fuzzy key match
+            const getValueByFuzzyKey = (keywords: string[]) => {
+                // strict check first
+                for (const k of Object.keys(row)) {
+                    if (keywords.some(kw => k.includes(kw))) return row[k];
+                }
+                return '';
+            };
+
+            return {
+                ...row,
+                activity: row.activity || row.title || row.event_name || 'Untitled Event', // Normalize Title -> Activity
+                price_new_member: row.price_new_member || row.price || '0', // Normalize simple price
+                id: row.id || row.event_id, // Normalize ID
+                // Robust Fuzzy Search for Gallery/Sponsor
+                gallery_images: row.gallery_images || getValueByFuzzyKey(['gallery', 'folder_img', 'images']),
+                sponsor: row.sponsor || getValueByFuzzyKey(['sponsor', 'support'])
+            };
+        });
 
         return validEvents;
     }
