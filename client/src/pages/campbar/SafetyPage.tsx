@@ -90,21 +90,23 @@ export const SafetyPage: React.FC = () => {
             if (tripId) {
                 await campbarApi.sendSOS(tripId, alertData);
                 setSosSent(true);
+            } else {
+                throw new Error('No Trip ID found');
             }
         } catch (error) {
             console.error('Failed to send SOS via internet:', error);
+
+            // 2. Fallback to SMS (Offline Mode) ONLY on failure
+            // Construct Google Maps link
+            const mapsLink = location
+                ? `https://maps.google.com/?q=${location.coords.latitude},${location.coords.longitude}`
+                : 'Location Unavailable';
+
+            const smsBody = `SOS ALERT: ${status.toUpperCase()}\n${message || 'I need help!'}\n\nMy Location:\n${mapsLink}\n\nBattery: ${batteryLevel}%`;
+
+            // Open native SMS app
+            window.location.href = `sms:?body=${encodeURIComponent(smsBody)}`;
         }
-
-        // 2. Fallback to SMS (Offline Mode)
-        // Construct Google Maps link
-        const mapsLink = location
-            ? `https://maps.google.com/?q=${location.coords.latitude},${location.coords.longitude}`
-            : 'Location Unavailable';
-
-        const smsBody = `SOS ALERT: ${status.toUpperCase()}\n${message || 'I need help!'}\n\nMy Location:\n${mapsLink}\n\nBattery: ${batteryLevel}%`;
-
-        // Open native SMS app
-        window.location.href = `sms:?body=${encodeURIComponent(smsBody)}`;
     };
 
     return (
