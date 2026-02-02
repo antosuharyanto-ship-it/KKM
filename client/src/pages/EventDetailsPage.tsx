@@ -469,24 +469,30 @@ export const EventDetailsPage: React.FC = () => {
                     </div>
 
                     {/* EVENT SPONSORS */}
-                    {sponsorImages.length > 0 && (
+                    {(sponsorImages.length > 0 || sponsorUrl) && (
                         <div className="md:bg-white md:p-8 md:rounded-3xl md:shadow-md md:border md:border-gray-100 mt-8 mb-8">
                             <h3 className="font-bold text-gray-900 text-xl mb-6 flex items-center gap-2">
                                 <span className="w-1 h-6 bg-teal-500 rounded-full"></span>
                                 Supported By
                             </h3>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 items-center">
-                                {sponsorImages.map((imgUrl, idx) => (
-                                    <div key={idx} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-center h-24 group hover:shadow-md transition">
-                                        <img
-                                            src={getDisplayImageUrl(imgUrl)}
-                                            alt={`Sponsor ${idx + 1}`}
-                                            className="max-w-full max-h-full object-contain filter grayscale group-hover:grayscale-0 transition duration-300"
-                                            referrerPolicy="no-referrer"
-                                        />
-                                    </div>
-                                ))}
-                            </div>
+                            {sponsorImages.length > 0 ? (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 items-center">
+                                    {sponsorImages.map((imgUrl, idx) => (
+                                        <div key={idx} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-center h-24 group hover:shadow-md transition">
+                                            <img
+                                                src={getDisplayImageUrl(imgUrl)}
+                                                alt={`Sponsor ${idx + 1}`}
+                                                className="max-w-full max-h-full object-contain filter grayscale group-hover:grayscale-0 transition duration-300"
+                                                referrerPolicy="no-referrer"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <a href={sponsorUrl!} target="_blank" rel="noopener noreferrer" className="block w-full bg-teal-50 border border-teal-100 rounded-xl p-4 text-center hover:bg-teal-100 transition">
+                                    <span className="text-sm font-bold text-teal-700 underline">View Sponsors</span>
+                                </a>
+                            )}
                         </div>
                     )}
 
