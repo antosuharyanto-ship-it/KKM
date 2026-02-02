@@ -659,14 +659,7 @@ export const EventDetailsPage: React.FC = () => {
                     </div >
                 </div >
             </div >
-            <div className="text-center md:pb-8 my-8 opacity-50 hover:opacity-100 transition bg-gray-50/50 p-2 rounded mx-auto max-w-sm">
-                <p className="text-[10px] text-gray-400 font-mono break-all">
-                    DEBUG: ID={event?.id} <br />
-                    GallerySrc="{event?.gallery_images || 'N/A'}" <br />
-                    SponsorSrc="{event?.sponsor || 'N/A'}" <br />
-                    ImgLoaded={galleryImages.length} | SponsorLoaded={sponsorImages.length}
-                </p>
-            </div>
+
         </div >
     );
 };
