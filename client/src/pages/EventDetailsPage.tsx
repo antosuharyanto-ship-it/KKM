@@ -45,6 +45,8 @@ export const EventDetailsPage: React.FC = () => {
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [galleryImages, setGalleryImages] = useState<string[]>([]);
     const [sponsorImages, setSponsorImages] = useState<string[]>([]);
+    const [galleryUrl, setGalleryUrl] = useState<string | null>(null);
+    const [sponsorUrl, setSponsorUrl] = useState<string | null>(null);
 
     // Helper to extract Drive ID
     const extractDriveId = (url: string) => {
@@ -86,12 +88,18 @@ export const EventDetailsPage: React.FC = () => {
 
                     // 1. Fetch Gallery
                     if (found.gallery_images) {
-                        fetchImagesFromSource(found.gallery_images).then(setGalleryImages);
+                        fetchImagesFromSource(found.gallery_images).then(imgs => {
+                            if (imgs.length > 0) setGalleryImages(imgs);
+                            else if (found.gallery_images && found.gallery_images.includes('http')) setGalleryUrl(found.gallery_images);
+                        });
                     }
 
                     // 2. Fetch Sponsors
                     if (found.sponsor) {
-                        fetchImagesFromSource(found.sponsor).then(setSponsorImages);
+                        fetchImagesFromSource(found.sponsor).then(imgs => {
+                            if (imgs.length > 0) setSponsorImages(imgs);
+                            else if (found.sponsor && found.sponsor.includes('http')) setSponsorUrl(found.sponsor);
+                        });
                     }
 
                 } else {
@@ -397,37 +405,46 @@ export const EventDetailsPage: React.FC = () => {
                     </div>
 
                     {/* GALLERY SECTION */}
-                    {galleryImages.length > 0 && (
+                    {(galleryImages.length > 0 || galleryUrl) && (
                         <div className="mt-8 mb-8 md:col-span-2">
                             <h3 className="font-bold text-gray-900 text-xl mb-4 flex items-center gap-2">
                                 <span className="w-1 h-6 bg-teal-500 rounded-full"></span>
                                 Event Gallery
                             </h3>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
-                                {galleryImages.map((imgUrl, idx) => (
-                                    <div
-                                        key={idx}
-                                        className="relative aspect-square rounded-xl overflow-hidden cursor-pointer group shadow-sm hover:shadow-md transition"
-                                        onClick={() => setSelectedImage(imgUrl)}
-                                    >
-                                        <img
-                                            src={getDisplayImageUrl(imgUrl)}
-                                            alt={`Gallery ${idx + 1}`}
-                                            className="w-full h-full object-cover transition duration-500 group-hover:scale-110 bg-gray-200"
-                                            referrerPolicy="no-referrer"
-                                            onError={(e) => {
-                                                // Don't hide completely, maybe show fallback
-                                                e.currentTarget.style.display = 'none';
-                                            }}
-                                        />
-                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                                            <div className="bg-white/90 p-2 rounded-full opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-900"><path d="M15 3h6v6" /><path d="M9 21H3v-6" /><path d="M21 3l-7 7" /><path d="M3 21l7-7" /></svg>
+                            {galleryImages.length > 0 ? (
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+                                    {galleryImages.map((imgUrl, idx) => (
+                                        <div
+                                            key={idx}
+                                            className="relative aspect-square rounded-xl overflow-hidden cursor-pointer group shadow-sm hover:shadow-md transition"
+                                            onClick={() => setSelectedImage(imgUrl)}
+                                        >
+                                            <img
+                                                src={getDisplayImageUrl(imgUrl)}
+                                                alt={`Gallery ${idx + 1}`}
+                                                className="w-full h-full object-cover transition duration-500 group-hover:scale-110 bg-gray-200"
+                                                referrerPolicy="no-referrer"
+                                                onError={(e) => {
+                                                    e.currentTarget.style.display = 'none';
+                                                }}
+                                            />
+                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                                <div className="bg-white/90 p-2 rounded-full opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-900"><path d="M15 3h6v6" /><path d="M9 21H3v-6" /><path d="M21 3l-7 7" /><path d="M3 21l7-7" /></svg>
+                                                </div>
                                             </div>
                                         </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <a href={galleryUrl!} target="_blank" rel="noopener noreferrer" className="block bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:bg-gray-100 transition group">
+                                    <div className="w-12 h-12 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6" /><path d="M9 21H3v-6" /><path d="M21 3l-7 7" /><path d="M3 21l7-7" /></svg>
                                     </div>
-                                ))}
-                            </div>
+                                    <h4 className="font-bold text-gray-700">View Gallery on Drive</h4>
+                                    <p className="text-sm text-gray-500 mt-1">Click to open external gallery folder</p>
+                                </a>
+                            )}
                         </div>
                     )}
 
